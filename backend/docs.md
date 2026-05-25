@@ -43,3 +43,7 @@
 - jsonwebtoken
 - cookie-parser
 - googleapis
+
+# struktura folderow backend
+- app.js - konfiguracja express
+- server.js - uruchamianie servera
