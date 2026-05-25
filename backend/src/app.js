@@ -1,8 +1,8 @@
-const express = require('express');
-const cors = require('cors');
-const cookieParser = require('cookie-parser');
+import express from "express";
+import cors from "cors";
+import cookieParser from "cookie-parser";
 
-const app = express();
+export const app = express();
 
 // app use
 app.use(
@@ -21,20 +21,23 @@ app.use(cookieParser());
 
 
 
-// routes start
-app.use("/health", (req, res) => {
+// test route /health
+function healthHandler(_req, res) {
   return res.status(200).json({
     success: true,
     data: {
       status: "ok",
+      service: "reservation-system-api",
       timestamp: new Date().toISOString(),
-    }
-  })
-})
+    },
+  });
+}
+
+app.get("/api/v1/health", healthHandler);
+//////////////////////////////////////////////////////////////
 
 
-
-
+// route error
 app.use((req, res) => {
   return res.status(404).json({
     success: false,
@@ -44,9 +47,4 @@ app.use((req, res) => {
     },
   });
 });
-// routes end
-
-
-module.exports = {
-  app
-};
+//////////////////////////////////////////////////////////////
