@@ -1,7 +1,12 @@
+# info
+- npm ci instaluje dokładnie wersje z package-lock.json
+-
 # instalacja paczkek
   - npm init -y
   - npm install express cors dotenv @prisma/client zod
   - npm install -D nodemon prisma
+  - npm install pg @prisma/adapter-pg
+  - npm install -D vitest supertest
 
 # dodanie skrotow npm do package.json
     "dev": "nodemon src/server.js",
@@ -31,6 +36,8 @@
 - @prisma/client - klient bazy danych
 - prisma - schema i migracje bazy danych
 - nodemon - szybki restart serwera w fazie developmentu
+- vitest - uruchamianie testów
+- supertest - testowanie endpointow http bez recznego odpalania serwera
 
 # paczki do OAuth / JWT
 - jsonwebtoken
