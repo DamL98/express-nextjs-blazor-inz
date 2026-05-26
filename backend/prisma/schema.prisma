@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ReservationStatus {
+  ACTIVE
+  CANCELLED
+}
+
+model Role {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  users     User[]
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("roles")
+}
+
+model User {
+  id                  String               @id @default(uuid())
+  googleId            String               @unique @map("google_id")
+  email               String               @unique
+  fullName            String               @map("full_name")
+  avatarUrl           String?              @map("avatar_url")
+  roleId              String               @map("role_id")
+  role                Role                 @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  reservations        Reservation[]
+  calendarIntegration CalendarIntegration?
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+
+  @@index([roleId])
+  @@map("users")
+}
+
+model Room {
+  id           String        @id @default(uuid())
+  name         String
+  location     String
+  description  String?
+  capacity     Int
+  isActive     Boolean       @default(true) @map("is_active")
+  reservations Reservation[]
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  @@index([isActive])
+  @@map("rooms")
+}
+
+model Reservation {
+  id                    String            @id @default(uuid())
+  userId                String            @map("user_id")
+  roomId                String            @map("room_id")
+  title                 String
+  description           String?
+  startTime             DateTime          @map("start_time")
+  endTime               DateTime          @map("end_time")
+  status                ReservationStatus @default(ACTIVE)
+  googleCalendarEventId String?           @map("google_calendar_event_id")
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room                  Room              @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([roomId])
+  @@index([startTime, endTime])
+  @@index([roomId, startTime, endTime])
+  @@map("reservations")
+}
+
+model CalendarIntegration {
+  id                    String    @id @default(uuid())
+  userId                String    @unique @map("user_id")
+  provider              String
+  calendarEmail         String?   @map("calendar_email")
+  refreshTokenEncrypted String    @map("refresh_token_encrypted")
+  tokenExpiresAt        DateTime? @map("token_expires_at")
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  @@map("calendar_integrations")
+}

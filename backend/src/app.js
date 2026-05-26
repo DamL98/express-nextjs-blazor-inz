@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import { prisma } from "./config/prisma.js";
 
 export const app = express();
 
@@ -20,7 +21,6 @@ app.use(cookieParser());
 // end app use
 
 
-
 // test route /health
 function healthHandler(_req, res) {
   return res.status(200).json({
@@ -33,8 +33,30 @@ function healthHandler(_req, res) {
   });
 }
 
+
+
+// routes start
 app.get("/api/v1/health", healthHandler);
+
+app.get("/api/v1/rooms", async (_req, res, next) => {
+  try {
+    const rooms = await prisma.room.findMany({
+      orderBy: {
+        name: "asc",
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: rooms,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 //////////////////////////////////////////////////////////////
+
+
 
 
 // route error
