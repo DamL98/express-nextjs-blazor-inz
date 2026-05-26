@@ -1,7 +1,15 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import { prisma } from "./config/prisma.js";
+
+// import endpointow
+import roomsRoutes from "./modules/rooms/rooms.routes.js";
+
+// import funkcji
+import { errorMiddleware } from "./middlewares/error.middleware.js";
+import { notFoundMiddleware } from "./middlewares/not-found.middleware.js";
+import { successResponse } from "./utils/api-response.js";
+
 
 export const app = express();
 
@@ -23,37 +31,24 @@ app.use(cookieParser());
 
 // test route /health
 function healthHandler(_req, res) {
-  return res.status(200).json({
-    success: true,
-    data: {
-      status: "ok",
-      service: "reservation-system-api",
-      timestamp: new Date().toISOString(),
-    },
+  return successResponse(res, {
+    status: "ok",
+    service: "reservation-system-api",
+    timestamp: new Date().toISOString(),
   });
 }
-
-
 
 // routes start
 app.get("/api/v1/health", healthHandler);
 
-app.get("/api/v1/rooms", async (_req, res, next) => {
-  try {
-    const rooms = await prisma.room.findMany({
-      orderBy: {
-        name: "asc",
-      },
-    });
 
-    return res.status(200).json({
-      success: true,
-      data: rooms,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
+// routes -> rooms
+app.use("/api/v1/rooms", roomsRoutes);
+
+
+
+
+
 //////////////////////////////////////////////////////////////
 
 
