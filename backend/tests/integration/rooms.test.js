@@ -87,6 +87,8 @@ describe("Rooms API", () => {
       `/api/v1/rooms/${roomId}/availability?start=2030-01-01T11:00:00.000Z&end=2030-01-01T10:00:00.000Z`,
     );
 
+    //console.log("INVALID TIME RANGE RESPONSE:", response.status, response.body);
+
     expect(response.status).toBe(400);
     expect(response.body.success).toBe(false);
     expect(response.body.error.code).toBe("INVALID_TIME_RANGE");

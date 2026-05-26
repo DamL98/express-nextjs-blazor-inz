@@ -7,16 +7,18 @@ import {
 
 export async function getRoomsController(_req, res) {
   const filters = res.locals.validated?.query ?? {};
+
   const rooms = await getRooms(filters);
 
-  return successResponse(res, rooms);
+  return res.status(200).json(successResponse(rooms));
 }
 
 export async function getRoomByIdController(_req, res) {
   const { id } = res.locals.validated.params;
+
   const room = await getRoomById(id);
 
-  return successResponse(res, room);
+  return res.status(200).json(successResponse(room));
 }
 
 export async function getRoomAvailabilityController(_req, res) {
@@ -25,5 +27,5 @@ export async function getRoomAvailabilityController(_req, res) {
 
   const availability = await checkRoomAvailability(id, start, end);
 
-  return successResponse(res, availability);
+  return res.status(200).json(successResponse(availability));
 }

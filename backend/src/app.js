@@ -2,66 +2,48 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
-// import endpointow
+// routes
 import roomsRoutes from "./modules/rooms/rooms.routes.js";
 
-// import funkcji
+// middlewares
 import { errorMiddleware } from "./middlewares/error.middleware.js";
 import { notFoundMiddleware } from "./middlewares/not-found.middleware.js";
-import { successResponse } from "./utils/api-response.js";
 
+// utils
+import { successResponse } from "./utils/api-response.js";
 
 export const app = express();
 
-// app use
 app.use(
   cors({
     origin: [
-      "http://localhost:3000",
-      "http://localhost:5173"
+      process.env.FRONTEND_NEXT_URL || "http://localhost:3000",
+      process.env.FRONTEND_BLAZOR_URL || "http://localhost:5173",
     ],
     credentials: true,
-  })
+  }),
 );
 
 app.use(express.json());
 app.use(cookieParser());
-// end app use
 
-
-// test route /health
 function healthHandler(_req, res) {
-  return successResponse(res, {
-    status: "ok",
-    service: "reservation-system-api",
-    timestamp: new Date().toISOString(),
-  });
+  return res.status(200).json(
+    successResponse({
+      status: "ok",
+      service: "reservation-system-api",
+      timestamp: new Date().toISOString(),
+    }),
+  );
 }
 
-// routes start
+app.get("/health", healthHandler);
 app.get("/api/v1/health", healthHandler);
 
-
-// routes -> rooms
 app.use("/api/v1/rooms", roomsRoutes);
 
+// 404 musi być po trasach
+app.use(notFoundMiddleware);
 
-
-
-
-//////////////////////////////////////////////////////////////
-
-
-
-
-// route error
-app.use((req, res) => {
-  return res.status(404).json({
-    success: false,
-    error: {
-      code: "brak wskazanego route",
-      message: `endpoint ${req.method} ${req.originalUrl} nie istnieje`,
-    },
-  });
-});
-//////////////////////////////////////////////////////////////
+// error middleware musi być ostatni
+app.use(errorMiddleware);

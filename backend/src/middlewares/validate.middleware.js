@@ -1,16 +1,25 @@
+import { ApiError } from "../errors/apiError.js";
+
 export function validate(schema, target = "query") {
-  return async (req, res, next) => {
-    const validData = await schema.parseAsync(req[target]);
+  return (req, res, next) => {
+    const result = schema.safeParse(req[target]);
+
+    if (!result.success) {
+      return next(
+        new ApiError(
+          400,
+          "VALIDATION_ERROR",
+          "Niepoprawne dane wejsciowe",
+          result.error.flatten(),
+        ),
+      );
+    }
 
     res.locals.validated = {
       ...res.locals.validated,
-      [target]: validData,
+      [target]: result.data,
     };
 
     return next();
   };
 }
-
-//Dlaczego res.locals?
-// Bo jest przeznaczone na dane lokalne dla cyklu życia requestu.
-// Nie modyfikujemy wbudowanych pól Expressa takich jak req.query.

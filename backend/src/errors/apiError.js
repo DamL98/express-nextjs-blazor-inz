@@ -1,10 +1,11 @@
 export class ApiError extends Error {
-  constructor(message, statusCode, details = null) {
+  constructor(statusCode, code, message, details = null) {
     super(message);
 
+    this.name = "ApiError";
     this.statusCode = statusCode;
+    this.code = code;
     this.details = details;
-    this.isOperational = true; // flaga na odroznienie bledu api
 
     Error.captureStackTrace(this, this.constructor);
   }

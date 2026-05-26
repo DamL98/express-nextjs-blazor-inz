@@ -1,6 +1,17 @@
-export function successResponse(res, data, statusCode = 200){
-  return res.status(statusCode).json({
+export function successResponse(data) {
+  return {
     success: true,
     data,
-  });
-};
+  };
+}
+
+export function errorResponse(code, message, details = null) {
+  return {
+    success: false,
+    error: {
+      code,
+      message,
+      details,
+    },
+  };
+}
