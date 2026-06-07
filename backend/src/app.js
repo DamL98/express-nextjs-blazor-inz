@@ -44,8 +44,11 @@ app.get("/api/v1/health", healthHandler);
 app.use("/api/v1/rooms", roomsRoutes);
 app.use("/api/v1/reservations", reservationsRoutes)
 
-// TODO
+// TODOo
 // admin endpoints
+
+//TODOo
+// oauth endpoints
 
 
 // middleware

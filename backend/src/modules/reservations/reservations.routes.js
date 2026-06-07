@@ -18,7 +18,7 @@ import {
 } from "./reservations.validation.js"
 
 export const reservationsRoutes = Router()
-export const adminReservationsRoutes = Router()
+//export const adminReservationsRoutes = Router()
 
 reservationsRoutes.get(
   "/my",

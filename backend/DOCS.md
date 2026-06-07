@@ -73,30 +73,24 @@ HTTP request
 
 
 # Use Case's - backend
-- health check API
+- health check api
 - sale
-  - pobranie sali po :id
-  - pobranie listy las
-  - filtrowanie po statusie sali
-  - filtrowanie po min. ilosci miejsc w sali
+  - pobranie listy
+  - szczegółów
+  - filtrowanie po statusie i pojemności sali
+  - czy dostepna w przedziale czasowym
 
-- sale - walidacja
-  - czy sala istnieje
-  - czy poprawny zakres dat
-  - czy status pozwala na rezerwacje
-
-- sale - user demo
+- rezerwacje
   - pobranie swoich rezerwacji
-  - pobranie swojej rezerwacji po id
-  - utworzenie rezerwacji
-  - anulowanie rez
+  - pobranie jednej swojej rezerwacji
+  - anulowanie rezerwacji
+  - walidacja przy tworzeniu rezerwacji
+  - utw. rezerwacji dla demo usera
+    - porawnosc dat
+    - zakresu czasu
+    - blokady sal anulowanych/zajetych
 
-- tech
-  - custom global obsluga bledow: src/errors/apiError.js
-  - jednolity api response: src/utils/api-response.js
-  - obsluga nieistniejacych route/tras
-  - walidacja danych wejsciowych PRZED controllerem przez Zod: src/modules/nazwa_modul.validation.js
-  - testy endpointow z vitest src/tests/
+- oauth
 
 # Baza danych
 ## Modele
@@ -167,3 +161,9 @@ HTTP request
   -
 ## Wyniki testów
 ## Wynioski
+
+
+## Nastepne TODO
+- Firebase [zasob, projekt, aplikacja, sdk, api_key]
+  - endpointy api
+  -
