@@ -13,7 +13,7 @@ export async function getRoomById(id) {
   const room = await findRoomById(id);
 
   if (!room) {
-    throw new ApiError(404, "ROOM_NOT_FOUND", "Sala nie została znaleziona.");
+    throw new ApiError(404, "ROOM_NOT_FOUND", "Nie znaleziono sali");
   }
 
   return room;
@@ -23,7 +23,7 @@ export async function checkRoomAvailability(roomId, start, end) {
   const room = await findRoomById(roomId);
 
   if (!room) {
-    throw new ApiError(404, "ROOM_NOT_FOUND", "Sala nie została znaleziona.");
+    throw new ApiError(404, "ROOM_NOT_FOUND", "Nie znaleziono sali");
   }
 
   const startTime = new Date(start);
@@ -33,7 +33,7 @@ export async function checkRoomAvailability(roomId, start, end) {
     throw new ApiError(
       400,
       "INVALID_DATE",
-      "Data rozpoczęcia lub zakończenia jest niepoprawna.",
+      "startTime i endTime jest invalid",
     );
   }
 
@@ -41,7 +41,7 @@ export async function checkRoomAvailability(roomId, start, end) {
     throw new ApiError(
       400,
       "INVALID_TIME_RANGE",
-      "Data rozpoczęcia musi być wcześniejsza niż data zakończenia.",
+      "startTime musi byc wczesniej niz endTime",
     );
   }
 

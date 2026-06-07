@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 
 // routes
 import roomsRoutes from "./modules/rooms/rooms.routes.js";
+import reservationsRoutes from "./modules/reservations/reservations.routes.js";
 
 // middlewares
 import { errorMiddleware } from "./middlewares/error.middleware.js";
@@ -41,9 +42,12 @@ app.get("/health", healthHandler);
 app.get("/api/v1/health", healthHandler);
 
 app.use("/api/v1/rooms", roomsRoutes);
+app.use("/api/v1/reservations", reservationsRoutes)
 
-// 404 musi być po trasach
+// TODO
+// admin endpoints
+
+
+// middleware
 app.use(notFoundMiddleware);
-
-// error middleware musi być ostatni
 app.use(errorMiddleware);
