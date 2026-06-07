@@ -1,3 +1,6 @@
+# Temat pracy
+- Analiza porównawcza implementacji systemu rezerwacji jako aplikacji webowej z wykorzystaniem technologii Blazor (.NET) oraz Next.js (JavaScript)
+
 # Backend tech stack
 - Node.js v22
 - Express 5
@@ -30,26 +33,23 @@
 
 # API data-flow
 HTTP request
--> Express app
--> route
--> validation middleware Zod
--> controller
--> service
--> repository
+-> Express
+-> rooms.routes.js
+-> validate params
+-> validate query
+-> rooms.controller.js
+-> rooms.service.js
+-> room.repository.js
 -> Prisma
 -> PostgreSQL
--> Prisma
--> repository
--> service
--> controller
--> HTTP response
+-> response
 
 # Lista modułów
 - Rooms - in progress
 - Reservations - in progress
 - Google-Services - TODO
 - Admin - TODO
-- OAuth - TODO
+- FirebaseAuth - TODO
 
 
 # Endpointy
@@ -92,6 +92,19 @@ HTTP request
 
 - oauth
 
+# Testy api
+- health check
+## Rooms
+- lista sal
+- filtrowanie sal
+- walidacja query
+- pobranie sali pod ID
+- 404 dla nieistniejacej sali
+- dostepnosc sali
+- bledny zakres czasu
+## Reservations
+- TODOo
+
 # Baza danych
 ## Modele
 - Room
@@ -106,7 +119,16 @@ HTTP request
 - User 1:1 CalendarIntegration
 - Role 1:N User
 
-
+# Nastepne do wdrozenia
+- endpointy dla admina
+- testy dla reservations
+- testy dla admina
+- uwierzytelnienie (google oauth / firebase auth)
+- jwt / refesh token
+- poprawienie bazy dla usera z lokalnego logowania/rejestracji
+- endpointy od lokalnego logowania/rejestracji
+- testy na prawdziwym userze z bazy nie demo
+- dokumentacja endpointow
 
 # Badania
 ## Narzędzia
@@ -163,7 +185,6 @@ HTTP request
 ## Wynioski
 
 
-## Nastepne TODO
+## TODOo
+- Uwierzytelnienie, JWT, refresh_token,
 - Firebase [zasob, projekt, aplikacja, sdk, api_key]
-  - endpointy api
-  -
