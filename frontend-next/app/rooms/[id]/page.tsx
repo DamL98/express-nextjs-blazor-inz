@@ -1,6 +1,9 @@
 import Link from "next/link";
-import { getRoomById } from "@/lib/api";
+
 import { ReservationForm } from "@/components/reservations/ReservationForm";
+
+import { getRoomById } from "@/features/rooms/rooms.api";
+
 
 type RoomDetailsPageProps = {
   params: Promise<{

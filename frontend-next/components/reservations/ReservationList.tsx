@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { cancelReservation } from "@/lib/api";
-import type { Reservation } from "@/lib/types";
 import Link from "next/link";
+import { cancelReservation } from "@/features/reservations/reservations.api";
+
+import type { Reservation } from "@/features/reservations/reservations.types";
 
 type ReservationsListProps = {
   initialReservations: Reservation[];

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 
-import { createReservation } from "@/lib/api";
+import { createReservation } from "@/features/reservations/reservations.api";
+import type { Reservation } from "@/features/reservations/reservations.types";
 
 
 type ReservationFormProps = {

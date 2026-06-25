@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { getRooms } from "@/lib/api";
+
+import { getRooms } from "@/features/rooms/rooms.api";
 
 export default async function RoomsPage() {
   const rooms = await getRooms();

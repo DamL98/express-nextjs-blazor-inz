@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { getMyReservations } from "@/lib/api";
+
+import { getMyReservations } from "@/features/reservations/reservations.api";
 import { ReservationsList } from "@/components/reservations/ReservationList";
 
 export default async function ReservationsPage() {
