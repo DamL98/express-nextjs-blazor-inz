@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: inzynierka_v1
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: damiano
+      POSTGRES_PASSWORD: qwerty
+      POSTGRES_DB: inzynierka_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

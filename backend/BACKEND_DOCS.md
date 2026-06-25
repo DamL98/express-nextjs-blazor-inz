@@ -47,3 +47,7 @@
 # struktura folderow backend
 - app.js - konfiguracja express
 - server.js - uruchamianie servera
+
+# data flow
+
+Routing -> Validation -> Controller -> Service -> Repository |
