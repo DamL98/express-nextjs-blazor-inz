@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+
 import { createReservation } from "@/lib/api";
+
 
 type ReservationFormProps = {
   roomId: string;
@@ -157,7 +160,14 @@ export function ReservationForm({ roomId }: ReservationFormProps) {
 
         {successMessage && (
           <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-            {successMessage}
+            <p>{successMessage}</p>
+
+            <Link
+              href="/reservations"
+              className="mt-2 inline-block font-medium text-green-800 underline"
+            >
+              Przejdź do moich rezerwacji
+            </Link>
           </div>
         )}
 

@@ -3,6 +3,7 @@ import type {
   Room,
   Reservation,
   CreateReservationPayload,
+  ReservationFilters,
 } from "./types";
 
 
@@ -67,5 +68,31 @@ export function createReservation(
   return request<Reservation>("/reservations", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function getMyReservations(
+  filters: ReservationFilters = {}
+): Promise<Reservation[]> {
+  const params = new URLSearchParams();
+
+  if (filters.status) {
+    params.set("status", filters.status);
+  }
+
+  if (filters.roomId) {
+    params.set("roomId", filters.roomId);
+  }
+
+  const query = params.toString();
+
+  return request<Reservation[]>(`/reservations/my${query ? `?${query}` : ""}`, {
+    cache: "no-store",
+  });
+}
+
+export function cancelReservation(id: string): Promise<Reservation> {
+  return request<Reservation>(`/reservations/${id}/cancel`, {
+    method: "PATCH",
   });
 }

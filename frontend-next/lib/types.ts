@@ -42,6 +42,11 @@ export type Reservation = {
   room?: Room;
 };
 
+export type ReservationFilters = {
+  status?: ReservationStatus | "";
+  roomId?: string;
+};
+
 export type CreateReservationPayload = {
   roomId: string;
   title: string;
