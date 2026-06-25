@@ -3,6 +3,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 
 // routes
+import adminRoutes from "./modules/admin/admin.routes.js";
 import roomsRoutes from "./modules/rooms/rooms.routes.js";
 import reservationsRoutes from "./modules/reservations/reservations.routes.js";
 
@@ -43,9 +44,7 @@ app.get("/api/v1/health", healthHandler);
 
 app.use("/api/v1/rooms", roomsRoutes);
 app.use("/api/v1/reservations", reservationsRoutes)
-
-// TODOo
-// admin endpoints
+app.use("/api/v1/admin", adminRoutes)
 
 //TODOo
 // oauth endpoints

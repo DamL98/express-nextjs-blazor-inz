@@ -17,7 +17,7 @@ export function errorMiddleware(error, _req, res, _next) {
     return res.status(400).json(
       errorResponse(
         "VALIDATION_ERROR",
-        "Dane wejściowe są niepoprawne.",
+        "Błędne dane wejściowe",
         error.flatten(),
       ),
     );
@@ -27,7 +27,7 @@ export function errorMiddleware(error, _req, res, _next) {
     return res.status(error.statusCode).json(
       errorResponse(
         error.code,
-        error.message || "Blad aplikacji",
+        error.message || "Błąd aplikacji",
         error.details ?? null,
       ),
     );
@@ -38,7 +38,7 @@ export function errorMiddleware(error, _req, res, _next) {
   return res.status(500).json(
     errorResponse(
       "INTERNAL_SERVER_ERROR",
-      "Wystąpił nieoczekiwany błąd serwera.",
+      "Błąd serwera",
       process.env.NODE_ENV === "development"
         ? {
             name: error?.name,

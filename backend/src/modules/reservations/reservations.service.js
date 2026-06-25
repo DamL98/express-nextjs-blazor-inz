@@ -28,7 +28,7 @@ function parseTimeRange(start, end) {
     throw new ApiError(
       400,
       "INVALID_DATE_FORMAT",
-      "startTime i endTime jest invalid"
+      "startTime i endTime jest błędne"
     )
   }
 
@@ -44,7 +44,7 @@ function parseTimeRange(start, end) {
     throw new ApiError(
       400,
       "RESERVATION_IN_PAST",
-      "Reservation cannot start in the past."
+      "Rezerwacji nie może być w przeszłości"
     )
   }
 
@@ -62,10 +62,6 @@ export const reservationsService = {
       ...filters,
       userId: user.id,
     })
-  },
-
-  async getAllReservations(filters = {}) {
-    return reservationRepository.findMany(filters)
   },
 
   async getMyReservationById(id) {
@@ -95,7 +91,7 @@ export const reservationsService = {
       throw new ApiError(
         400,
         "ROOM_INACTIVE",
-        "Sala jest disabled, nie mozna zarezerwować"
+        "Status sali disabled, nie mozna zarezerwować"
       )
     }
 
@@ -130,24 +126,6 @@ export const reservationsService = {
 
   async cancelMyReservation(id) {
     const reservation = await this.getMyReservationById(id)
-
-    if (reservation.status === ReservationStatus.CANCELLED) {
-      return reservation
-    }
-
-    return reservationRepository.cancel(id)
-  },
-
-  async cancelReservation(id) {
-    const reservation = await reservationRepository.findById(id)
-
-    if (!reservation) {
-      throw new ApiError(
-        404,
-        "RESERVATION_NOT_FOUND",
-        "Nie znaleziono rezerwacji"
-      )
-    }
 
     if (reservation.status === ReservationStatus.CANCELLED) {
       return reservation

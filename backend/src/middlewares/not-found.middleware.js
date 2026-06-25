@@ -4,7 +4,7 @@ export function notFoundMiddleware(req, res) {
     success: false,
     error: {
       code: "ROUTE_NOT_FOUND",
-      message: `Endpoint ${req.method} ${req.originalUrl} nie istnieje.`,
+      message: `Endpoint ${req.method} ${req.originalUrl} nie istnieje`,
       details: null,
     }
   });

@@ -13,7 +13,7 @@ describe("Rooms API", () => {
     expect(response.body.data.length).toBeGreaterThan(0);
   });
 
-  it("GET /api/v1/rooms?active=true should return active rooms only", async () => {
+  it("GET /api/v1/rooms?active=true zwraca dostępne sale", async () => {
     const response = await request(app).get("/api/v1/rooms?active=true");
 
     expect(response.status).toBe(200);
@@ -24,7 +24,7 @@ describe("Rooms API", () => {
     }
   });
 
-  it("GET /api/v1/rooms?capacityMin=10 should return rooms with capacity greater or equal 10", async () => {
+  it("GET /api/v1/rooms?capacityMin=10 zwraca sale z miejscami mininum 10", async () => {
     const response = await request(app).get("/api/v1/rooms?capacityMin=10");
 
     expect(response.status).toBe(200);
@@ -35,7 +35,7 @@ describe("Rooms API", () => {
     }
   });
 
-  it("GET /api/v1/rooms?capacityMin=abc should return validation error", async () => {
+  it("GET /api/v1/rooms?capacityMin=abc zwraca VALIDATION_ERROR", async () => {
     const response = await request(app).get("/api/v1/rooms?capacityMin=abc");
 
     expect(response.status).toBe(400);
@@ -43,7 +43,7 @@ describe("Rooms API", () => {
     expect(response.body.error.code).toBe("VALIDATION_ERROR");
   });
 
-  it("GET /api/v1/rooms/:id should return single room", async () => {
+  it("GET /api/v1/rooms/:id zwraca pojedynczą sale", async () => {
     const roomsResponse = await request(app).get("/api/v1/rooms");
     const roomId = roomsResponse.body.data[0].id;
 
@@ -54,7 +54,7 @@ describe("Rooms API", () => {
     expect(response.body.data.id).toBe(roomId);
   });
 
-  it("GET /api/v1/rooms/:id should return 404 for non-existing room", async () => {
+  it("GET /api/v1/rooms/:id zwraca 404 dla nieistniejącej sali", async () => {
     const response = await request(app).get(
       "/api/v1/rooms/00000000-0000-0000-0000-000000000000",
     );
@@ -64,7 +64,7 @@ describe("Rooms API", () => {
     expect(response.body.error.code).toBe("ROOM_NOT_FOUND");
   });
 
-  it("GET /api/v1/rooms/:id/availability should return availability", async () => {
+  it("GET /api/v1/rooms/:id/availability zwraca dostępne terminy dla sali", async () => {
     const roomsResponse = await request(app).get("/api/v1/rooms");
     const roomId = roomsResponse.body.data[0].id;
 

@@ -28,10 +28,10 @@ export const getRoomsQuerySchema = z.object({
 });
 
 export const roomIdParamsSchema = z.object({
-  id: z.uuid("Invalid room id."),
+  id: z.uuid("Błędne room id."),
 });
 
 export const roomAvailabilityQuerySchema = z.object({
-  start: z.iso.datetime("Invalid start datetime."),
-  end: z.iso.datetime("Invalid end datetime."),
+  start: z.iso.datetime("Błędne startTime"),
+  end: z.iso.datetime("Błędne endTime"),
 });

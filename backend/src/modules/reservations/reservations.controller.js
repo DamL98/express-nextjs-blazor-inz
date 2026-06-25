@@ -8,13 +8,6 @@ export async function getMyReservations(_req, res) {
   return res.status(200).json(successResponse(reservations))
 }
 
-export async function getAllReservations(_req, res) {
-  const query = res.locals.validated.query
-  const reservations = await reservationsService.getAllReservations(query)
-
-  return res.status(200).json(successResponse(reservations))
-}
-
 export async function getReservationById(_req, res) {
   const params = res.locals.validated.params
   const reservation = await reservationsService.getMyReservationById(params.id)
@@ -32,13 +25,6 @@ export async function createReservation(_req, res) {
 export async function cancelMyReservation(_req, res) {
   const params = res.locals.validated.params
   const reservation = await reservationsService.cancelMyReservation(params.id)
-
-  return res.status(200).json(successResponse(reservation))
-}
-
-export async function cancelReservation(_req, res) {
-  const params = res.locals.validated.params
-  const reservation = await reservationsService.cancelReservation(params.id)
 
   return res.status(200).json(successResponse(reservation))
 }

@@ -33,7 +33,7 @@ export async function checkRoomAvailability(roomId, start, end) {
     throw new ApiError(
       400,
       "INVALID_DATE",
-      "startTime i endTime jest invalid",
+      "startTime i endTime jest błędne",
     );
   }
 

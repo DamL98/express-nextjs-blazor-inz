@@ -9,7 +9,7 @@ export function validate(schema, target = "query") {
         new ApiError(
           400,
           "VALIDATION_ERROR",
-          "Niepoprawne dane wejsciowe",
+          "Błędne dane wejściowe",
           result.error.flatten(),
         ),
       );

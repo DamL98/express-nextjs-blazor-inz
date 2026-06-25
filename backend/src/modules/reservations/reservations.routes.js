@@ -4,9 +4,7 @@ import { validate } from "../../middlewares/validate.middleware.js"
 
 import {
   cancelMyReservation,
-  cancelReservation,
   createReservation,
-  getAllReservations,
   getMyReservations,
   getReservationById,
 } from "./reservations.controller.js"
@@ -18,7 +16,6 @@ import {
 } from "./reservations.validation.js"
 
 export const reservationsRoutes = Router()
-//export const adminReservationsRoutes = Router()
 
 reservationsRoutes.get(
   "/my",
