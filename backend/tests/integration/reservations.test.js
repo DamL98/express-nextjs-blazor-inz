@@ -1,5 +1,18 @@
 import request from "supertest";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+
+const { verifyIdTokenMock } = vi.hoisted(() => ({
+  verifyIdTokenMock: vi.fn(async () => ({
+    uid: "test-firebase-user",
+    email: "user@example.com",
+    name: "Jan Kowalski",
+    email_verified: true,
+  })),
+}));
+
+vi.mock("../../src/config/firebase.js", () => ({
+  getFirebaseAuth: () => ({ verifyIdToken: verifyIdTokenMock }),
+}));
 
 import { app } from "../../src/app.js";
 import { prisma } from "../../src/config/prisma.js";
@@ -7,6 +20,11 @@ import { prisma } from "../../src/config/prisma.js";
 const API = "/api/v1/reservations";
 const TEST_TITLE = "reservation-test";
 const EMPTY_UUID = "00000000-0000-0000-0000-000000000000";
+const AUTHORIZATION = ["Authorization", "Bearer test-user-token"];
+
+function asUser(testRequest) {
+  return testRequest.set(...AUTHORIZATION);
+}
 
 let activeRoom;
 let inactiveRoom;
@@ -70,7 +88,7 @@ afterAll(async () => {
 
 describe("Reservations API", () => {
   it("GET /api/v1/reservations/my zwraca liste rezerwacji mock usera", async () => {
-    const response = await request(app).get(`${API}/my`);
+    const response = await asUser(request(app).get(`${API}/my`));
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
@@ -80,7 +98,7 @@ describe("Reservations API", () => {
   it("POST /api/v1/reservations tworzy nowa rezerwacje", async () => {
     const reservation = body(activeRoom.id, 2, "create");
 
-    const response = await request(app).post(API).send(reservation);
+    const response = await asUser(request(app).post(API)).send(reservation);
 
     expect(response.status).toBe(201);
     expect(response.body.success).toBe(true);
@@ -92,7 +110,7 @@ describe("Reservations API", () => {
   it("POST /api/v1/reservations zwraca INVALID_TIME_RANGE", async () => {
     const reservation = body(activeRoom.id, 3, "invalid range");
 
-    const response = await request(app).post(API).send({
+    const response = await asUser(request(app).post(API)).send({
       ...reservation,
       endTime: reservation.startTime,
     });
@@ -102,7 +120,7 @@ describe("Reservations API", () => {
   });
 
   it("POST /api/v1/reservations zwraca RESERVATION_IN_PAST", async () => {
-    const response = await request(app).post(API).send({
+    const response = await asUser(request(app).post(API)).send({
       ...body(activeRoom.id, 4, "past"),
       startTime: "2020-01-01T10:00:00.000Z",
       endTime: "2020-01-01T11:00:00.000Z",
@@ -113,8 +131,7 @@ describe("Reservations API", () => {
   });
 
   it("POST /api/v1/reservations zwraca ROOM_INACTIVE", async () => {
-    const response = await request(app)
-      .post(API)
+    const response = await asUser(request(app).post(API))
       .send(body(inactiveRoom.id, 5, "inactive room"));
 
     expect(response.status).toBe(400);
@@ -124,8 +141,8 @@ describe("Reservations API", () => {
   it("POST /api/v1/reservations zwraca ROOM_ALREADY_RESERVED", async () => {
     const reservation = body(activeRoom.id, 6, "conflict");
 
-    const firstResponse = await request(app).post(API).send(reservation);
-    const secondResponse = await request(app).post(API).send({
+    const firstResponse = await asUser(request(app).post(API)).send(reservation);
+    const secondResponse = await asUser(request(app).post(API)).send({
       ...reservation,
       title: `${TEST_TITLE} conflict copy`,
     });
@@ -138,10 +155,10 @@ describe("Reservations API", () => {
   it("GET /api/v1/reservations/:id zwraca RESERVATION_NOT_FOUND", async () => {
     const foreignReservation = await createForeignReservation(7);
 
-    const foreignResponse = await request(app).get(
+    const foreignResponse = await asUser(request(app).get(
       `${API}/${foreignReservation.id}`,
-    );
-    const missingResponse = await request(app).get(`${API}/${EMPTY_UUID}`);
+    ));
+    const missingResponse = await asUser(request(app).get(`${API}/${EMPTY_UUID}`));
 
     expect(foreignResponse.status).toBe(404);
     expect(foreignResponse.body.error.code).toBe("RESERVATION_NOT_FOUND");
@@ -150,29 +167,27 @@ describe("Reservations API", () => {
   });
 
   it("PATCH /api/v1/reservations/:id/cancel ustawia status CANCELLED", async () => {
-    const created = await request(app)
-      .post(API)
+    const created = await asUser(request(app).post(API))
       .send(body(activeRoom.id, 8, "cancel"));
 
-    const response = await request(app).patch(
+    const response = await asUser(request(app).patch(
       `${API}/${created.body.data.id}/cancel`,
-    );
+    ));
 
     expect(response.status).toBe(200);
     expect(response.body.data.status).toBe("CANCELLED");
   });
 
   it("PATCH /api/v1/reservations/:id/cancel pozwala dwukrotnie anulowac", async () => {
-    const created = await request(app)
-      .post(API)
+    const created = await asUser(request(app).post(API))
       .send(body(activeRoom.id, 9, "cancel twice"));
 
-    const firstResponse = await request(app).patch(
+    const firstResponse = await asUser(request(app).patch(
       `${API}/${created.body.data.id}/cancel`,
-    );
-    const secondResponse = await request(app).patch(
+    ));
+    const secondResponse = await asUser(request(app).patch(
       `${API}/${created.body.data.id}/cancel`,
-    );
+    ));
 
     expect(firstResponse.status).toBe(200);
     expect(secondResponse.status).toBe(200);

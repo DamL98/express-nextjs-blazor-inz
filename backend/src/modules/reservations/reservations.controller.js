@@ -3,28 +3,28 @@ import { reservationsService } from "./reservations.service.js"
 
 export async function getMyReservations(_req, res) {
   const query = res.locals.validated.query
-  const reservations = await reservationsService.getMyReservations(query)
+  const reservations = await reservationsService.getMyReservations(res.locals.user.id, query)
 
   return res.status(200).json(successResponse(reservations))
 }
 
 export async function getReservationById(_req, res) {
   const params = res.locals.validated.params
-  const reservation = await reservationsService.getMyReservationById(params.id)
+  const reservation = await reservationsService.getMyReservationById(res.locals.user.id, params.id)
 
   return res.status(200).json(successResponse(reservation))
 }
 
 export async function createReservation(_req, res) {
   const body = res.locals.validated.body
-  const reservation = await reservationsService.createReservation(body)
+  const reservation = await reservationsService.createReservation(res.locals.user.id, body)
 
   return res.status(201).json(successResponse(reservation))
 }
 
 export async function cancelMyReservation(_req, res) {
   const params = res.locals.validated.params
-  const reservation = await reservationsService.cancelMyReservation(params.id)
+  const reservation = await reservationsService.cancelMyReservation(res.locals.user.id, params.id)
 
   return res.status(200).json(successResponse(reservation))
 }
