@@ -62,7 +62,7 @@ async function main() {
       roleId: adminRole.id,
     },
     create: {
-      googleId: "mock-google-admin-id",
+      firebaseUid: "mock-firebase-admin-id",
       email: "admin@example.com",
       fullName: "Administrator Systemu",
       avatarUrl: null,
@@ -76,7 +76,7 @@ async function main() {
       roleId: userRole.id,
     },
     create: {
-      googleId: "mock-google-user-id",
+      firebaseUid: "mock-firebase-user-id",
       email: "user@example.com",
       fullName: "Jan Kowalski",
       avatarUrl: null,

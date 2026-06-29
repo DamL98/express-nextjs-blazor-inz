@@ -67,12 +67,4 @@ export const reservationRepository = {
       },
     })
   },
-
-  async findUserByEmail(email) {
-    return prisma.user.findUnique({
-      where: {
-        email,
-      },
-    })
-  },
 }

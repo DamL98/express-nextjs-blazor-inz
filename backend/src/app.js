@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import adminRoutes from "./modules/admin/admin.routes.js";
 import roomsRoutes from "./modules/rooms/rooms.routes.js";
 import reservationsRoutes from "./modules/reservations/reservations.routes.js";
+import authRoutes from "./modules/auth/auth.routes.js";
 
 // middlewares
 import { errorMiddleware } from "./middlewares/error.middleware.js";
@@ -43,11 +44,9 @@ app.get("/health", healthHandler);
 app.get("/api/v1/health", healthHandler);
 
 app.use("/api/v1/rooms", roomsRoutes);
+app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/reservations", reservationsRoutes)
 app.use("/api/v1/admin", adminRoutes)
-
-//TODOo
-// oauth endpoints
 
 
 // middleware

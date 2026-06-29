@@ -1,6 +1,7 @@
 import { Router } from "express"
 
 import { validate } from "../../middlewares/validate.middleware.js"
+import { authenticate, requireRole } from "../../middlewares/auth.middleware.js"
 import {
   cancelAdminReservation,
   getAdminReservations,
@@ -11,6 +12,8 @@ import {
 } from "./admin.validation.js"
 
 const router = Router()
+
+router.use(authenticate, requireRole("admin"))
 
 router.get(
   "/reservations",
