@@ -1,154 +1,151 @@
 "use client";
 
-import { FirebaseError } from "firebase/app";
-import { type SubmitEvent, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
+import { getMyReservations } from "@/features/reservations/reservations.api";
+import type { Reservation } from "@/features/reservations/reservations.types";
+import { getRooms } from "@/features/rooms/rooms.api";
+import type { Room } from "@/features/rooms/rooms.types";
 
-function authErrorMessage(error: unknown) {
-  if (!(error instanceof FirebaseError)) {
-    return error instanceof Error ? error.message : "Nieznany błąd";
-  }
-
-  const messages: Record<string, string> = {
-    "auth/email-already-in-use": "Konto z tym e-mail już istnieje",
-    "auth/invalid-credential": "Nieprawidłowy e-mail lub hasło",
-    "auth/invalid-email": "Niepoprawny adres e-mail",
-    "auth/popup-closed-by-user": "Google popup login zamkniete",
-    "auth/popup-blocked": "Google popup window zablokowany",
-    "auth/weak-password": "Hasło musi mieć co najmniej 6 znaków",
-  };
-
-  return messages[error.code] || "Błąd logowania";
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("pl-PL", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
 }
 
-export default function Home() {
-  const { user, loading, login, register, loginWithGoogle, logout } = useAuth();
-  const [mode, setMode] = useState<"login" | "register">("login");
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+export default function DashboardPage() {
+  const { getIdToken } = useAuth();
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  async function submit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
+  useEffect(() => {
+    let active = true;
 
-    if (mode === "register" && password !== confirmPassword) {
-      setError("Hasła nie są takie same");
-      return;
-    }
+    async function loadDashboard() {
+      try {
+        const token = await getIdToken();
+        const [roomsData, reservationsData] = await Promise.all([
+          getRooms(),
+          getMyReservations({}, token),
+        ]);
 
-    setSubmitting(true);
-    try {
-      if (mode === "register") {
-        await register(fullName, email, password);
-      } else {
-        await login(email, password);
+        if (active) {
+          setRooms(roomsData);
+          setReservations(reservationsData);
+        }
+      } catch (loadError) {
+        if (active) {
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "Błąd pobierania danych do dashboard",
+          );
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
       }
-    } catch (submitError) {
-      setError(authErrorMessage(submitError));
-    } finally {
-      setSubmitting(false);
     }
-  }
 
-  async function googleLogin() {
-    setError("");
-    setSubmitting(true);
-    try {
-      await loginWithGoogle();
-    } catch (loginError) {
-      setError(authErrorMessage(loginError));
-    } finally {
-      setSubmitting(false);
-    }
-  }
+    void loadDashboard();
 
-  if (loading) {
-    return <main className="auth-shell"><div className="auth-card">Ładowanie sesji...</div></main>;
-  }
+    return () => {
+      active = false;
+    };
+  }, [getIdToken]);
 
-  if (user) {
-    return (
-      <main className="auth-shell">
-        <section className="auth-card profile-card">
-          {user.avatarUrl ? (
-            <img className="avatar" src={user.avatarUrl} alt="Avatar użytkownika" />
-          ) : null}
-
-          <p className="eyebrow">Zalogowano</p>
-          <h1>{user.fullName}</h1>
-          <p className="muted">{user.email}</p>
-
-          <dl className="profile-details">
-            <div>
-              <dt>Rola</dt>
-              <dd>{user.role.name}</dd>
-            </div>
-            <div>
-              <dt>E-mail</dt>
-              <dd>{user.emailVerified ? "zweryfikowany" : "niezweryfikowany"}</dd>
-            </div>
-            <div>
-              <dt>Dane</dt>
-              <dd>Firebase + PostgreSQL</dd>
-            </div>
-          </dl>
-          <button className="secondary-button" onClick={() => void logout()}>Wyloguj</button>
-        </section>
-      </main>
-    );
-  }
+  const activeRoomsCount = rooms.filter((room) => room.isActive).length;
+  const nextReservations = useMemo(
+    () =>
+      reservations
+        .filter((reservation) => reservation.status === "ACTIVE")
+        .slice()
+        .sort(
+          (a, b) =>
+            new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+        )
+        .slice(0, 3),
+    [reservations],
+  );
 
   return (
-    <main className="auth-shell">
-      <section className="auth-card">
-        <p className="eyebrow">System rezerwacji</p>
-        <h1>{mode === "login" ? "Zaloguj się" : "Utwórz konto"}</h1>
-
-        <p className="muted">
-          {mode === "login" ? "Uzyskaj dostęp do swoich rezerwacji" : "Rejestracja zapisze profil w lokalnej bazie PostgreSQL"}
+    <div className="mx-auto max-w-6xl px-4 py-8 md:px-8">
+      <div>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
+          Dashboard
+        </h1>
+        <p className="mt-3 max-w-2xl text-gray-600">
+          Aktywne sale: {activeRoomsCount}
         </p>
+      </div>
 
-        <button className="google-button" type="button" onClick={() => void googleLogin()} disabled={submitting}>
-          <span className="google-mark">G</span> Kontynuuj z Google
-        </button>
+      {error ? (
+        <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
 
-        <div className="separator"><span>lub</span></div>
+      <section className="mt-8">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Najbliższe rezerwacje
+            </h2>
 
-        <form onSubmit={submit}>
-          {mode === "register" ? (
-            <label>Imię i nazwisko<input required value={fullName} onChange={(event) => setFullName(event.target.value)} autoComplete="name" /></label>
-          ) : null}
+            <Link
+              href="/reservations"
+              className="text-sm font-medium text-blue-700 hover:text-blue-800"
+            >
+              Zobacz wszystkie
+            </Link>
+          </div>
 
-          <label>
-            E-mail <input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" />
-          </label>
+          <div className="mt-5 space-y-3">
+            {loading ? (
+              <div className="rounded-lg border border-dashed border-gray-300 p-5 text-sm text-gray-600">
+                Ładowanie rezerwacji...
+              </div>
+            ) : nextReservations.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-gray-300 p-5 text-sm text-gray-600">
+                Brak aktywnych rezerwacji
+              </div>
+            ) : (
+              nextReservations.map((reservation) => (
+                <div
+                  key={reservation.id}
+                  className="rounded-lg border border-gray-200 p-4"
+                >
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {reservation.title}
+                      </p>
+                      <p className="mt-1 text-sm text-gray-600">
+                        {reservation.room?.name ?? `Sala: ${reservation.roomId}`}
+                      </p>
+                    </div>
 
-          <label>
-            Hasło <input required minLength={6} type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === "login" ? "current-password" : "new-password"} />
-          </label>
+                    <span className="w-fit rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
+                      Aktywna
+                    </span>
+                  </div>
 
-          {mode === "register" ? (
-            <label>
-              Powtórz hasło <input required minLength={6} type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} autoComplete="new-password" />
-            </label>
-          ) : null}
-
-          {error ? <p className="error-message" role="alert">{error}</p> : null}
-
-          <button className="primary-button" disabled={submitting} type="submit">
-            {submitting ? "Czekaj.." : mode === "login" ? "Zaloguj się" : "Zarejestruj się"}
-          </button>
-        </form>
-
-        <button className="mode-button" type="button" onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}>
-          {mode === "login" ? "Nie masz konta? Zarejestruj się" : "Masz już konto? Zaloguj się"}
-        </button>
+                  <p className="mt-3 text-sm text-gray-600">
+                    {formatDateTime(reservation.startTime)} —{" "}
+                    {formatDateTime(reservation.endTime)}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </section>
-    </main>
+    </div>
   );
 }

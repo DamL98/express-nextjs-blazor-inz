@@ -1,10 +1,50 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
-import { getMyReservations } from "@/features/reservations/reservations.api";
+import { useAuth } from "@/components/auth-provider";
 import { ReservationsList } from "@/components/reservations/ReservationList";
+import { getMyReservations } from "@/features/reservations/reservations.api";
+import type { Reservation } from "@/features/reservations/reservations.types";
 
-export default async function ReservationsPage() {
-  const reservations = await getMyReservations();
+export default function ReservationsPage() {
+  const { getIdToken } = useAuth();
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadReservations() {
+      try {
+        const token = await getIdToken();
+        const data = await getMyReservations({}, token);
+        if (active) {
+          setReservations(data);
+        }
+      } catch (loadError) {
+        if (active) {
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "Błąd pobierania rezerwacji",
+          );
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadReservations();
+
+    return () => {
+      active = false;
+    };
+  }, [getIdToken]);
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
@@ -13,10 +53,7 @@ export default async function ReservationsPage() {
           <h1 className="text-2xl font-bold text-gray-900">
             Moje rezerwacje
           </h1>
-
-          <p className="mt-2 text-gray-600">
-            Lista
-          </p>
+          <p className="mt-2 text-gray-600">Lista Twoich rezerwacji.</p>
         </div>
 
         <Link
@@ -28,7 +65,17 @@ export default async function ReservationsPage() {
       </div>
 
       <div className="mt-6">
-        <ReservationsList initialReservations={reservations} />
+        {loading ? (
+          <div className="rounded-xl border border-gray-200 bg-white p-6 text-gray-600 shadow-sm">
+            Ładowanie rezerwacji...
+          </div>
+        ) : error ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        ) : (
+          <ReservationsList initialReservations={reservations} />
+        )}
       </div>
     </main>
   );

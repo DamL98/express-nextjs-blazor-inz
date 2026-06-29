@@ -1,16 +1,22 @@
 import { API_URL } from "@/lib/config/env";
 import type { ApiResponse } from "./api-response.types";
 
+type ApiRequestOptions = RequestInit & {
+  token?: string;
+};
+
 export async function apiRequest<T>(
   path: string,
-  options: RequestInit = {}
+  options: ApiRequestOptions = {},
 ): Promise<T> {
+  const { token, headers, ...requestOptions } = options;
   const response = await fetch(`${API_URL}${path}`, {
+    ...requestOptions,
     headers: {
       "Content-Type": "application/json",
-      ...(options.headers || {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(headers || {}),
     },
-    ...options,
   });
 
   const body = (await response.json()) as ApiResponse<T>;

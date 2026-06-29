@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { cancelReservation } from "@/features/reservations/reservations.api";
+import { useAuth } from "@/components/auth-provider";
 
 import type { Reservation } from "@/features/reservations/reservations.types";
 
@@ -44,6 +45,7 @@ function getStatusClassName(status: Reservation["status"]) {
 export function ReservationsList({
   initialReservations,
 }: ReservationsListProps) {
+  const { getIdToken } = useAuth();
   const [reservations, setReservations] = useState(initialReservations);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -61,7 +63,8 @@ export function ReservationsList({
     setErrorMessage(null);
 
     try {
-      const cancelledReservation = await cancelReservation(id);
+      const token = await getIdToken();
+      const cancelledReservation = await cancelReservation(id, token);
 
       setReservations((current) =>
         current.map((reservation) =>
@@ -72,7 +75,7 @@ export function ReservationsList({
       const message =
         error instanceof Error
           ? error.message
-          : "Nie udało się anulować rezerwacji.";
+          : "Błąd anulowania rezerwacji";
 
       setErrorMessage(message);
     } finally {
@@ -88,10 +91,10 @@ export function ReservationsList({
                 href="/rooms"
                 className="text-sm font-medium text-blue-600 hover:text-blue-700"
               >
-                ← Wróć do listy sal
+                ← back /rooms
               </Link>
 
-        Nie masz jeszcze żadnych rezerwacji.
+        Nie masz jeszcze żadnych rezerwacji
       </div>
     );
   }
@@ -103,13 +106,6 @@ export function ReservationsList({
           {errorMessage}
         </div>
       )}
-
-      <Link
-        href="/rooms"
-        className="text-sm font-medium text-blue-600 hover:text-blue-700"
-      >
-         ← /rooms
-      </Link>
 
       {reservations.map((reservation) => (
         <article
@@ -166,8 +162,8 @@ export function ReservationsList({
               className="mt-5 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {pendingId === reservation.id
-                ? "Anulowanie..."
-                : "Anuluj rezerwację"}
+                ? "Anulowanie.."
+                : "Anuluj rezerwacje"}
             </button>
           )}
         </article>

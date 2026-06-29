@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import { AppShell } from "@/components/layout/AppShell";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
+import { RouteShell } from "@/components/layout/RouteShell";
 
 export const metadata: Metadata = {
   title: "System rezerwacji sal",
-  description: "Aplikacja do rezerwacji sal konferencyjnych",
+  description: "App do rezerwacji sal",
 };
 
 export default function RootLayout({
@@ -21,7 +20,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <AuthProvider>
-          <AppShell>{children}</AppShell>
+          <RouteShell>{children}</RouteShell>
         </AuthProvider>
       </body>
     </html>

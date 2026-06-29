@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { type SubmitEvent, useState } from "react";
 import Link from "next/link";
 
+import { useAuth } from "@/components/auth-provider";
 import { createReservation } from "@/features/reservations/reservations.api";
-import type { Reservation } from "@/features/reservations/reservations.types";
 
 
 type ReservationFormProps = {
@@ -30,6 +30,7 @@ function toISOStringFromLocalInput(value: string): string {
 }
 
 export function ReservationForm({ roomId }: ReservationFormProps) {
+  const { getIdToken } = useAuth();
   const [form, setForm] = useState<FormState>(initialState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -42,7 +43,7 @@ export function ReservationForm({ roomId }: ReservationFormProps) {
     }));
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setIsSubmitting(true);
@@ -50,21 +51,22 @@ export function ReservationForm({ roomId }: ReservationFormProps) {
     setErrorMessage(null);
 
     try {
+      const token = await getIdToken();
       await createReservation({
         roomId,
         title: form.title,
         description: form.description || undefined,
         startTime: toISOStringFromLocalInput(form.startTime),
         endTime: toISOStringFromLocalInput(form.endTime),
-      });
+      }, token);
 
       setForm(initialState);
-      setSuccessMessage("Rezerwacja została utworzona.");
+      setSuccessMessage("Rezerwacja utworzona");
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : "Nie udało się utworzyć rezerwacji.";
+          : "Nie udało się utworzyć rezerwacji";
 
       setErrorMessage(message);
     } finally {
