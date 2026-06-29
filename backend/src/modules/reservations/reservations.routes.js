@@ -1,6 +1,7 @@
 import { Router } from "express"
 
 import { validate } from "../../middlewares/validate.middleware.js"
+import { authenticate } from "../../middlewares/auth.middleware.js"
 
 import {
   cancelMyReservation,
@@ -16,6 +17,8 @@ import {
 } from "./reservations.validation.js"
 
 export const reservationsRoutes = Router()
+
+reservationsRoutes.use(authenticate)
 
 reservationsRoutes.get(
   "/my",

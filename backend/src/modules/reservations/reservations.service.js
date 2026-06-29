@@ -4,22 +4,6 @@ import { ApiError } from "./../../errors/apiError.js"
 import { findRoomById } from "../../repositories/room.repository.js"
 import { reservationRepository } from "../../repositories/reservation.repository.js"
 
-const MOCK_USER_EMAIL = "user@example.com"
-
-async function getMockUser() {
-  const user = await reservationRepository.findUserByEmail(MOCK_USER_EMAIL)
-
-  if (!user) {
-    throw new ApiError(
-      500,
-      "MOCK_USER_NOT_FOUND",
-      "Blad demo user nie znaleziony"
-    )
-  }
-
-  return user
-}
-
 function parseTimeRange(start, end) {
   const startTime = new Date(start)
   const endTime = new Date(end)
@@ -55,20 +39,17 @@ function parseTimeRange(start, end) {
 }
 
 export const reservationsService = {
-  async getMyReservations(filters = {}) {
-    const user = await getMockUser()
-
+  async getMyReservations(userId, filters = {}) {
     return reservationRepository.findMany({
       ...filters,
-      userId: user.id,
+      userId,
     })
   },
 
-  async getMyReservationById(id) {
-    const user = await getMockUser()
+  async getMyReservationById(userId, id) {
     const reservation = await reservationRepository.findById(id)
 
-    if (!reservation || reservation.userId !== user.id) {
+    if (!reservation || reservation.userId !== userId) {
       throw new ApiError(
         404,
         "RESERVATION_NOT_FOUND",
@@ -79,8 +60,7 @@ export const reservationsService = {
     return reservation
   },
 
-  async createReservation(data) {
-    const user = await getMockUser()
+  async createReservation(userId, data) {
     const room = await findRoomById(data.roomId)
 
     if (!room) {
@@ -115,7 +95,7 @@ export const reservationsService = {
     }
 
     return reservationRepository.create({
-      userId: user.id,
+      userId,
       roomId: data.roomId,
       title: data.title,
       description: data.description,
@@ -124,8 +104,8 @@ export const reservationsService = {
     })
   },
 
-  async cancelMyReservation(id) {
-    const reservation = await this.getMyReservationById(id)
+  async cancelMyReservation(userId, id) {
+    const reservation = await this.getMyReservationById(userId, id)
 
     if (reservation.status === ReservationStatus.CANCELLED) {
       return reservation

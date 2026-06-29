@@ -1,26 +1,236 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ink: #12211a;
+  --muted: #66756e;
+  --line: #dce5e0;
+  --accent: #176b4d;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  margin: 0;
+  color: var(--ink);
+  background: #edf4f0;
   font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+/* Auth */
+
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px 16px;
+  background:
+    radial-gradient(circle at top left, #d8ede2, transparent 40%),
+    #edf4f0;
+}
+
+.auth-card {
+  width: min(100%, 430px);
+  padding: 38px;
+  border: 1px solid rgba(23, 107, 77, 0.15);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 24px 70px rgba(18, 33, 26, 0.12);
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: 32px;
+  letter-spacing: -0.04em;
+}
+
+.muted {
+  margin: 10px 0 26px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+/* Forms */
+
+form {
+  display: grid;
+  gap: 16px;
+}
+
+label {
+  display: grid;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+input {
+  width: 100%;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  outline: none;
+  color: var(--ink);
+  background: white;
+}
+
+input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(23, 107, 77, 0.12);
+}
+
+/* Buttons */
+
+.primary-button,
+.secondary-button,
+.google-button {
+  width: 100%;
+  min-height: 46px;
+  border-radius: 11px;
+  font-weight: 750;
+}
+
+.primary-button {
+  margin-top: 4px;
+  border: 0;
+  color: white;
+  background: var(--accent);
+}
+
+.secondary-button {
+  margin-top: 24px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  background: white;
+}
+
+.google-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  background: white;
+}
+
+.google-mark {
+  color: #4285f4;
+  font-family: Arial, sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.mode-button {
+  width: 100%;
+  margin-top: 20px;
+  border: 0;
+  color: var(--accent);
+  background: transparent;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* Form  */
+
+.separator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 23px 0;
+  color: #8a9891;
+  font-size: 12px;
+}
+
+.separator::before,
+.separator::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.error-message {
+  margin: 0;
+  padding: 11px 12px;
+  border-radius: 9px;
+  color: #9d2424;
+  background: #fff0f0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* User profile */
+
+.profile-card {
+  text-align: center;
+}
+
+.avatar {
+  width: 82px;
+  height: 82px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.profile-details {
+  display: grid;
+  gap: 1px;
+  margin: 26px 0 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--line);
+  text-align: left;
+}
+
+.profile-details div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px;
+  background: white;
+}
+
+.profile-details dt {
+  color: var(--muted);
+}
+
+.profile-details dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+}
+
+/* Responsive */
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 28px 22px;
+  }
 }

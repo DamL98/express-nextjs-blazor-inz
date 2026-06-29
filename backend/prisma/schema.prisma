@@ -27,10 +27,12 @@ model Role {
 
 model User {
   id                  String               @id @default(uuid())
-  googleId            String               @unique @map("google_id")
+  firebaseUid         String               @unique @map("firebase_uid")
   email               String               @unique
   fullName            String               @map("full_name")
   avatarUrl           String?              @map("avatar_url")
+  emailVerified       Boolean              @default(false) @map("email_verified")
+  lastLoginAt         DateTime?            @map("last_login_at")
   roleId              String               @map("role_id")
   role                Role                 @relation(fields: [roleId], references: [id], onDelete: Restrict)
   reservations        Reservation[]
