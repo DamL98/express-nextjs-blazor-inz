@@ -22,7 +22,7 @@ import {
   useState,
 } from "react";
 
-import { apiRequest } from "@/lib/api";
+import { apiRequest } from "@/lib/api/http-client";
 import { firebaseAuth } from "@/lib/firebase";
 
 // wzorzec usera zapisany w lokalnej bazie

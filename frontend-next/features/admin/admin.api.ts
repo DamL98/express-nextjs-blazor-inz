@@ -2,7 +2,8 @@ import { apiRequest } from "@/lib/api/http-client";
 import type { AdminReservation, AdminReservationFilters } from "./admin.types";
 
 export function getAdminReservations(
-  filters: AdminReservationFilters = {}
+  token: string,
+  filters: AdminReservationFilters = {},
 ): Promise<AdminReservation[]> {
   const params = new URLSearchParams();
 
@@ -20,12 +21,17 @@ export function getAdminReservations(
     `/admin/reservations${query ? `?${query}` : ""}`,
     {
       cache: "no-store",
-    }
+      token,
+    },
   );
 }
 
-export function cancelAdminReservation(id: string): Promise<AdminReservation> {
+export function cancelAdminReservation(
+  id: string,
+  token: string,
+): Promise<AdminReservation> {
   return apiRequest<AdminReservation>(`/admin/reservations/${id}/cancel`, {
     method: "PATCH",
+    token,
   });
 }
