@@ -1,0 +1,18 @@
+<div class="app-shell">
+    <div class="app-layout">
+        <Sidebar />
+
+        <div class="app-main">
+            <Topbar />
+
+            <main class="page-content">
+                @ChildContent
+            </main>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

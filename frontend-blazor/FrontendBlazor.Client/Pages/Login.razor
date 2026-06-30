@@ -1,0 +1,217 @@
+@page "/login"
+@using FrontendBlazor.Client.Features.Auth
+@using FrontendBlazor.Client.Infrastructure.Firebase
+@inject AuthContext Auth
+@inject NavigationManager Navigation
+
+<PageTitle>@(_mode == AuthFormMode.Login ? "Logowanie" : "Rejestracja")</PageTitle>
+
+<main class="auth-shell">
+    <section class="auth-card">
+        <p class="eyebrow">System rezerwacji</p>
+        <h1>@(_mode == AuthFormMode.Login ? "Zaloguj się" : "Utwórz konto")</h1>
+        <p class="muted">
+            @(_mode == AuthFormMode.Login
+                ? "Zaloguj sie"
+                : "Utwórz konto")
+        </p>
+
+        <button
+            type="button"
+            class="google-button"
+            disabled="@_isSubmitting"
+            @onclick="GoogleLoginAsync">
+            <span class="google-mark">G</span>
+            Kontynuuj z Google
+        </button>
+
+        <div class="separator"><span>lub</span></div>
+
+        <form @onsubmit="SubmitAsync" @onsubmit:preventDefault>
+            @if (_mode == AuthFormMode.Register)
+            {
+                <label for="full-name">
+                    Imię i nazwisko
+                    <input
+                        id="full-name"
+                        type="text"
+                        autocomplete="name"
+                        required
+                        @bind="_fullName"
+                        @bind:event="oninput" />
+                </label>
+            }
+
+            <label for="email">
+                E-mail
+                <input
+                    id="email"
+                    type="email"
+                    autocomplete="email"
+                    required
+                    @bind="_email"
+                    @bind:event="oninput" />
+            </label>
+
+            <label for="password">
+                Hasło
+                <input
+                    id="password"
+                    type="password"
+                    autocomplete="@(_mode == AuthFormMode.Login ? "current-password" : "new-password")"
+                    minlength="6"
+                    required
+                    @bind="_password"
+                    @bind:event="oninput" />
+            </label>
+
+            @if (_mode == AuthFormMode.Register)
+            {
+                <label for="confirm-password">
+                    Powtórz hasło
+                    <input
+                        id="confirm-password"
+                        type="password"
+                        autocomplete="new-password"
+                        minlength="6"
+                        required
+                        @bind="_confirmPassword"
+                        @bind:event="oninput" />
+                </label>
+            }
+
+            @if (CurrentError is not null)
+            {
+                <p class="error-message" role="alert">@CurrentError</p>
+            }
+
+            <button
+                type="submit"
+                class="primary-button"
+                disabled="@_isSubmitting">
+                @SubmitLabel
+            </button>
+        </form>
+
+        <button
+            type="button"
+            class="mode-button"
+            disabled="@_isSubmitting"
+            @onclick="ToggleMode">
+            @(_mode == AuthFormMode.Login
+                ? "Nie masz konta? Zarejestruj się"
+                : "Masz już konto? Zaloguj się")
+        </button>
+    </section>
+</main>
+
+@code {
+    private AuthFormMode _mode = AuthFormMode.Login;
+    private string _fullName = string.Empty;
+    private string _email = string.Empty;
+    private string _password = string.Empty;
+    private string _confirmPassword = string.Empty;
+    private string? _errorMessage;
+    private bool _isSubmitting;
+
+    private string? CurrentError => _errorMessage ?? Auth.InitializationError;
+
+    private string SubmitLabel => _isSubmitting
+        ? "Proszę czekać..."
+        : (_mode == AuthFormMode.Login ? "Zaloguj się" : "Zarejestruj się");
+
+    private async Task SubmitAsync()
+    {
+        _errorMessage = null;
+
+        if (_mode == AuthFormMode.Register &&
+            !string.Equals(_password, _confirmPassword, StringComparison.Ordinal))
+        {
+            _errorMessage = "Hasła nie są takie same";
+            return;
+        }
+
+        _isSubmitting = true;
+
+        try
+        {
+            if (_mode == AuthFormMode.Register)
+            {
+                await Auth.RegisterAsync(_fullName, _email, _password);
+            }
+            else
+            {
+                await Auth.LoginAsync(_email, _password);
+            }
+
+            Navigation.NavigateTo("/", replace: true);
+        }
+        catch (FirebaseError error)
+        {
+            _errorMessage = AuthErrorMessage(error);
+        }
+        catch (Exception error)
+        {
+            _errorMessage = error.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task GoogleLoginAsync()
+    {
+        _errorMessage = null;
+        _isSubmitting = true;
+
+        try
+        {
+            await Auth.LoginWithGoogleAsync();
+            Navigation.NavigateTo("/", replace: true);
+        }
+        catch (FirebaseError error)
+        {
+            _errorMessage = AuthErrorMessage(error);
+        }
+        catch (Exception error)
+        {
+            _errorMessage = error.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private void ToggleMode()
+    {
+        _mode = _mode == AuthFormMode.Login
+            ? AuthFormMode.Register
+            : AuthFormMode.Login;
+
+        _errorMessage = null;
+        _password = string.Empty;
+        _confirmPassword = string.Empty;
+    }
+
+    private static string AuthErrorMessage(FirebaseError error)
+    {
+        return error.Code switch
+        {
+            "auth/email-already-in-use" => "Konto z tym e-mail już istnieje",
+            "auth/invalid-credential" => "Nieprawidłowy e-mail lub hasło",
+            "auth/invalid-email" => "Błędny adres adres e-mail",
+            "auth/popup-closed-by-user" => "Zamknięte Popup Google",
+            "auth/popup-blocked" => "Popup Google zablokowane przez przegladarke",
+            "auth/weak-password" => "Hasło musi mieć co najmniej 6 znaków",
+            _ => "Błąd logowania",
+        };
+    }
+
+    private enum AuthFormMode
+    {
+        Login,
+        Register,
+    }
+}

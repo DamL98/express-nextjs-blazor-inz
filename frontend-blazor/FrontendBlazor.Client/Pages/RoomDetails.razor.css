@@ -1,0 +1,95 @@
+.room-details-page {
+    margin: 0 auto;
+    max-width: 56rem;
+    padding: 2rem 1.5rem;
+}
+
+.back-link {
+    color: #2563eb;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.back-link:hover {
+    color: #1d4ed8;
+}
+
+.back-link:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+.room-details-card {
+    margin-top: 1.5rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    background: #ffffff;
+    padding: 1.5rem;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
+}
+
+.room-details-card h1 {
+    margin: 0;
+    color: #111827;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 2rem;
+}
+
+.room-location {
+    margin-top: 0.5rem;
+    margin-bottom: 0;
+    color: #4b5563;
+}
+
+.room-properties {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.room-properties span,
+.room-properties strong {
+    display: block;
+}
+
+.room-properties span {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.room-properties strong {
+    margin-top: 0.25rem;
+    color: #111827;
+    font-weight: 500;
+}
+
+.room-description {
+    margin-top: 1.5rem;
+    margin-bottom: 0;
+    color: #374151;
+}
+
+.state-card {
+    margin-top: 1.5rem;
+    border: 1px dashed #d1d5db;
+    border-radius: 0.75rem;
+    background: #ffffff;
+    padding: 1.5rem;
+    color: #4b5563;
+    font-size: 0.875rem;
+}
+
+.error-state {
+    border-style: solid;
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+@media (min-width: 640px) {
+    .room-properties {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

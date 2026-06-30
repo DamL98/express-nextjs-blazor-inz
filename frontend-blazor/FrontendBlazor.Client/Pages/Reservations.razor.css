@@ -1,0 +1,17 @@
+.placeholder-page {
+    margin: 0 auto;
+    max-width: 64rem;
+    padding: 2rem 1.5rem;
+}
+
+.placeholder-page h1 {
+    margin: 0;
+    color: #111827;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.placeholder-page p {
+    margin: 0.5rem 0 0;
+    color: #4b5563;
+}

@@ -1,0 +1,95 @@
+@page "/rooms/{Id}"
+@implements IDisposable
+@using FrontendBlazor.Client.Features.Rooms
+@using FrontendBlazor.Client.Infrastructure.Api
+@inject RoomsApi RoomsApi
+
+<PageTitle>@(_room?.Name ?? "Szczegóły sali")</PageTitle>
+
+<section class="room-details-page">
+    <a class="back-link" href="/rooms">← Wróć do listy sal</a>
+
+    @if (_isLoading)
+    {
+        <div class="state-card">Ładowanie...</div>
+    }
+    else if (_errorMessage is not null)
+    {
+        <div class="state-card error-state" role="alert">@_errorMessage</div>
+    }
+    else if (_room is not null)
+    {
+        <article class="room-details-card">
+            <h1>@_room.Name</h1>
+            <p class="room-location">@_room.Location</p>
+
+            <div class="room-properties">
+                <div>
+                    <span>Liczba miejsc</span>
+                    <strong>@_room.Capacity</strong>
+                </div>
+                <div>
+                    <span>Status</span>
+                    <strong>@(_room.IsActive ? "Aktywna" : "Nieaktywna")</strong>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(_room.Description))
+            {
+                <p class="room-description">@_room.Description</p>
+            }
+        </article>
+    }
+</section>
+
+@code {
+    private readonly CancellationTokenSource _requestCancellation = new();
+    private Room? _room;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        _room = null;
+
+        if (string.IsNullOrWhiteSpace(Id))
+        {
+            _errorMessage = "Nie podano identyfikatora sali.";
+            _isLoading = false;
+            return;
+        }
+
+        try
+        {
+            _room = await RoomsApi.GetRoomByIdAsync(
+                Id,
+                _requestCancellation.Token);
+        }
+        catch (OperationCanceledException) when (_requestCancellation.IsCancellationRequested)
+        {
+        }
+        catch (ApiException exception)
+        {
+            _errorMessage = exception.Message;
+        }
+        catch (Exception)
+        {
+            _errorMessage = "Błąd pobierania danych sal";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        _requestCancellation.Cancel();
+        _requestCancellation.Dispose();
+    }
+}

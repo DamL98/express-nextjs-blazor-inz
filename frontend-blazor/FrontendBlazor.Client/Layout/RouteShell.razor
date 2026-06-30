@@ -1,0 +1,105 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@using Microsoft.AspNetCore.Components.Routing
+@using FrontendBlazor.Client.Features.Auth
+@inject AuthContext Auth
+@inject NavigationManager Navigation
+
+@if (Auth.Loading)
+{
+    <main class="session-loading">
+        <div class="session-loading-card">Ładowanie sesji...</div>
+    </main>
+}
+else if (_isLoginPage && !Auth.IsAuthenticated)
+{
+    @Body
+}
+else if (!_isLoginPage && Auth.IsAuthenticated)
+{
+    <AppShell>
+        @Body
+    </AppShell>
+}
+else
+{
+    <main class="session-loading">
+        <div class="session-loading-card">Przekierowanie...</div>
+    </main>
+}
+
+@code {
+    private bool _isLoginPage;
+
+    protected override void OnInitialized()
+    {
+        Auth.Changed += HandleSessionChanged;
+        Navigation.LocationChanged += HandleLocationChanged;
+        UpdateCurrentPage();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !RendererInfo.IsInteractive)
+        {
+            return;
+        }
+
+        await Auth.InitializeAsync();
+        ApplyRoutingRules();
+    }
+
+    public void Dispose()
+    {
+        Auth.Changed -= HandleSessionChanged;
+        Navigation.LocationChanged -= HandleLocationChanged;
+    }
+
+    private void HandleSessionChanged()
+    {
+        _ = InvokeAsync(() =>
+        {
+            ApplyRoutingRules();
+            StateHasChanged();
+        });
+    }
+
+    private void HandleLocationChanged(
+        object? sender,
+        LocationChangedEventArgs args)
+    {
+        _ = InvokeAsync(() =>
+        {
+            UpdateCurrentPage();
+            ApplyRoutingRules();
+            StateHasChanged();
+        });
+    }
+
+    private void ApplyRoutingRules()
+    {
+        if (Auth.Loading)
+        {
+            return;
+        }
+
+        UpdateCurrentPage();
+
+        if (!Auth.IsAuthenticated && !_isLoginPage)
+        {
+            Navigation.NavigateTo("/login", replace: true);
+            return;
+        }
+
+        if (Auth.IsAuthenticated && _isLoginPage)
+        {
+            Navigation.NavigateTo("/", replace: true);
+        }
+    }
+
+    private void UpdateCurrentPage()
+    {
+        var path = Navigation.ToBaseRelativePath(Navigation.Uri);
+        _isLoginPage = path.Equals("login", StringComparison.OrdinalIgnoreCase);
+    }
+}

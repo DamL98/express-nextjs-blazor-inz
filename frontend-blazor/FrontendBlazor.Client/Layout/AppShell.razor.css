@@ -1,0 +1,21 @@
+.app-shell {
+    min-height: 100vh;
+    background: #f9fafb;
+    color: #111827;
+}
+
+.app-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.app-main {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+}
+
+.page-content {
+    flex: 1;
+}
