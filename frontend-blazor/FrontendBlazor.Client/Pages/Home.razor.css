@@ -1,0 +1,27 @@
+.dashboard-page {
+    margin: 0 auto;
+    max-width: 72rem;
+    padding: 2rem 1rem;
+}
+
+.page-header h1 {
+    margin: 0.5rem 0 0;
+    color: #111827;
+    font-size: 1.875rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 2.25rem;
+}
+
+.page-header p {
+    max-width: 42rem;
+    margin: 0.75rem 0 0;
+    color: #4b5563;
+}
+
+@media (min-width: 768px) {
+    .dashboard-page {
+        padding-right: 2rem;
+        padding-left: 2rem;
+    }
+}

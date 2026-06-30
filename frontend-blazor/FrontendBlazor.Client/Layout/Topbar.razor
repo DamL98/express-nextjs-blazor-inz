@@ -1,0 +1,38 @@
+@using FrontendBlazor.Client.Features.Auth
+@inject AuthContext Auth
+@inject NavigationManager Navigation
+
+<header class="topbar">
+    <p class="mobile-title">Sale konferencyjne</p>
+    <p class="desktop-title">Panel użytkownika</p>
+
+    <div class="user-actions">
+        <div class="user-email">@Auth.User?.Email</div>
+        <button
+            type="button"
+            class="logout-button"
+            disabled="@_isLoggingOut"
+            @onclick="LogoutAsync">
+            @(_isLoggingOut ? "Wylogowywanie..." : "Wyloguj")
+        </button>
+    </div>
+</header>
+
+@code {
+    private bool _isLoggingOut;
+
+    private async Task LogoutAsync()
+    {
+        _isLoggingOut = true;
+
+        try
+        {
+            await Auth.LogoutAsync();
+            Navigation.NavigateTo("/login", replace: true);
+        }
+        finally
+        {
+            _isLoggingOut = false;
+        }
+    }
+}

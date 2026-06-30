@@ -1,0 +1,71 @@
+.sidebar {
+    display: none;
+    width: 16rem;
+    min-height: 100vh;
+    flex-shrink: 0;
+    border-right: 1px solid #e5e7eb;
+    background: #ffffff;
+    padding: 1.5rem 1rem;
+}
+
+.sidebar-label {
+    margin: 0;
+    color: #6b7280;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+}
+
+.sidebar h1 {
+    margin: 0.5rem 0 0;
+    color: #111827;
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.75rem;
+}
+
+.navigation {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-top: 2rem;
+}
+
+.navigation ::deep .navigation-link {
+    display: block;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    color: #374151;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    text-decoration: none;
+    transition: color 150ms ease, background-color 150ms ease;
+}
+
+.navigation ::deep .navigation-link:hover {
+    background: #f9fafb;
+    color: #111827;
+}
+
+.navigation ::deep .navigation-link.active {
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.version-card {
+    margin-top: 2rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    background: #f9fafb;
+    padding: 1rem;
+    color: #4b5563;
+    font-size: 0.75rem;
+}
+
+@media (min-width: 768px) {
+    .sidebar {
+        display: block;
+    }
+}

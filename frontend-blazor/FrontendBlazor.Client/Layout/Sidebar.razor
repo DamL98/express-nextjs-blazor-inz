@@ -1,0 +1,29 @@
+@using FrontendBlazor.Client.Features.Auth
+@inject AuthContext Auth
+
+<aside class="sidebar">
+    <div>
+        <p class="sidebar-label">System rezerwacji</p>
+        <h1>Sale konferencyjne</h1>
+    </div>
+
+    <nav class="navigation" aria-label="Główna nawigacja">
+        <NavLink class="navigation-link" href="" Match="NavLinkMatch.All">
+            Dashboard
+        </NavLink>
+        <NavLink class="navigation-link" href="rooms">
+            Sale
+        </NavLink>
+        <NavLink class="navigation-link" href="reservations">
+            Moje rezerwacje
+        </NavLink>
+        @if (Auth.User?.Role.Name == "admin")
+        {
+            <NavLink class="navigation-link" href="admin">
+                Admin
+            </NavLink>
+        }
+    </nav>
+
+    <div class="version-card">ver. demo</div>
+</aside>
