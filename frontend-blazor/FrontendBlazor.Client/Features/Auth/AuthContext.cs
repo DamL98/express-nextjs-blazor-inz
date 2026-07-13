@@ -1,18 +1,18 @@
-using FrontendBlazor.Client.Infrastructure.Api;
-using FrontendBlazor.Client.Infrastructure.Firebase;
+using FrontendBlazor.Client.Infrastructure.Auth;
+using Microsoft.AspNetCore.Components;
 
 namespace FrontendBlazor.Client.Features.Auth;
 
 public sealed class AuthContext(
-    FirebaseAuth firebaseAuth,
-    ApiClient apiClient) : IDisposable
+    BackendAuthClient backendAuthClient,
+    NavigationManager navigation) : IDisposable
 {
     private readonly SemaphoreSlim _initializationLock = new(1, 1);
+    private const string EmailPasswordDisabledMessage =
+        "Logowanie e-mail/haslo jest off";
     private bool _initialized;
 
     public event Action? Changed;
-
-    public FirebaseUser? FirebaseUser { get; private set; }
 
     public LocalUser? User { get; private set; }
 
@@ -39,12 +39,7 @@ public sealed class AuthContext(
             }
 
             InitializationError = null;
-            FirebaseUser = await firebaseAuth.InitializeAsync();
-
-            if (FirebaseUser is not null)
-            {
-                User = await SynchronizeUserAsync();
-            }
+            User = await backendAuthClient.GetCurrentUserAsync();
         }
         catch (Exception exception)
         {
@@ -60,31 +55,41 @@ public sealed class AuthContext(
         }
     }
 
-    public async Task LoginAsync(string email, string password)
+    public Task LoginAsync(string email, string password)
     {
-        await SignInAsync(() => firebaseAuth.LoginAsync(email, password));
+        _ = email;
+        _ = password;
+
+        throw new InvalidOperationException(EmailPasswordDisabledMessage);
     }
 
-    public async Task RegisterAsync(
+    public Task RegisterAsync(
         string fullName,
         string email,
         string password)
     {
-        await SignInAsync(() => firebaseAuth.RegisterAsync(
-            fullName,
-            email,
-            password));
+        _ = fullName;
+        _ = email;
+        _ = password;
+
+        throw new InvalidOperationException(EmailPasswordDisabledMessage);
     }
 
     public async Task LoginWithGoogleAsync()
     {
-        await SignInAsync(firebaseAuth.LoginWithGoogleAsync);
+        InitializationError = null;
+        NotifyChanged();
+
+        var redirectTo = new Uri(
+            new Uri(navigation.BaseUri),
+            "login").ToString();
+
+        await backendAuthClient.RedirectToGoogleLoginAsync(redirectTo);
     }
 
     public async Task LogoutAsync()
     {
-        await firebaseAuth.LogoutAsync();
-        FirebaseUser = null;
+        await backendAuthClient.LogoutAsync();
         User = null;
         InitializationError = null;
         NotifyChanged();
@@ -92,51 +97,13 @@ public sealed class AuthContext(
 
     public Task<string> GetIdTokenAsync(bool forceRefresh = false)
     {
-        return firebaseAuth.GetIdTokenAsync(forceRefresh);
+        _ = forceRefresh;
+        return Task.FromResult(string.Empty);
     }
 
     public void Dispose()
     {
         _initializationLock.Dispose();
-    }
-
-    private async Task CompleteSignInAsync(FirebaseUser firebaseUser)
-    {
-        FirebaseUser = firebaseUser;
-        User = null;
-        InitializationError = null;
-        NotifyChanged();
-
-        try
-        {
-            User = await SynchronizeUserAsync(forceRefresh: true);
-            NotifyChanged();
-        }
-        catch
-        {
-            NotifyChanged();
-            throw;
-        }
-    }
-
-    private async Task SignInAsync(Func<Task<FirebaseUser>> signIn)
-    {
-        var firebaseUser = await signIn();
-        await CompleteSignInAsync(firebaseUser);
-    }
-
-    private async Task<LocalUser> SynchronizeUserAsync(
-        bool forceRefresh = false)
-    {
-        var token = await firebaseAuth.GetIdTokenAsync(forceRefresh);
-
-        return await apiClient.ApiRequestAsync<LocalUser>(
-            "/auth/session",
-            new ApiRequestOptions
-            {
-                Method = HttpMethod.Post,
-                Token = token,
-            });
     }
 
     private void NotifyChanged()

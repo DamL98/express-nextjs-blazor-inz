@@ -99,7 +99,9 @@ else
 
     private void UpdateCurrentPage()
     {
-        var path = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var path = relativePath.Split(['?', '#'], 2)[0];
+
         _isLoginPage = path.Equals("login", StringComparison.OrdinalIgnoreCase);
     }
 }

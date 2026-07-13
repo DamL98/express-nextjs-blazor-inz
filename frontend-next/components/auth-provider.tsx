@@ -1,18 +1,6 @@
 "use client";
 
 import {
-  GoogleAuthProvider,
-  User as FirebaseUser,
-  browserLocalPersistence,
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  setPersistence,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  signOut,
-  updateProfile,
-} from "firebase/auth";
-import {
   ReactNode,
   createContext,
   useCallback,
@@ -23,13 +11,13 @@ import {
 } from "react";
 
 import { apiRequest } from "@/lib/api";
-import { firebaseAuth } from "@/lib/firebase";
+import { API_URL } from "@/lib/config/env";
 
 // wzorzec usera zapisany w lokalnej bazie
-// backend zwraca ten obiekt po zweryfikowaniu tokenu firebase
+// backend zwraca ten obiekt po potwierdzeniu aktywnej sesji
 export type LocalUser = {
   id: string;
-  firebaseUid: string;
+  googleId: string;
   email: string;
   fullName: string;
   avatarUrl: string | null;
@@ -39,137 +27,110 @@ export type LocalUser = {
 
 // wlasciwosci i funkcje do ktorych maja dostep componenty wewnatrz AuthContext
 type AuthContext = {
-  // uwierzytelniony user przez Firebase Auth z uuid fb
-  firebaseUser: FirebaseUser | null;
-  // powiązany rekord z firebaseUser w local db, ma local user id i user role
   user: LocalUser | null;
   loading: boolean;
-
-  // login form od firebase
-  login: (email: string, password: string) => Promise<void>;
-  // register form od firebase, user uwierzytelniony tworzy sie w firebase a "profil" w local db
-  register: (fullName: string, email: string, password: string) => Promise<void>;
-
+  // login form od firebase byl w poprzedniej wersji; teraz UI zostaje,
+  // ale w aktualnej architekturze obslugiwany jest tylko Google OAuth
+  login: (_email: string, _password: string) => Promise<void>;
+  register: (_fullName: string, _email: string, _password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
-  // zwraca token używany w headerze Authorization potrzebne do api
+  // zwraca token uzywany w headerze Authorization potrzebne do api
+  // przy sesji cookie backendu nie jest juz potrzebny, ale interfejs zostaje
   getIdToken: () => Promise<string>;
 };
 
 // null context na start przed zalogowaniem
 const AuthContext = createContext<AuthContext | null>(null);
 
+const GOOGLE_LOGIN_UNAVAILABLE_MESSAGE =
+  "Customowe logowanie jest off, zaloguj przez google";
 
-
-async function synchronizeUser(firebaseUser: FirebaseUser) {
-  // odnowiony token po rejestracji
-  const token = await firebaseUser.getIdToken(true);
-
-  return apiRequest<LocalUser>("/auth/session", {
-    method: "POST",
-    token,
+async function getCurrentSessionUser() {
+  return apiRequest<LocalUser>("/auth/me", {
+    cache: "no-store",
   });
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [user, setUser] = useState<LocalUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // firebase zapisuje sesje w przeglądarce - nie ma auto logout usera po refresh strony
-    void setPersistence(firebaseAuth, browserLocalPersistence);
+    let active = true;
 
-    return onAuthStateChanged(firebaseAuth, async (currentUser) => {
-      setFirebaseUser(currentUser);
-
-      // brak currentUser = brak aktywnej sesji firebase
-      if (!currentUser) {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-
+    async function loadSession() {
       try {
         // pobranie rekordu z localdb dla aktywnej sesji przegladarki
-        setUser(await synchronizeUser(currentUser));
-      } catch (error) {
-        console.error("Błąd synchronizacji użytkownika: ", error);
-        setUser(null);
+        const currentUser = await getCurrentSessionUser();
+
+        if (active) {
+          setUser(currentUser);
+        }
+      } catch {
+        if (active) {
+          setUser(null);
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
-    });
+    }
+
+    void loadSession();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   // USER LOGIN
-  const login = useCallback(async (email: string, password: string) => {
-    const credential = await signInWithEmailAndPassword(firebaseAuth, email, password);
-
-    // po zalogowaniu jest synchro danych pomiedzy firebase a local db dla zalogowanego usera
-    setUser(await synchronizeUser(credential.user));
+  const login = useCallback(async () => {
+    throw new Error(GOOGLE_LOGIN_UNAVAILABLE_MESSAGE);
   }, []);
 
   // USER REGISTER
-  const register = useCallback(
-    async (fullName: string, email: string, password: string) => {
-      // firebase user create
-      const credential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
-
-      await updateProfile(credential.user, { displayName: fullName.trim() });
-
-      // update local usera z tym w firebase
-      setUser(await synchronizeUser(credential.user));
-    },
-    [],
-  );
-
+  const register = useCallback(async () => {
+    throw new Error(GOOGLE_LOGIN_UNAVAILABLE_MESSAGE);
+  }, []);
 
   // GOOGLE LOGIN
   const loginWithGoogle = useCallback(async () => {
-    const provider = new GoogleAuthProvider();
+    const redirectTo = `${window.location.origin}/login`;
+    const url = new URL(`${API_URL}/auth/google/start`);
 
-    // wybor konta google do logowania zamiast automat
-    provider.setCustomParameters({ prompt: "select_account" });
-
-    const credential = await signInWithPopup(firebaseAuth, provider);
-    setUser(await synchronizeUser(credential.user));
+    url.searchParams.set("redirectTo", redirectTo);
+    window.location.assign(url.toString());
   }, []);
 
   // LOGOUT
-  // logout konczy sesje z firebase i czysci lokalne dane ze stanu
   const logout = useCallback(async () => {
-    await signOut(firebaseAuth);
+    await apiRequest("/auth/logout", {
+      method: "POST",
+    });
     setUser(null);
   }, []);
 
+  const getIdToken = useCallback(async () => "", []);
 
-  const getIdToken = useCallback(async () => {
-    const currentUser = firebaseAuth.currentUser;
-
-    if (!currentUser) {
-      throw new Error("Użytkownik nie jest zalogowany");
-    }
-
-    return currentUser.getIdToken();
-  }, []);
-
-  // ograniczenia re-renderowania komponentow korzystajacych z useAuth dopoki zadna wartosc sie nie zmieni
+  // ograniczenia re-renderowania komponentow korzystajacych z useAuth
+  // dopoki zadna wartosc sie nie zmieni
   const value = useMemo(
-    () => ({ firebaseUser, user, loading, login, register, loginWithGoogle, logout, getIdToken }),
-    [firebaseUser, user, loading, login, register, loginWithGoogle, logout, getIdToken],
+    () => ({ user, loading, login, register, loginWithGoogle, logout, getIdToken }),
+    [user, loading, login, register, loginWithGoogle, logout, getIdToken],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-// hook udostępniający dane i metody uwierzytelniania komponentom wewn. AuthProvider
+// hook udostepniajacy dane i metody uwierzytelniania komponentom wewn. AuthProvider
 export function useAuth() {
   const context = useContext(AuthContext);
 
   // uzycie hooka poza <AuthProvider>
   if (!context) {
-    throw new Error("useAuth musi być używany wewnątrz AuthProvider");
+    throw new Error("useAuth musi byc uzywany wewnatrz AuthProvider");
   }
 
   return context;

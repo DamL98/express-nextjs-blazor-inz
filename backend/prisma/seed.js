@@ -59,10 +59,11 @@ async function main() {
   await prisma.user.upsert({
     where: { email: "admin@example.com" },
     update: {
+      googleId: "mock-google-admin-id",
       roleId: adminRole.id,
     },
     create: {
-      firebaseUid: "mock-firebase-admin-id",
+      googleId: "mock-google-admin-id",
       email: "admin@example.com",
       fullName: "Administrator Systemu",
       avatarUrl: null,
@@ -73,10 +74,11 @@ async function main() {
   await prisma.user.upsert({
     where: { email: "user@example.com" },
     update: {
+      googleId: "mock-google-user-id",
       roleId: userRole.id,
     },
     create: {
-      firebaseUid: "mock-firebase-user-id",
+      googleId: "mock-google-user-id",
       email: "user@example.com",
       fullName: "Jan Kowalski",
       avatarUrl: null,

@@ -1,6 +1,5 @@
 @page "/login"
 @using FrontendBlazor.Client.Features.Auth
-@using FrontendBlazor.Client.Infrastructure.Firebase
 @inject AuthContext Auth
 @inject NavigationManager Navigation
 
@@ -9,11 +8,11 @@
 <main class="auth-shell">
     <section class="auth-card">
         <p class="eyebrow">System rezerwacji</p>
-        <h1>@(_mode == AuthFormMode.Login ? "Zaloguj się" : "Utwórz konto")</h1>
+        <h1>@(_mode == AuthFormMode.Login ? "Zaloguj sie" : "Utworz konto")</h1>
         <p class="muted">
             @(_mode == AuthFormMode.Login
-                ? "Zaloguj sie"
-                : "Utwórz konto")
+                ? "Zaloguj sie przez konto Google"
+                : "e-mail/haslo jest off")
         </p>
 
         <button
@@ -31,7 +30,7 @@
             @if (_mode == AuthFormMode.Register)
             {
                 <label for="full-name">
-                    Imię i nazwisko
+                    Imie i nazwisko
                     <input
                         id="full-name"
                         type="text"
@@ -54,7 +53,7 @@
             </label>
 
             <label for="password">
-                Hasło
+                Haslo
                 <input
                     id="password"
                     type="password"
@@ -68,7 +67,7 @@
             @if (_mode == AuthFormMode.Register)
             {
                 <label for="confirm-password">
-                    Powtórz hasło
+                    Powtorz haslo
                     <input
                         id="confirm-password"
                         type="password"
@@ -99,8 +98,8 @@
             disabled="@_isSubmitting"
             @onclick="ToggleMode">
             @(_mode == AuthFormMode.Login
-                ? "Nie masz konta? Zarejestruj się"
-                : "Masz już konto? Zaloguj się")
+                ? "Nie masz konta? Zarejestruj sie"
+                : "Masz juz konto? Zaloguj sie")
         </button>
     </section>
 </main>
@@ -117,8 +116,8 @@
     private string? CurrentError => _errorMessage ?? Auth.InitializationError;
 
     private string SubmitLabel => _isSubmitting
-        ? "Proszę czekać..."
-        : (_mode == AuthFormMode.Login ? "Zaloguj się" : "Zarejestruj się");
+        ? "Prosze czekac..."
+        : (_mode == AuthFormMode.Login ? "Zaloguj sie" : "Zarejestruj sie");
 
     private async Task SubmitAsync()
     {
@@ -127,7 +126,7 @@
         if (_mode == AuthFormMode.Register &&
             !string.Equals(_password, _confirmPassword, StringComparison.Ordinal))
         {
-            _errorMessage = "Hasła nie są takie same";
+            _errorMessage = "Hasla nie sa takie same";
             return;
         }
 
@@ -145,10 +144,6 @@
             }
 
             Navigation.NavigateTo("/", replace: true);
-        }
-        catch (FirebaseError error)
-        {
-            _errorMessage = AuthErrorMessage(error);
         }
         catch (Exception error)
         {
@@ -168,11 +163,6 @@
         try
         {
             await Auth.LoginWithGoogleAsync();
-            Navigation.NavigateTo("/", replace: true);
-        }
-        catch (FirebaseError error)
-        {
-            _errorMessage = AuthErrorMessage(error);
         }
         catch (Exception error)
         {
@@ -193,20 +183,6 @@
         _errorMessage = null;
         _password = string.Empty;
         _confirmPassword = string.Empty;
-    }
-
-    private static string AuthErrorMessage(FirebaseError error)
-    {
-        return error.Code switch
-        {
-            "auth/email-already-in-use" => "Konto z tym e-mail już istnieje",
-            "auth/invalid-credential" => "Nieprawidłowy e-mail lub hasło",
-            "auth/invalid-email" => "Błędny adres adres e-mail",
-            "auth/popup-closed-by-user" => "Zamknięte Popup Google",
-            "auth/popup-blocked" => "Popup Google zablokowane przez przegladarke",
-            "auth/weak-password" => "Hasło musi mieć co najmniej 6 znaków",
-            _ => "Błąd logowania",
-        };
     }
 
     private enum AuthFormMode

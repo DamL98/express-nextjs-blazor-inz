@@ -1,36 +1,17 @@
 import request from "supertest";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-const { verifyIdTokenMock } = vi.hoisted(() => ({
-  verifyIdTokenMock: vi.fn(async (token) =>
-    token === "admin-token"
-      ? {
-          uid: "test-firebase-admin",
-          email: "admin@example.com",
-          name: "Administrator Systemu",
-          email_verified: true,
-        }
-      : {
-          uid: "test-firebase-user",
-          email: "user@example.com",
-          name: "Jan Kowalski",
-          email_verified: true,
-        },
-  ),
-}));
-
-vi.mock("../../src/config/firebase.js", () => ({
-  getFirebaseAuth: () => ({ verifyIdToken: verifyIdTokenMock }),
-}));
-
-import { app } from "../../src/app.js";
+import { createSessionToken } from "../../src/config/auth.js";
 import { prisma } from "../../src/config/prisma.js";
+import { app } from "../../src/app.js";
 
 const TEST_TITLE = "admin-reservation-test";
 const EMPTY_UUID = "00000000-0000-0000-0000-000000000000";
 
 let activeRoom;
 let adminUser;
+let adminToken;
+let userToken;
 
 function slot(day) {
   return {
@@ -72,7 +53,21 @@ beforeAll(async () => {
     where: {
       email: "admin@example.com",
     },
+    include: {
+      role: true,
+    },
   });
+  const standardUser = await prisma.user.findUnique({
+    where: {
+      email: "user@example.com",
+    },
+    include: {
+      role: true,
+    },
+  });
+
+  adminToken = createSessionToken(adminUser);
+  userToken = createSessionToken(standardUser);
 });
 
 afterAll(async () => {
@@ -83,7 +78,7 @@ describe("Admin reservations API", () => {
   it("GET /api/v1/admin/reservations zwraca rezerwacje wszystkich uzytkownikow", async () => {
     const ownReservation = await request(app)
       .post("/api/v1/reservations")
-      .set("Authorization", "Bearer user-token")
+      .set("Authorization", `Bearer ${userToken}`)
       .send({
         roomId: activeRoom.id,
         title: `${TEST_TITLE} own`,
@@ -93,7 +88,7 @@ describe("Admin reservations API", () => {
 
     const response = await request(app)
       .get("/api/v1/admin/reservations")
-      .set("Authorization", "Bearer admin-token");
+      .set("Authorization", `Bearer ${adminToken}`);
     const ids = response.body.data.map((reservation) => reservation.id);
 
     expect(response.status).toBe(200);
@@ -101,12 +96,12 @@ describe("Admin reservations API", () => {
     expect(ids).toContain(adminReservation.id);
   });
 
-  it("PATCH /api/v1/admin/reservations/:id/cancel anuluje czyjąś rezerwacje", async () => {
+  it("PATCH /api/v1/admin/reservations/:id/cancel anuluje czyjas rezerwacje", async () => {
     const reservation = await createAdminReservation(3, "cancel");
 
     const response = await request(app)
       .patch(`/api/v1/admin/reservations/${reservation.id}/cancel`)
-      .set("Authorization", "Bearer admin-token");
+      .set("Authorization", `Bearer ${adminToken}`);
 
     expect(response.status).toBe(200);
     expect(response.body.data.status).toBe("CANCELLED");
@@ -115,16 +110,16 @@ describe("Admin reservations API", () => {
   it("PATCH /api/v1/admin/reservations/:id/cancel zwraca RESERVATION_NOT_FOUND", async () => {
     const response = await request(app)
       .patch(`/api/v1/admin/reservations/${EMPTY_UUID}/cancel`)
-      .set("Authorization", "Bearer admin-token");
+      .set("Authorization", `Bearer ${adminToken}`);
 
     expect(response.status).toBe(404);
     expect(response.body.error.code).toBe("RESERVATION_NOT_FOUND");
   });
 
-  it("GET /api/v1/admin/reservations odrzuca zwykłego użytkownika", async () => {
+  it("GET /api/v1/admin/reservations odrzuca zwyklego uzytkownika", async () => {
     const response = await request(app)
       .get("/api/v1/admin/reservations")
-      .set("Authorization", "Bearer user-token");
+      .set("Authorization", `Bearer ${userToken}`);
 
     expect(response.status).toBe(403);
     expect(response.body.error.code).toBe("FORBIDDEN");

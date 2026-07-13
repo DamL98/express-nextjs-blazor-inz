@@ -4,7 +4,7 @@ public sealed class LocalUser
 {
     public string Id { get; init; } = string.Empty;
 
-    public string FirebaseUid { get; init; } = string.Empty;
+    public string GoogleId { get; init; } = string.Empty;
 
     public string Email { get; init; } = string.Empty;
 

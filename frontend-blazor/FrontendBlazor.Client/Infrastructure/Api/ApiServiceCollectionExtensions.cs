@@ -14,7 +14,7 @@ public static class ApiServiceCollectionExtensions
         if (!Uri.TryCreate(configuredUrl, UriKind.Absolute, out var apiUrl))
         {
             throw new InvalidOperationException(
-                "Błąd konfigu Api:BaseUrl");
+                "Blad konfigu Api:BaseUrl");
         }
 
         if (!apiUrl.AbsoluteUri.EndsWith('/'))
