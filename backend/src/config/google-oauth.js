@@ -1,26 +1,47 @@
 import { google } from "googleapis";
 
-const GOOGLE_SCOPES = ["openid", "email", "profile"];
+const GOOGLE_IDENTITY_SCOPES = ["openid", "email", "profile"];
+export const GOOGLE_CALENDAR_SCOPES = [
+  ...GOOGLE_IDENTITY_SCOPES,
+  "https://www.googleapis.com/auth/calendar.events",
+];
 
-class GoogleOAuthConfigError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "GoogleOAuthConfigError";
-  }
+// ERROR HANLDING START - DLA GOOGLE OAUTH
+const GOOGLE_OAUTH_CONFIG_ERROR = "GoogleOAuthConfigError";
+const GOOGLE_OAUTH_VALIDATION_ERROR = "GoogleOAuthValidationError";
+
+function createNamedError(name, message) {
+  const error = new Error(message);
+  error.name = name;
+  return error;
 }
 
-class GoogleOAuthValidationError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "GoogleOAuthValidationError";
-  }
+export function createGoogleOAuthConfigError(message) {
+  return createNamedError(GOOGLE_OAUTH_CONFIG_ERROR, message);
 }
 
+export function createGoogleOAuthValidationError(message) {
+  return createNamedError(GOOGLE_OAUTH_VALIDATION_ERROR, message);
+}
+
+export function isGoogleOAuthConfigError(error) {
+  return error instanceof Error && error.name === GOOGLE_OAUTH_CONFIG_ERROR;
+}
+
+export function isGoogleOAuthValidationError(error) {
+  return error instanceof Error && error.name === GOOGLE_OAUTH_VALIDATION_ERROR;
+}
+// ERROR HANLDING END
+
+
+
+
+// POBRANIE SECRETS Z .ENV (projekt googla)
 function requiredEnv(name) {
   const value = process.env[name]?.trim();
 
   if (!value) {
-    throw new GoogleOAuthConfigError(`Brak ${name} w configu backendu`);
+    throw createGoogleOAuthConfigError(`Brak ${name} w configu backendu`);
   }
 
   return value;
@@ -41,6 +62,17 @@ export function getGoogleOAuthRedirectUri() {
   );
 }
 
+export function getGoogleCalendarOAuthRedirectUri() {
+  return (
+    process.env.GOOGLE_CALENDAR_OAUTH_REDIRECT_URI?.trim() ||
+    `http://localhost:${process.env.PORT || 4000}/api/v1/google-calendar/connect/callback`
+  );
+}
+// POBRANIE SECRETS END
+
+
+
+// CQRS
 export function getAllowedFrontendOrigins() {
   return [
     process.env.FRONTEND_NEXT_URL?.trim(),
@@ -56,6 +88,10 @@ export function getDefaultFrontendRedirectUrl() {
   );
 }
 
+
+
+// local redirect url na nextjs(:3000) i blazor (:)
+//
 export function validateFrontendRedirectUrl(value) {
   const redirectUrl = value?.trim() || getDefaultFrontendRedirectUrl();
   const url = new URL(redirectUrl);
@@ -64,7 +100,7 @@ export function validateFrontendRedirectUrl(value) {
   );
 
   if (!allowedOrigins.has(url.origin)) {
-    throw new GoogleOAuthValidationError(
+    throw createGoogleOAuthValidationError(
       `Niedozwolony redirect z frontendu ${url.origin} dozwolone tylko: ${[...allowedOrigins].join(", ")}`,
     );
   }
@@ -80,6 +116,13 @@ export function createGoogleOAuthClient(redirectUri = getGoogleOAuthRedirectUri(
   );
 }
 
+// *****************************************************************
+// formatuje dane profilu od Googla na lokalny obiekt Usera
+//
+// wymagane id i email od googla
+// fullname - bierze nazwe z google a jesli brak uzywa czesci nazwy przed @
+// emailVerified - zamienia na true/flase
+// *****************************************************************
 function normalizeGoogleProfile(profile) {
   if (!profile?.id) {
     throw new Error("Google nie zwrocil user id");
@@ -98,15 +141,38 @@ function normalizeGoogleProfile(profile) {
   };
 }
 
-export function buildGoogleAuthorizationUrl({ state }) {
-  return createGoogleOAuthClient().generateAuthUrl({
+// *****************************************************************
+// START LOGOWANIA
+// budowanie URL - przekierowanie usera na ekran zgody logowania / uwierzytelnianie
+//
+// state - przenosi kontekst miedzy startem oauth i callbackiem
+// scope - domyslne uprawnienia o ktore prosze usera przy jego logowaniu
+// redirectUri - adres backendu / Google rzuci tam usera po jego zgodzie logowania
+// access_type - informujemy google ze wymagamy refresh_token
+// include_granted_scopes: true - pozwala zachować wczesniejsze zgody Usera
+// prompt: "consent select_account" - wymusza pokazanie ekranu zgody logowania i wyboru konta google
+export function buildGoogleAuthorizationUrl({
+  state,
+  scope = GOOGLE_IDENTITY_SCOPES,
+  redirectUri = getGoogleOAuthRedirectUri(),
+}) {
+  return createGoogleOAuthClient(redirectUri).generateAuthUrl({
     access_type: "offline",
     include_granted_scopes: true,
     prompt: "consent select_account",
-    scope: GOOGLE_SCOPES,
+    scope,
     state,
   });
 }
+
+
+// *****************************************************************
+// sprawdzamy czy google na pewno potwierdzil/uwierzytelnil usera
+//
+//
+// audience: getGoogleClientId() - czy token wystawiony dla tej apki
+// sciagamy tylko payload z wyniku
+// mapuje pola od Googla na lokalny obiekt usera
 
 export async function verifyGoogleIdToken(idToken) {
   const client = createGoogleOAuthClient();
@@ -125,19 +191,39 @@ export async function verifyGoogleIdToken(idToken) {
   });
 }
 
+
+
+// *****************************************************************
+// CZĘŚĆ JUŻ PO PRZEKIEROWANIU Z GOOGLA I OTRZYMANIU code z OAuth
+//
+// wrapper tylko Profilu Google Usera za code z OAuth
 export async function exchangeGoogleCodeForProfile(code, redirectUri = getGoogleOAuthRedirectUri()) {
+  const { googleUser } = await exchangeGoogleCode(code, redirectUri);
+  return googleUser;
+}
+
+// wymienia authorization code na -> tokeny i dane Usera
+// tworzy klienta oauth google -> dostaje ten sam redirectUri, ktory byl uzyty przy starcie logowania
+export async function exchangeGoogleCode(code, redirectUri = getGoogleOAuthRedirectUri()) {
   const client = createGoogleOAuthClient(redirectUri);
   const { tokens } = await client.getToken(code);
 
+  // zapisuje tokeny w kliencie
+  // potrzebne bo pozneijsze requesty odpytuja juz jako Zalogowany User
   client.setCredentials(tokens);
 
+  // tworzy klienta do Google OAuth2 API
+  // uzywane do pobrania info o profilu Google
   const oauth2 = google.oauth2({
     version: "v2",
     auth: client,
   });
   const { data } = await oauth2.userinfo.get();
 
-  return normalizeGoogleProfile(data);
+  // zwraca Usera w lokalnym formacie
+  // RAW tokeny od Google
+  return {
+    googleUser: normalizeGoogleProfile(data),
+    tokens,
+  };
 }
-
-export { GoogleOAuthConfigError, GoogleOAuthValidationError };

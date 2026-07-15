@@ -39,13 +39,30 @@ export const reservationRepository = {
     })
   },
 
-  async cancel(id) {
+  async cancel(id, options = {}) {
+    const clearGoogleCalendarEventId =
+      options.clearGoogleCalendarEventId === true;
+
     return prisma.reservation.update({
       where: {
         id,
       },
       data: {
         status: ReservationStatus.CANCELLED,
+        ...(clearGoogleCalendarEventId
+          ? { googleCalendarEventId: null }
+          : {}),
+      },
+    })
+  },
+
+  async setGoogleCalendarEventId(id, googleCalendarEventId) {
+    return prisma.reservation.update({
+      where: {
+        id,
+      },
+      data: {
+        googleCalendarEventId,
       },
     })
   },

@@ -3,6 +3,7 @@ import { ReservationStatus } from "@prisma/client"
 import { ApiError } from "./../../errors/apiError.js"
 import { findRoomById } from "../../repositories/room.repository.js"
 import { reservationRepository } from "../../repositories/reservation.repository.js"
+import { googleCalendarService } from "../google-calendar/google-calendar.service.js"
 
 function parseTimeRange(start, end) {
   const startTime = new Date(start)
@@ -94,7 +95,7 @@ export const reservationsService = {
       )
     }
 
-    return reservationRepository.create({
+    const reservation = await reservationRepository.create({
       userId,
       roomId: data.roomId,
       title: data.title,
@@ -102,6 +103,9 @@ export const reservationsService = {
       startTime,
       endTime,
     })
+
+    // Sama rezerwacja pozostaje główną operacją; synchronizacja z Google jest krokiem dodatkowym po jej utworzeniu.
+    return googleCalendarService.syncReservation(reservation, room)
   },
 
   async cancelMyReservation(userId, id) {
@@ -111,6 +115,12 @@ export const reservationsService = {
       return reservation
     }
 
-    return reservationRepository.cancel(id)
+    // Przy anulowaniu próbujemy posprzątać także event w Google Calendar, jeśli wcześniej został utworzony.
+    const googleCalendarEventRemoved =
+      await googleCalendarService.removeReservationFromCalendar(reservation)
+
+    return reservationRepository.cancel(id, {
+      clearGoogleCalendarEventId: googleCalendarEventRemoved,
+    })
   },
 }

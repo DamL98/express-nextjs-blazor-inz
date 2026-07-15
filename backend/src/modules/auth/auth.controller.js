@@ -1,8 +1,8 @@
 import { extractBearerToken, getAuthCookieName, getSessionCookieOptions } from "../../config/auth.js";
 import {
   getGoogleOAuthRedirectUri,
-  GoogleOAuthConfigError,
-  GoogleOAuthValidationError,
+  isGoogleOAuthConfigError,
+  isGoogleOAuthValidationError,
 } from "../../config/google-oauth.js";
 import { ApiError } from "../../errors/apiError.js";
 import { successResponse } from "../../utils/api-response.js";
@@ -54,7 +54,7 @@ export async function createSession(req, res, next) {
       return next(error);
     }
 
-    if (error instanceof GoogleOAuthConfigError) {
+    if (isGoogleOAuthConfigError(error)) {
       return next(new ApiError(503, "GOOGLE_OAUTH_NOT_CONFIGURED", error.message));
     }
 
@@ -73,11 +73,11 @@ export async function getGoogleAuthorizationUrl(req, res, next) {
     const authorizationUrl = authService.createGoogleAuthorizationUrl(req.query.redirectTo);
     return res.status(200).json(successResponse({ authorizationUrl }));
   } catch (error) {
-    if (error instanceof GoogleOAuthConfigError) {
+    if (isGoogleOAuthConfigError(error)) {
       return next(new ApiError(503, "GOOGLE_OAUTH_NOT_CONFIGURED", error.message));
     }
 
-    if (error instanceof GoogleOAuthValidationError) {
+    if (isGoogleOAuthValidationError(error)) {
       return next(new ApiError(400, "INVALID_GOOGLE_REDIRECT", error.message));
     }
 
@@ -90,11 +90,11 @@ export async function redirectToGoogleAuthorization(req, res, next) {
     const authorizationUrl = authService.createGoogleAuthorizationUrl(req.query.redirectTo);
     return res.redirect(302, authorizationUrl);
   } catch (error) {
-    if (error instanceof GoogleOAuthConfigError) {
+    if (isGoogleOAuthConfigError(error)) {
       return next(new ApiError(503, "GOOGLE_OAUTH_NOT_CONFIGURED", error.message));
     }
 
-    if (error instanceof GoogleOAuthValidationError) {
+    if (isGoogleOAuthValidationError(error)) {
       return next(new ApiError(400, "INVALID_GOOGLE_REDIRECT", error.message));
     }
 
@@ -141,7 +141,7 @@ export async function handleGoogleOAuthCallback(req, res, next) {
       return next(error);
     }
 
-    if (error instanceof GoogleOAuthConfigError) {
+    if (isGoogleOAuthConfigError(error)) {
       return next(new ApiError(503, "GOOGLE_OAUTH_NOT_CONFIGURED", error.message));
     }
 
