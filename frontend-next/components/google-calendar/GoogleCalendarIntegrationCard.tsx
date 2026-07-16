@@ -75,7 +75,7 @@ export function GoogleCalendarIntegrationCard() {
           setError(
             loadError instanceof Error
               ? loadError.message
-              : "Blad pobrania statusu Google Calendar.",
+              : "Blad pobrania statusu Google Calendar",
           );
         }
       } finally {

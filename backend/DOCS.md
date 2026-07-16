@@ -49,7 +49,7 @@ HTTP request
 - Reservations - in progress
 - Google-Services - TODO
 - Admin - TODO
-- FirebaseAuth - TODO
+- Auth - Google OAuth + JWT/cookie session
 
 
 # Endpointy
@@ -123,8 +123,8 @@ HTTP request
 - endpointy dla admina
 - testy dla reservations
 - testy dla admina
-- uwierzytelnienie (google oauth / firebase auth)
-- jwt / refesh token
+- uwierzytelnienie przez Google OAuth
+- jwt / refresh token
 - poprawienie bazy dla usera z lokalnego logowania/rejestracji
 - endpointy od lokalnego logowania/rejestracji
 - testy na prawdziwym userze z bazy nie demo
@@ -187,4 +187,3 @@ HTTP request
 
 ## TODOo
 - Uwierzytelnienie, JWT, refresh_token,
-- Firebase [zasob, projekt, aplikacja, sdk, api_key]

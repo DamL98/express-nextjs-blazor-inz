@@ -29,8 +29,8 @@ export type LocalUser = {
 type AuthContext = {
   user: LocalUser | null;
   loading: boolean;
-  // login form od firebase byl w poprzedniej wersji; teraz UI zostaje,
-  // ale w aktualnej architekturze obslugiwany jest tylko Google OAuth
+  // lokalny formularz logowania zostaje w UI, ale aktualna architektura
+  // obsluguje tylko Google OAuth po stronie backendu
   login: (_email: string, _password: string) => Promise<void>;
   register: (_fullName: string, _email: string, _password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
