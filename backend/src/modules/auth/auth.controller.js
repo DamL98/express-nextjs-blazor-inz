@@ -58,6 +58,10 @@ export async function createSession(req, res, next) {
       return next(new ApiError(503, "GOOGLE_OAUTH_NOT_CONFIGURED", error.message));
     }
 
+    if (isGoogleOAuthValidationError(error)) {
+      return next(new ApiError(401, "GOOGLE_AUTH_FAILED", error.message));
+    }
+
     return next(
       new ApiError(
         401,
@@ -143,6 +147,10 @@ export async function handleGoogleOAuthCallback(req, res, next) {
 
     if (isGoogleOAuthConfigError(error)) {
       return next(new ApiError(503, "GOOGLE_OAUTH_NOT_CONFIGURED", error.message));
+    }
+
+    if (isGoogleOAuthValidationError(error)) {
+      return next(new ApiError(401, "GOOGLE_AUTH_FAILED", error.message));
     }
 
     return next(

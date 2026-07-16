@@ -1,12 +1,15 @@
-import { AuthConfigError, extractBearerToken, getAuthCookieName, verifySessionToken } from "../config/auth.js";
+import {
+  extractBearerToken,
+  getAuthCookieName,
+  verifySessionToken,
+} from "../config/auth.js";
 import { ApiError } from "../errors/apiError.js";
 import { authService } from "../modules/auth/auth.service.js";
 
 export async function authenticate(req, res, next) {
   const token =
     extractBearerToken(req.get("authorization")) ||
-    req.cookies?.[getAuthCookieName()] ||
-    null;
+    req.cookies?.[getAuthCookieName()] || null;
 
   if (!token) {
     return next(new ApiError(401, "AUTH_TOKEN_REQUIRED", "Wymagane zalogowanie # brak auth tokenu"));
@@ -16,10 +19,6 @@ export async function authenticate(req, res, next) {
   try {
     session = verifySessionToken(token);
   } catch (error) {
-    if (error instanceof AuthConfigError) {
-      return next(new ApiError(503, "AUTH_NOT_CONFIGURED", error.message));
-    }
-
     return next(
       new ApiError(401, "AUTH_TOKEN_INVALID", "Nieprawidlowy token lub wygasl"),
     );
@@ -29,7 +28,7 @@ export async function authenticate(req, res, next) {
     const user = await authService.getCurrentUser(session.sub);
     res.locals.auth = session;
     res.locals.user = user;
-    return next();
+      return next();
   } catch (error) {
     return next(error);
   }

@@ -10,59 +10,44 @@ import { createGoogleOAuthClient } from "./google-oauth.js";
 // tworzenie Klienta Google Calendar API - wymiana danych z kalendarzem Usera
 //
 
-// aes-256 - klucz 256 bitowy
-// gcm - integralnosc
-const ENCRYPTION_ALGORITHM = "aes-256-gcm";
-
-// dlugosc random wektora inicjalizujacego (gcm -> 12 bajtow defaultowo)
-const IV_LENGTH = 12;
-
 // stala nazwa dla erroru configa
-const GOOGLE_CALENDAR_CONFIG_ERROR = "GoogleCalendarConfigError";
+const GOOGLE_CALENDAR_CONFIG_ERROR = "Error - Calendar Config";
 
 // FUNKCJE POMOCNICZE
 // tworzenie i rozpoznawanie errorow
 // odseparowane od apiError
-function createNamedError(name, message) {
+function builderCalendarError(name, message) {
   const error = new Error(message);
   error.name = name;
   return error;
 }
 
 export function createGoogleCalendarConfigError(message) {
-  return createNamedError(GOOGLE_CALENDAR_CONFIG_ERROR, message);
+  return builderCalendarError(GOOGLE_CALENDAR_CONFIG_ERROR, message);
 }
 
 export function isGoogleCalendarConfigError(error) {
   return error instanceof Error && error.name === GOOGLE_CALENDAR_CONFIG_ERROR;
 }
 
+export function getGoogleTokenEncryptionKey() {
+  return process.env.GOOGLE_TOKEN_ENCRYPTION_KEY?.trim();
+}
 
+export function getGoogleTokenEncryptionAlgorithm() {
+  return process.env.GOOGLE_TOKEN_ENCRYPTION_ALGORITHM?.trim() || "aes-256-gcm";
+}
 
-
+export function getGoogleTokenEncryptionIvLength() {
+  return Number(process.env.GOOGLE_TOKEN_ENCRYPTION_IV_LENGTH?.trim() || 12);
+}
 
 function getEncryptionKey() {
-  const rawKey = process.env.GOOGLE_TOKEN_ENCRYPTION_KEY?.trim();
-
-  if (!rawKey) {
-    throw createGoogleCalendarConfigError(
-      "Brak GOOGLE_TOKEN_ENCRYPTION_KEY w configu backendu",
-    );
-  }
-
-  let key;
-
-  try {
-    key = Buffer.from(rawKey, "base64");
-  } catch {
-    throw createGoogleCalendarConfigError(
-      "GOOGLE_TOKEN_ENCRYPTION_KEY musi byc poprawnym kluczem base64",
-    );
-  }
+  const key = Buffer.from(getGoogleTokenEncryptionKey() || "", "base64");
 
   if (key.length !== 32) {
     throw createGoogleCalendarConfigError(
-      "GOOGLE_TOKEN_ENCRYPTION_KEY po dekodowaniu musi miec 32 bajty",
+      "Blad GOOGLE_TOKEN_ENCRYPTION_KEY w config env",
     );
   }
 
@@ -72,14 +57,15 @@ function getEncryptionKey() {
 // refresh_token
 export function encryptGoogleRefreshToken(refreshToken) {
   // refresh_token Google trzymany tylko po stronie backendu i zapisany zaszyfrowany
-  const iv = randomBytes(IV_LENGTH);
-  const cipher = createCipheriv(ENCRYPTION_ALGORITHM, getEncryptionKey(), iv);
+  const iv = randomBytes(getGoogleTokenEncryptionIvLength());
+  const cipher = createCipheriv(getGoogleTokenEncryptionAlgorithm(), getEncryptionKey(), iv);
   const encrypted = Buffer.concat([
     cipher.update(refreshToken, "utf8"),
     cipher.final(),
   ]);
   const authTag = cipher.getAuthTag();
 
+  // https://base64.guru/standards/base64url
   return [
     iv.toString("base64url"),
     authTag.toString("base64url"),
@@ -99,7 +85,7 @@ export function decryptGoogleRefreshToken(payload) {
 
   const [ivValue, authTagValue, encryptedValue] = parts;
   const decipher = createDecipheriv(
-    ENCRYPTION_ALGORITHM,
+    getGoogleTokenEncryptionAlgorithm(),
     getEncryptionKey(),
     Buffer.from(ivValue, "base64url"),
   );

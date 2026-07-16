@@ -7,21 +7,21 @@ export const GOOGLE_CALENDAR_SCOPES = [
 ];
 
 // ERROR HANLDING START - DLA GOOGLE OAUTH
-const GOOGLE_OAUTH_CONFIG_ERROR = "GoogleOAuthConfigError";
-const GOOGLE_OAUTH_VALIDATION_ERROR = "GoogleOAuthValidationError";
+const GOOGLE_OAUTH_CONFIG_ERROR = "Error - Google OAuth Config";
+const GOOGLE_OAUTH_VALIDATION_ERROR = "Error - Google OAuth Validation";
 
-function createNamedError(name, message) {
+function builderOAuthError(name, message) {
   const error = new Error(message);
   error.name = name;
   return error;
 }
 
 export function createGoogleOAuthConfigError(message) {
-  return createNamedError(GOOGLE_OAUTH_CONFIG_ERROR, message);
+  return builderOAuthError(GOOGLE_OAUTH_CONFIG_ERROR, message);
 }
 
 export function createGoogleOAuthValidationError(message) {
-  return createNamedError(GOOGLE_OAUTH_VALIDATION_ERROR, message);
+  return builderOAuthError(GOOGLE_OAUTH_VALIDATION_ERROR, message);
 }
 
 export function isGoogleOAuthConfigError(error) {
@@ -36,23 +36,12 @@ export function isGoogleOAuthValidationError(error) {
 
 
 
-// POBRANIE SECRETS Z .ENV (projekt googla)
-function requiredEnv(name) {
-  const value = process.env[name]?.trim();
-
-  if (!value) {
-    throw createGoogleOAuthConfigError(`Brak ${name} w configu backendu`);
-  }
-
-  return value;
-}
-
 export function getGoogleClientId() {
-  return requiredEnv("GOOGLE_OAUTH_CLIENT_ID");
+  return process.env.GOOGLE_OAUTH_CLIENT_ID?.trim();
 }
 
 function getGoogleClientSecret() {
-  return requiredEnv("GOOGLE_OAUTH_CLIENT_SECRET");
+  return process.env.GOOGLE_OAUTH_CLIENT_SECRET?.trim();
 }
 
 export function getGoogleOAuthRedirectUri() {
@@ -75,33 +64,36 @@ export function getGoogleCalendarOAuthRedirectUri() {
 // CQRS
 export function getAllowedFrontendOrigins() {
   return [
-    process.env.FRONTEND_NEXT_URL?.trim(),
-    process.env.FRONTEND_BLAZOR_URL?.trim(),
-  ].filter(Boolean);
+    process.env.FRONTEND_NEXT_URL?.trim() || "http://localhost:3000",
+    process.env.FRONTEND_BLAZOR_URL?.trim() || "http://localhost:5173",
+  ];
 }
 
 export function getDefaultFrontendRedirectUrl() {
   return (
     process.env.GOOGLE_OAUTH_DEFAULT_SUCCESS_URL?.trim() ||
-    getAllowedFrontendOrigins()[0] ||
+    process.env.FRONTEND_NEXT_URL?.trim() ||
     "http://localhost:3000"
+    //trzeba dodac url blazora
   );
 }
 
 
 
 // local redirect url na nextjs(:3000) i blazor (:)
-//
+// dozwolone sa tylko przypisane URL zeby ktos z reki nie zmienil redirect URL
 export function validateFrontendRedirectUrl(value) {
   const redirectUrl = value?.trim() || getDefaultFrontendRedirectUrl();
   const url = new URL(redirectUrl);
+
   const allowedOrigins = new Set(
-    getAllowedFrontendOrigins().map((origin) => new URL(origin).origin),
+    getAllowedFrontendOrigins()
+    .map((origin) => new URL(origin).origin),
   );
 
   if (!allowedOrigins.has(url.origin)) {
     throw createGoogleOAuthValidationError(
-      `Niedozwolony redirect z frontendu ${url.origin} dozwolone tylko: ${[...allowedOrigins].join(", ")}`,
+      `Niedozwolony redirect z frontendu ${url.origin} dozwolone: ${[...allowedOrigins].join(", ")}`,
     );
   }
 
@@ -125,11 +117,11 @@ export function createGoogleOAuthClient(redirectUri = getGoogleOAuthRedirectUri(
 // *****************************************************************
 function normalizeGoogleProfile(profile) {
   if (!profile?.id) {
-    throw new Error("Google nie zwrocil user id");
+    throw createGoogleOAuthValidationError("Google nie zwrocil user id");
   }
 
   if (!profile?.email) {
-    throw new Error("Google nie zwrocil email usera");
+    throw createGoogleOAuthValidationError("Google nie zwrocil email usera");
   }
 
   return {

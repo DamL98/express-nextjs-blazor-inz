@@ -1,39 +1,39 @@
 import jwt from "jsonwebtoken";
 
-const DEFAULT_AUTH_COOKIE_NAME = "reservation_auth";
-const DEFAULT_SESSION_TTL = "7d";
-const STATE_TOKEN_AUDIENCE = "google-oauth-state";
-const STATE_TOKEN_TTL = "10m";
-const SESSION_TOKEN_AUDIENCE = "reservation-api-session";
-const SESSION_TOKEN_ISSUER = "reservation-system-api";
-
-class AuthConfigError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "AuthConfigError";
-  }
-}
-
 function getJwtSecret() {
-  const secret = process.env.JWT_SECRET?.trim();
-
-  if (!secret) {
-    throw new AuthConfigError("Brak JWT_SECRET w configu backendu");
-  }
-
-  return secret;
+  return process.env.JWT_SECRET?.trim();
 }
 
 export function getAuthCookieName() {
-  return process.env.AUTH_COOKIE_NAME?.trim() || DEFAULT_AUTH_COOKIE_NAME;
+  return process.env.AUTH_COOKIE_NAME?.trim();
 }
 
 export function getSessionTtl() {
-  return process.env.AUTH_SESSION_TTL?.trim() || DEFAULT_SESSION_TTL;
+  return process.env.AUTH_SESSION_TTL?.trim();
+}
+
+export function getCookieMaxAgeMs() {
+  return Number(process.env.AUTH_COOKIE_MAX_AGE_MS?.trim());
+}
+
+export function getSessionTokenAudience() {
+  return process.env.AUTH_SESSION_TOKEN_AUDIENCE?.trim();
+}
+
+export function getSessionTokenIssuer() {
+  return process.env.AUTH_SESSION_TOKEN_ISSUER?.trim();
+}
+
+export function getOAuthStateAudience() {
+  return process.env.AUTH_TOKEN_AUDIENCE?.trim();
+}
+
+export function getOAuthStateTtl() {
+  return process.env.AUTH_TOKEN_TTL?.trim();
 }
 
 export function getSessionCookieOptions() {
-  const maxAge = Number(process.env.AUTH_COOKIE_MAX_AGE_MS || 7 * 24 * 60 * 60 * 1000);
+  const maxAge = getCookieMaxAgeMs();
 
   return {
     httpOnly: true,
@@ -61,33 +61,31 @@ export function createSessionToken(user) {
     },
     getJwtSecret(),
     {
-      audience: SESSION_TOKEN_AUDIENCE,
+      audience: getSessionTokenAudience(),
       expiresIn: getSessionTtl(),
-      issuer: SESSION_TOKEN_ISSUER,
+      issuer: getSessionTokenIssuer(),
     },
   );
 }
 
 export function verifySessionToken(token) {
   return jwt.verify(token, getJwtSecret(), {
-    audience: SESSION_TOKEN_AUDIENCE,
-    issuer: SESSION_TOKEN_ISSUER,
+    audience: getSessionTokenAudience(),
+    issuer: getSessionTokenIssuer(),
   });
 }
 
 export function createGoogleOAuthState(payload) {
   return jwt.sign(payload, getJwtSecret(), {
-    audience: STATE_TOKEN_AUDIENCE,
-    expiresIn: STATE_TOKEN_TTL,
-    issuer: SESSION_TOKEN_ISSUER,
+    audience: getOAuthStateAudience(),
+    expiresIn: getOAuthStateTtl(),
+    issuer: getSessionTokenIssuer(),
   });
 }
 
 export function verifyGoogleOAuthState(state) {
   return jwt.verify(state, getJwtSecret(), {
-    audience: STATE_TOKEN_AUDIENCE,
-    issuer: SESSION_TOKEN_ISSUER,
+    audience: getOAuthStateAudience(),
+    issuer: getSessionTokenIssuer(),
   });
 }
-
-export { AuthConfigError };
