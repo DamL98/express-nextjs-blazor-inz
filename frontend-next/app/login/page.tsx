@@ -1,26 +1,12 @@
 "use client";
 
-import { FirebaseError } from "firebase/app";
 import { useRouter } from "next/navigation";
 import { type SubmitEvent, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 
 function authErrorMessage(error: unknown) {
-  if (!(error instanceof FirebaseError)) {
-    return error instanceof Error ? error.message : "Nieznany błąd.";
-  }
-
-  const messages: Record<string, string> = {
-    "auth/email-already-in-use": "Konto z tym e-mail już istnieje",
-    "auth/invalid-credential": "Nieprawidłowy e-mail lub hasło",
-    "auth/invalid-email": "Błędny adres adres e-mail",
-    "auth/popup-closed-by-user": "Zamknięte Popup Google",
-    "auth/popup-blocked": "Popup Google zablokowane przez przegladarke",
-    "auth/weak-password": "Hasło musi mieć co najmniej 6 znaków",
-  };
-
-  return messages[error.code] || "Błąd logowania";
+  return error instanceof Error ? error.message : "Nieznany blad";
 }
 
 export default function LoginPage() {
@@ -39,7 +25,7 @@ export default function LoginPage() {
     setError("");
 
     if (mode === "register" && password !== confirmPassword) {
-      setError("Hasła nie są takie same");
+      setError("Hasla nie sa takie same");
       return;
     }
 
@@ -61,14 +47,11 @@ export default function LoginPage() {
 
   async function googleLogin() {
     setError("");
-    setSubmitting(true);
+
     try {
       await loginWithGoogle();
-      router.replace("/");
     } catch (loginError) {
       setError(authErrorMessage(loginError));
-    } finally {
-      setSubmitting(false);
     }
   }
 
@@ -76,12 +59,12 @@ export default function LoginPage() {
     <main className="auth-shell login-page">
       <section className="auth-card">
         <p className="eyebrow">System rezerwacji</p>
-        <h1>{mode === "login" ? "Zaloguj się" : "Utwórz konto"}</h1>
+        <h1>{mode === "login" ? "Zaloguj sie" : "Utworz konto"}</h1>
 
         <p className="muted">
           {mode === "login"
-            ? "Uzyskaj dostęp do swoich rezerwacji."
-            : "Utwórz konto użytkownika aplikacji."}
+            ? "Zaloguj sie przez konto Google"
+            : "Blad"}
         </p>
 
         <button
@@ -98,7 +81,7 @@ export default function LoginPage() {
         <form onSubmit={submit}>
           {mode === "register" ? (
             <label>
-              Imię i nazwisko
+              Imie i nazwisko
               <input
                 required
                 value={fullName}
@@ -120,7 +103,7 @@ export default function LoginPage() {
           </label>
 
           <label>
-            Hasło
+            Haslo
             <input
               required
               minLength={6}
@@ -133,7 +116,7 @@ export default function LoginPage() {
 
           {mode === "register" ? (
             <label>
-              Powtórz hasło
+              Powtorz haslo
               <input
                 required
                 minLength={6}
@@ -149,10 +132,10 @@ export default function LoginPage() {
 
           <button className="primary-button" disabled={submitting} type="submit">
             {submitting
-              ? "Proszę czekać..."
+              ? "Czekaj.."
               : mode === "login"
-                ? "Zaloguj się"
-                : "Zarejestruj się"}
+                ? "Zaloguj sie"
+                : "Zarejestruj sie"}
           </button>
         </form>
 
@@ -165,8 +148,8 @@ export default function LoginPage() {
           }}
         >
           {mode === "login"
-            ? "Nie masz konta? Zarejestruj się"
-            : "Masz już konto? Zaloguj się"}
+            ? "Nie masz konta? Zarejestruj sie"
+            : "Masz juz konto? Zaloguj sie"}
         </button>
       </section>
     </main>

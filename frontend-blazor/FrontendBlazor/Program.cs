@@ -1,7 +1,7 @@
 using FrontendBlazor.Client.Features.Auth;
 using FrontendBlazor.Client.Features.Rooms;
 using FrontendBlazor.Client.Infrastructure.Api;
-using FrontendBlazor.Client.Infrastructure.Firebase;
+using FrontendBlazor.Client.Infrastructure.Auth;
 using FrontendBlazor.Client.Pages;
 using FrontendBlazor.Components;
 
@@ -12,7 +12,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
 builder.Services.AddExpressApi(builder.Configuration);
-builder.Services.AddFirebaseAuthentication(builder.Configuration);
+builder.Services.AddScoped<BackendAuthClient>();
 builder.Services.AddScoped<AuthContext>();
 builder.Services.AddScoped<RoomsApi>();
 

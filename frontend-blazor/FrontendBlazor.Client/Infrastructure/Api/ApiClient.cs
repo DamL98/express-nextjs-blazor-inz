@@ -9,6 +9,9 @@ public sealed class ApiClient(HttpClient httpClient)
     private static readonly JsonSerializerOptions SerializerOptions =
         new(JsonSerializerDefaults.Web);
 
+    public Uri BaseAddress => httpClient.BaseAddress
+        ?? throw new InvalidOperationException("Brak BaseAddress dla API");
+
     public async Task<T> ApiRequestAsync<T>(
         string path,
         ApiRequestOptions? options = null,

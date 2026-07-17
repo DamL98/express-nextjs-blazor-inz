@@ -16,6 +16,7 @@ export async function apiRequest<T>(
   const { token, headers, ...requestOptions } = options;
   const response = await fetch(`${API_URL}${path}`, {
     ...requestOptions,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

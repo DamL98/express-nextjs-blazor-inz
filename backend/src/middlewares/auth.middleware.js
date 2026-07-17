@@ -1,45 +1,34 @@
+import {
+  extractBearerToken,
+  getAuthCookieName,
+  verifySessionToken,
+} from "../config/auth.js";
 import { ApiError } from "../errors/apiError.js";
-import { getFirebaseAuth } from "../config/firebase.js";
 import { authService } from "../modules/auth/auth.service.js";
 
-function bearerToken(req) {
-  const authorization = req.get("authorization");
-
-  if (!authorization?.startsWith("Bearer ")) {
-    return null;
-  }
-
-  return authorization.slice(7).trim() || null;
-}
-
 export async function authenticate(req, res, next) {
-  const token = bearerToken(req);
+  const token =
+    extractBearerToken(req.get("authorization")) ||
+    req.cookies?.[getAuthCookieName()] || null;
 
   if (!token) {
     return next(new ApiError(401, "AUTH_TOKEN_REQUIRED", "Wymagane zalogowanie # brak auth tokenu"));
   }
 
-  let firebaseUser;
+  let session;
   try {
-    const checkRevoked = process.env.FIREBASE_CHECK_REVOKED_TOKENS === "true";
-    firebaseUser = await getFirebaseAuth().verifyIdToken(token, checkRevoked);
+    session = verifySessionToken(token);
   } catch (error) {
-    if (error?.name === "FirebaseConfigError") {
-      return next(
-        new ApiError(503, "FIREBASE_NOT_CONFIGURED", error.message),
-      );
-    }
-
     return next(
-      new ApiError(401, "AUTH_TOKEN_INVALID", "Nieprawidłowy token uwierzytelniający lub wygasł"),
+      new ApiError(401, "AUTH_TOKEN_INVALID", "Nieprawidlowy token lub wygasl"),
     );
   }
 
   try {
-    const user = await authService.synchronizeUser(firebaseUser);
-    res.locals.firebaseUser = firebaseUser;
+    const user = await authService.getCurrentUser(session.sub);
+    res.locals.auth = session;
     res.locals.user = user;
-    return next();
+      return next();
   } catch (error) {
     return next(error);
   }

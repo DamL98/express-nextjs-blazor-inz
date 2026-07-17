@@ -2,7 +2,7 @@ import { prisma } from "../config/prisma.js";
 
 const publicUserSelect = {
   id: true,
-  firebaseUid: true,
+  googleId: true,
   email: true,
   fullName: true,
   avatarUrl: true,
@@ -18,15 +18,22 @@ const publicUserSelect = {
 };
 
 export const userRepository = {
-  async synchronizeFirebaseUser(data) {
+  async findPublicUserById(id) {
+    return prisma.user.findUnique({
+      where: { id },
+      select: publicUserSelect,
+    });
+  },
+
+  async synchronizeGoogleUser(data) {
     return prisma.$transaction(async (tx) => {
-      const existingByUid = await tx.user.findUnique({
-        where: { firebaseUid: data.firebaseUid },
+      const existingByGoogleId = await tx.user.findUnique({
+        where: { googleId: data.googleId },
       });
 
-      if (existingByUid) {
+      if (existingByGoogleId) {
         return tx.user.update({
-          where: { id: existingByUid.id },
+          where: { id: existingByGoogleId.id },
           data: {
             email: data.email,
             fullName: data.fullName,
@@ -46,7 +53,7 @@ export const userRepository = {
         return tx.user.update({
           where: { id: existingByEmail.id },
           data: {
-            firebaseUid: data.firebaseUid,
+            googleId: data.googleId,
             fullName: data.fullName,
             avatarUrl: data.avatarUrl,
             emailVerified: data.emailVerified,
@@ -64,7 +71,7 @@ export const userRepository = {
 
       return tx.user.create({
         data: {
-          firebaseUid: data.firebaseUid,
+          googleId: data.googleId,
           email: data.email,
           fullName: data.fullName,
           avatarUrl: data.avatarUrl,
