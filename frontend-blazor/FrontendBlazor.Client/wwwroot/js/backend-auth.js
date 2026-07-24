@@ -50,3 +50,7 @@ export function logout(apiBaseUrl) {
         method: "POST",
     });
 }
+
+export function confirmAction(message) {
+    return window.confirm(message);
+}

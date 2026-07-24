@@ -1,6 +1,6 @@
-namespace FrontendBlazor.Client.Features.Rooms;
+namespace FrontendBlazor.Client.Features.Reservations.DTOs;
 
-public sealed record Room(
+public sealed record ReservationRoomDto(
     string Id,
     string Name,
     string Location,

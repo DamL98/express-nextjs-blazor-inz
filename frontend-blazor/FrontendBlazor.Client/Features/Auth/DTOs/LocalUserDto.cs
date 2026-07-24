@@ -1,6 +1,8 @@
-namespace FrontendBlazor.Client.Features.Auth;
+using System.Text.Json.Serialization;
 
-public sealed class LocalUser
+namespace FrontendBlazor.Client.Features.Auth.DTOs;
+
+public sealed class LocalUserDto
 {
     public string Id { get; init; } = string.Empty;
 
@@ -12,12 +14,13 @@ public sealed class LocalUser
 
     public string? AvatarUrl { get; init; }
 
-    public bool EmailVerified { get; init; }
+    [JsonPropertyName("emailVerified")]
+    public bool IsEmailVerified { get; init; }
 
-    public UserRole Role { get; init; } = new();
+    public UserRoleDto Role { get; init; } = new();
 }
 
-public sealed class UserRole
+public sealed class UserRoleDto
 {
     public string Name { get; init; } = string.Empty;
 }

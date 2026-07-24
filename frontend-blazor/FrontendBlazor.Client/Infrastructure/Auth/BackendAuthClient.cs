@@ -1,5 +1,6 @@
 using System.Net;
-using FrontendBlazor.Client.Features.Auth;
+using System.Text.Json.Serialization;
+using FrontendBlazor.Client.Features.Auth.DTOs;
 using FrontendBlazor.Client.Infrastructure.Api;
 using Microsoft.JSInterop;
 
@@ -14,14 +15,14 @@ public sealed class BackendAuthClient(
             "import",
             "./js/backend-auth.js").AsTask());
 
-    public async Task<LocalUser?> GetCurrentUserAsync()
+    public async Task<LocalUserDto?> GetCurrentUserAsync()
     {
         var module = await _module.Value;
-        var result = await module.InvokeAsync<BackendAuthResult<LocalUser>>(
+        var result = await module.InvokeAsync<BackendAuthResult<LocalUserDto>>(
             "getCurrentUser",
             apiClient.BaseAddress.ToString());
 
-        if (result.Success)
+        if (result.IsSuccess)
         {
             return result.Data;
         }
@@ -51,7 +52,7 @@ public sealed class BackendAuthClient(
             "logout",
             apiClient.BaseAddress.ToString());
 
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             throw ToApiException(result);
         }
@@ -76,7 +77,8 @@ public sealed class BackendAuthClient(
 
     private sealed class BackendAuthResult<T>
     {
-        public bool Success { get; init; }
+        [JsonPropertyName("success")]
+        public bool IsSuccess { get; init; }
 
         public int? StatusCode { get; init; }
 
@@ -89,6 +91,7 @@ public sealed class BackendAuthClient(
 
     private sealed class LogoutResult
     {
-        public bool LoggedOut { get; init; }
+        [JsonPropertyName("loggedOut")]
+        public bool IsLoggedOut { get; init; }
     }
 }

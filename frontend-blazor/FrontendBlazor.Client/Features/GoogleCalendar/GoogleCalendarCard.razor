@@ -1,0 +1,150 @@
+@using FrontendBlazor.Client.Features.GoogleCalendar
+@using FrontendBlazor.Client.Features.GoogleCalendar.DTOs
+@using FrontendBlazor.Client.Infrastructure.Api
+@inject GoogleCalendarApi GoogleCalendarApi
+@inject NavigationManager Navigation
+
+<section class="calendar-card">
+    <div class="calendar-card-header">
+        <div>
+            <h2>Integracja Google Calendar</h2>
+            <p>Zapis rezerwacji w kalendarzu google</p>
+        </div>
+
+        @if (_status?.IsConnected != true)
+        {
+            <button
+                type="button"
+                class="primary-button"
+                @onclick="ConnectAsync">
+                Polacz z Google
+            </button>
+        }
+    </div>
+
+    @if (_callbackMessage is not null)
+    {
+        <div class="@($"message-box {_callbackMessage.Value.CssClass}")">
+            @_callbackMessage.Value.Text
+        </div>
+    }
+
+    @if (_errorMessage is not null)
+    {
+        <div class="message-box error-message" role="alert">@_errorMessage</div>
+    }
+
+    <div class="calendar-status-box">
+        @if (_isLoading)
+        {
+            <p>Ladowanie statusu...</p>
+        }
+        else if (_status?.IsConnected == true)
+        {
+            <div class="status-details">
+                <p><span>Status:</span> polaczono</p>
+                <p><span>Konto:</span> @(_status.CalendarEmail ?? "brak danych")</p>
+                <p><span>Polaczono:</span> @(FormatDateTime(_status.ConnectedAt) ?? "brak danych")</p>
+            </div>
+        }
+        else
+        {
+            <p>Konto Google nie jest jeszcze polaczone z Google Calendar</p>
+        }
+    </div>
+</section>
+
+@code {
+    private GoogleCalendarConnectionStatusDto? _status;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private (string Text, string CssClass)? _callbackMessage;
+
+    protected override async Task OnAfterRenderAsync(bool isFirstRender)
+    {
+        if (!isFirstRender || !RendererInfo.IsInteractive)
+        {
+            return;
+        }
+
+        _callbackMessage = GetCallbackMessage();
+        await LoadStatusAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadStatusAsync()
+    {
+        try
+        {
+            _status = await GoogleCalendarApi.GetStatusAsync();
+        }
+        catch (Exception exception)
+        {
+            _errorMessage = ApiErrorMessage.FromException(
+                exception,
+                "Blad pobrania statusu Google Calendar");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private Task ConnectAsync()
+    {
+        Navigation.NavigateTo(
+            GoogleCalendarApi.BuildConnectionUrl(Navigation.Uri),
+            forceLoad: true);
+
+        return Task.CompletedTask;
+    }
+
+    private (string Text, string CssClass)? GetCallbackMessage()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = ParseQuery(uri.Query);
+        query.TryGetValue("googleCalendar", out var status);
+        query.TryGetValue("reason", out var reason);
+
+        if (status == "connected")
+        {
+            return ("Konto Google Calendar zostalo polaczone", "success-message");
+        }
+
+        if (status != "error")
+        {
+            return null;
+        }
+
+        var text = reason switch
+        {
+            "access_denied" => "Polaczenie Google Calendar zostalo anulowane przez uzytkownika",
+            "google_account_mismatch" => "Wybrane konto Google nie zgadza sie z kontem uzytym do logowania",
+            "google_refresh_token_missing" => "Google nie zwrocil refresh tokena. Ponownie polacz konto",
+            "missing_code" => "Google nie zwrocil kodu autoryzacyjnego",
+            _ => "Blad laczenia z Google Calendar",
+        };
+
+        return (text, "error-message");
+    }
+
+    // odczytuje i zamienia query stringa z URL na dictionary
+    // potrzebne do odczytania url param z callback'a od Google OAuth i Calendar
+    private static Dictionary<string, string> ParseQuery(string query)
+    {
+        return query
+            .TrimStart('?')
+            .Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Select(part => part.Split('=', 2))
+            .Where(parts => parts.Length == 2)
+            .ToDictionary(
+                parts => Uri.UnescapeDataString(parts[0]),
+                parts => Uri.UnescapeDataString(parts[1].Replace("+", " ")),
+                StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string? FormatDateTime(DateTimeOffset? value)
+    {
+        return value?.ToLocalTime().ToString("d MMM yyyy, HH:mm");
+    }
+}

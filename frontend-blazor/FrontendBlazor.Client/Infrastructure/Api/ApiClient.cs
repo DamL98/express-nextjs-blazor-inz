@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Components.WebAssembly.Http;
 
 namespace FrontendBlazor.Client.Infrastructure.Api;
 
@@ -37,6 +38,7 @@ public sealed class ApiClient(HttpClient httpClient)
         using var request = new HttpRequestMessage(
             method,
             path.TrimStart('/'));
+        request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
 
         if (!string.IsNullOrWhiteSpace(token))
         {
@@ -79,7 +81,7 @@ public sealed class ApiClient(HttpClient httpClient)
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
             var body = Deserialize<T>(json, response);
 
-            if (!response.IsSuccessStatusCode || !body.Success)
+            if (!response.IsSuccessStatusCode || !body.IsSuccess)
             {
                 var statusCode = (int)response.StatusCode;
                 var code = string.IsNullOrWhiteSpace(body.Error?.Code)

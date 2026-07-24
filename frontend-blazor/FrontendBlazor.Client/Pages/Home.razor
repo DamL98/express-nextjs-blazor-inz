@@ -1,10 +1,119 @@
 @page "/"
+@using FrontendBlazor.Client.Features.Reservations
+@using FrontendBlazor.Client.Features.Reservations.DTOs
+@using FrontendBlazor.Client.Features.Rooms
+@using FrontendBlazor.Client.Features.Rooms.DTOs
+@using FrontendBlazor.Client.Infrastructure.Api
+@inject RoomsApi RoomsApi
+@inject ReservationsApi ReservationsApi
 
 <PageTitle>Dashboard</PageTitle>
 
 <section class="dashboard-page">
     <header class="page-header">
         <h1>Dashboard</h1>
-        <p>System rezerwacji</p>
+        <p>Aktywne sale: @_activeRoomsCount</p>
     </header>
+
+    @if (_errorMessage is not null)
+    {
+        <div class="error-alert" role="alert">@_errorMessage</div>
+    }
+
+    <section class="dashboard-section">
+        <div class="dashboard-card">
+            <div class="card-heading">
+                <h2>Najblizsze rezerwacje</h2>
+                <a href="/reservations">Zobacz wszystkie</a>
+            </div>
+
+            <div class="reservation-preview-list">
+                @if (_isLoading)
+                {
+                    <div class="state-card">Ladowanie rezerwacji...</div>
+                }
+                else if (_nextReservations.Count == 0)
+                {
+                    <div class="state-card">Brak aktywnych rezerwacji</div>
+                }
+                else
+                {
+                    @foreach (var reservation in _nextReservations)
+                    {
+                        <article class="reservation-preview">
+                            <div class="preview-heading">
+                                <div>
+                                    <p class="reservation-title">@reservation.Title</p>
+                                    <p class="reservation-room">
+                                        @(reservation.Room?.Name ?? $"Sala: {reservation.RoomId}")
+                                    </p>
+                                </div>
+
+                                <span class="status-badge active">Aktywna</span>
+                            </div>
+
+                            <p class="reservation-time">
+                                @FormatDateTime(reservation.StartTime) - @FormatDateTime(reservation.EndTime)
+                            </p>
+                        </article>
+                    }
+                }
+            </div>
+        </div>
+    </section>
 </section>
+
+@code {
+    private IReadOnlyList<RoomDto> _rooms = [];
+    private IReadOnlyList<ReservationDto> _reservations = [];
+    private IReadOnlyList<ReservationDto> _nextReservations = [];
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private int _activeRoomsCount;
+
+    protected override async Task OnAfterRenderAsync(bool isFirstRender)
+    {
+        if (!isFirstRender || !RendererInfo.IsInteractive)
+        {
+            return;
+        }
+
+        await LoadDashboardAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        try
+        {
+            var roomsTask = RoomsApi.GetRoomsAsync();
+            var reservationsTask = ReservationsApi.GetMyReservationsAsync();
+
+            await Task.WhenAll(roomsTask, reservationsTask);
+
+            _rooms = await roomsTask;
+            _reservations = await reservationsTask;
+            _activeRoomsCount = _rooms.Count(room => room.IsActive);
+            _nextReservations = _reservations
+                .Where(reservation => reservation.Status == ReservationStatus.ACTIVE)
+                .OrderBy(reservation => reservation.StartTime)
+                .Take(3)
+                .ToList();
+        }
+        catch (Exception exception)
+        {
+            _errorMessage = ApiErrorMessage.FromException(
+                exception,
+                "Blad pobierania danych do dashboard");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static string FormatDateTime(DateTimeOffset value)
+    {
+        return value.ToLocalTime().ToString("d MMM yyyy, HH:mm");
+    }
+}

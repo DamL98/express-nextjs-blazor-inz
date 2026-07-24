@@ -1,4 +1,5 @@
 using FrontendBlazor.Client.Infrastructure.Auth;
+using FrontendBlazor.Client.Features.Auth.DTOs;
 using Microsoft.AspNetCore.Components;
 
 namespace FrontendBlazor.Client.Features.Auth;
@@ -10,13 +11,13 @@ public sealed class AuthContext(
     private readonly SemaphoreSlim _initializationLock = new(1, 1);
     private const string EmailPasswordDisabledMessage =
         "Logowanie e-mail/haslo jest off";
-    private bool _initialized;
+    private bool _isInitialized;
 
     public event Action? Changed;
 
-    public LocalUser? User { get; private set; }
+    public LocalUserDto? User { get; private set; }
 
-    public bool Loading { get; private set; } = true;
+    public bool IsLoading { get; private set; } = true;
 
     public bool IsAuthenticated => User is not null;
 
@@ -24,7 +25,7 @@ public sealed class AuthContext(
 
     public async Task InitializeAsync()
     {
-        if (_initialized)
+        if (_isInitialized)
         {
             return;
         }
@@ -33,7 +34,7 @@ public sealed class AuthContext(
 
         try
         {
-            if (_initialized)
+            if (_isInitialized)
             {
                 return;
             }
@@ -48,8 +49,8 @@ public sealed class AuthContext(
         }
         finally
         {
-            _initialized = true;
-            Loading = false;
+            _isInitialized = true;
+            IsLoading = false;
             _initializationLock.Release();
             NotifyChanged();
         }
@@ -95,9 +96,9 @@ public sealed class AuthContext(
         NotifyChanged();
     }
 
-    public Task<string> GetIdTokenAsync(bool forceRefresh = false)
+    public Task<string> GetIdTokenAsync(bool isForceRefresh = false)
     {
-        _ = forceRefresh;
+        _ = isForceRefresh;
         return Task.FromResult(string.Empty);
     }
 

@@ -9,7 +9,6 @@
     color: #111827;
     font-size: 1.875rem;
     font-weight: 700;
-    letter-spacing: -0.025em;
     line-height: 2.25rem;
 }
 
@@ -17,6 +16,120 @@
     max-width: 42rem;
     margin: 0.75rem 0 0;
     color: #4b5563;
+}
+
+.error-alert {
+    margin-top: 1.5rem;
+    border: 1px solid #fecaca;
+    border-radius: 0.5rem;
+    background: #fef2f2;
+    padding: 1rem;
+    color: #b91c1c;
+    font-size: 0.875rem;
+}
+
+.dashboard-section {
+    margin-top: 2rem;
+}
+
+.dashboard-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    background: #ffffff;
+    padding: 1.5rem;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
+}
+
+.card-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.card-heading h2 {
+    margin: 0;
+    color: #111827;
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.75rem;
+}
+
+.card-heading a {
+    color: #1d4ed8;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.card-heading a:hover {
+    color: #1e40af;
+}
+
+.reservation-preview-list {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+}
+
+.state-card {
+    border: 1px dashed #d1d5db;
+    border-radius: 0.5rem;
+    padding: 1.25rem;
+    color: #4b5563;
+    font-size: 0.875rem;
+}
+
+.reservation-preview {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+
+.preview-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.reservation-title {
+    margin: 0;
+    color: #111827;
+    font-weight: 500;
+}
+
+.reservation-room,
+.reservation-time {
+    margin: 0.25rem 0 0;
+    color: #4b5563;
+    font-size: 0.875rem;
+}
+
+.reservation-time {
+    margin-top: 0.75rem;
+}
+
+.status-badge {
+    width: fit-content;
+    border: 1px solid;
+    border-radius: 9999px;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.status-badge.active {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+    color: #15803d;
+}
+
+@media (min-width: 640px) {
+    .preview-heading {
+        flex-direction: row;
+        align-items: flex-start;
+        justify-content: space-between;
+    }
 }
 
 @media (min-width: 768px) {
