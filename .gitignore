@@ -33,6 +33,7 @@ measurements/*.webm
 measurements/*.png
 measurements/*.jpg
 measurements/*.jpeg
+measurements/playwright/.auth/
 
 # OS / IDE
 .idea/
