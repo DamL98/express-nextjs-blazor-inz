@@ -17,6 +17,23 @@ coverage/
 *.log
 npm-debug.log*
 
+# measurements
+measurements/node_modules/
+measurements/.cache/
+measurements/.lighthouseci/
+measurements/lighthouse-results/
+measurements/playwright-report/
+measurements/test-results/
+measurements/reports/
+measurements/results/
+measurements/artifacts/
+measurements/*.har
+measurements/*.trace.zip
+measurements/*.webm
+measurements/*.png
+measurements/*.jpg
+measurements/*.jpeg
+
 # OS / IDE
 .idea/
 .DS_Store
