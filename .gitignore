@@ -34,6 +34,8 @@ measurements/*.png
 measurements/*.jpg
 measurements/*.jpeg
 measurements/playwright/.auth/
+measurements/results/raw/
+measurements/profiles/
 
 # OS / IDE
 .idea/

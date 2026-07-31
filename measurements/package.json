@@ -4,14 +4,21 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:read:next": "playwright test tests/read-flow.spec.ts --project=next-cold --repeat-each=10",
+    "test:read:blazor": "playwright test tests/read-flow.spec.ts --project=blazor-cold --repeat-each=10",
+    "test:write:next": "playwright test tests/write-flow.spec.ts --project=next-cold",
+    "test:write:blazor": "playwright test tests/write-flow.spec.ts --project=blazor-cold",
+    "results:summarize": "tsx scripts/summarize-results.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@lhci/cli": "^0.15.1",
-    "@playwright/test": "^1.61.1",
-    "lighthouse": "^13.4.1"
+    "@playwright/test": "^1.62.1",
+    "lighthouse": "^13.4.1",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2"
   }
 }
