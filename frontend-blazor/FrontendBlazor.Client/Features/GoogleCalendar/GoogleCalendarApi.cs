@@ -10,6 +10,10 @@ public sealed class GoogleCalendarApi(ApiClient apiClient)
     {
         return apiClient.ApiRequestAsync<GoogleCalendarConnectionStatusDto>(
             "/google-calendar/status",
+            new ApiRequestOptions
+            {
+                IsBrowserCredentialRequired = true,
+            },
             cancellationToken: cancellationToken);
     }
 

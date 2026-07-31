@@ -12,6 +12,10 @@ public sealed class ReservationsApi(ApiClient apiClient)
         var query = BuildQuery(filters);
         return apiClient.ApiRequestAsync<IReadOnlyList<ReservationDto>>(
             $"/reservations/my{query}",
+            new ApiRequestOptions
+            {
+                IsBrowserCredentialRequired = true,
+            },
             cancellationToken: cancellationToken);
     }
 
@@ -25,6 +29,7 @@ public sealed class ReservationsApi(ApiClient apiClient)
             {
                 Method = HttpMethod.Post,
                 Body = request,
+                IsBrowserCredentialRequired = true,
             },
             cancellationToken);
     }
@@ -38,6 +43,7 @@ public sealed class ReservationsApi(ApiClient apiClient)
             new ApiRequestOptions
             {
                 Method = HttpMethod.Patch,
+                IsBrowserCredentialRequired = true,
             },
             cancellationToken: cancellationToken);
     }

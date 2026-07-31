@@ -1,14 +1,25 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Components.WebAssembly.Http;
+using Microsoft.JSInterop;
 
 namespace FrontendBlazor.Client.Infrastructure.Api;
 
-public sealed class ApiClient(HttpClient httpClient)
+public sealed class ApiClient(
+    HttpClient httpClient,
+    IJSRuntime jsRuntime) : IAsyncDisposable
 {
+    private const long MaxBrowserResponseSize = 10 * 1024 * 1024;
+
     private static readonly JsonSerializerOptions SerializerOptions =
         new(JsonSerializerDefaults.Web);
+
+    private readonly Lazy<Task<IJSObjectReference>> _browserApiModule = new(
+        () => jsRuntime.InvokeAsync<IJSObjectReference>(
+            "import",
+            "./js/backend-api.js").AsTask());
 
     public Uri BaseAddress => httpClient.BaseAddress
         ?? throw new InvalidOperationException("Brak BaseAddress dla API");
@@ -20,25 +31,49 @@ public sealed class ApiClient(HttpClient httpClient)
     {
         options ??= new ApiRequestOptions();
 
-        return await SendAsync<T>(
-            options.Method,
-            path,
-            options.Token,
-            options.Body,
-            cancellationToken: cancellationToken);
+        var response = options.IsBrowserCredentialRequired &&
+            !OperatingSystem.IsBrowser()
+            ? await SendWithBrowserAsync(
+                options.Method,
+                path,
+                options.Token,
+                options.Body,
+                cancellationToken)
+            : await SendWithHttpClientAsync(
+                options.Method,
+                path,
+                options.Token,
+                options.Body,
+                cancellationToken);
+
+        return ReadResponse<T>(response);
     }
 
-    private async Task<T> SendAsync<T>(
+    public async ValueTask DisposeAsync()
+    {
+        if (_browserApiModule.IsValueCreated)
+        {
+            var module = await _browserApiModule.Value;
+            await module.DisposeAsync();
+        }
+    }
+
+    private async Task<RawApiResponse> SendWithHttpClientAsync(
         HttpMethod method,
         string path,
-        string? token = null,
-        object? requestBody = null,
-        CancellationToken cancellationToken = default)
+        string? token,
+        object? requestBody,
+        CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(
             method,
             path.TrimStart('/'));
-        request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
+
+        if (OperatingSystem.IsBrowser())
+        {
+            request.SetBrowserRequestCredentials(
+                BrowserRequestCredentials.Include);
+        }
 
         if (!string.IsNullOrWhiteSpace(token))
         {
@@ -55,85 +90,171 @@ public sealed class ApiClient(HttpClient httpClient)
                 "application/json");
         }
 
-        HttpResponseMessage response;
-
         try
         {
-            response = await httpClient.SendAsync(request, cancellationToken);
+            using var response = await httpClient.SendAsync(
+                request,
+                cancellationToken);
+            var body = await response.Content.ReadAsStringAsync(
+                cancellationToken);
+
+            return new RawApiResponse(response.StatusCode, body);
         }
         catch (HttpRequestException exception)
         {
-            throw new ApiException(
-                "API_CONNECTION_ERROR",
-                "Błąd łączenia z API",
-                innerException: exception);
+            throw ConnectionError(exception);
         }
         catch (TaskCanceledException exception) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new ApiException(
-                "API_TIMEOUT",
-                "Przekroczono czas oczekiwania API response",
-                innerException: exception);
+            throw TimeoutError(exception);
         }
+    }
 
-        using (response)
+    private async Task<RawApiResponse> SendWithBrowserAsync(
+        HttpMethod method,
+        string path,
+        string? token,
+        object? requestBody,
+        CancellationToken cancellationToken)
+    {
+        try
         {
-            var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            var body = Deserialize<T>(json, response);
+            var module = await _browserApiModule.Value;
+            var body = requestBody is null
+                ? null
+                : JsonSerializer.Serialize(requestBody, SerializerOptions);
+            var response = await module.InvokeAsync<BrowserApiResponse>(
+                "startApiRequest",
+                cancellationToken,
+                BaseAddress.ToString(),
+                path,
+                method.Method,
+                token,
+                body);
 
-            if (!response.IsSuccessStatusCode || !body.IsSuccess)
+            try
             {
-                var statusCode = (int)response.StatusCode;
-                var code = string.IsNullOrWhiteSpace(body.Error?.Code)
-                    ? $"HTTP_{statusCode}"
-                    : body.Error.Code;
-                var message = string.IsNullOrWhiteSpace(body.Error?.Message)
-                    ? "Błąd API"
-                    : body.Error.Message;
+                await using var bodyReference =
+                    await module.InvokeAsync<IJSStreamReference>(
+                        "getApiResponseBody",
+                        cancellationToken,
+                        response.ResponseId);
+                await using var bodyStream =
+                    await bodyReference.OpenReadStreamAsync(
+                        MaxBrowserResponseSize,
+                        cancellationToken);
+                using var reader = new StreamReader(
+                    bodyStream,
+                    Encoding.UTF8);
+                var responseBody = await reader.ReadToEndAsync(
+                    cancellationToken);
 
-                throw new ApiException(
-                    code,
-                    message,
-                    response.StatusCode,
-                    body.Error?.Details);
+                return new RawApiResponse(
+                    (HttpStatusCode)response.StatusCode,
+                    responseBody);
             }
-
-            return body.Data ?? throw new ApiException(
-                "API_DATA_MISSING",
-                "Brak danych od API",
-                response.StatusCode);
+            finally
+            {
+                await module.InvokeVoidAsync(
+                    "releaseApiResponse",
+                    response.ResponseId);
+            }
         }
+        catch (JSException exception)
+        {
+            throw ConnectionError(exception);
+        }
+        catch (TaskCanceledException exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw TimeoutError(exception);
+        }
+    }
+
+    private static T ReadResponse<T>(RawApiResponse response)
+    {
+        var body = Deserialize<T>(response.Body, response.StatusCode);
+        var statusCode = (int)response.StatusCode;
+
+        if (statusCode is < 200 or >= 300 || !body.IsSuccess)
+        {
+            var code = string.IsNullOrWhiteSpace(body.Error?.Code)
+                ? $"HTTP_{statusCode}"
+                : body.Error.Code;
+            var message = string.IsNullOrWhiteSpace(body.Error?.Message)
+                ? "Blad API"
+                : body.Error.Message;
+
+            throw new ApiException(
+                code,
+                message,
+                response.StatusCode,
+                body.Error?.Details);
+        }
+
+        return body.Data ?? throw new ApiException(
+            "API_DATA_MISSING",
+            "Brak danych od API",
+            response.StatusCode);
     }
 
     private static ApiResponse<T> Deserialize<T>(
         string json,
-        HttpResponseMessage response)
+        HttpStatusCode statusCode)
     {
         try
         {
             return JsonSerializer.Deserialize<ApiResponse<T>>(
                 json,
-                SerializerOptions) ?? throw InvalidResponse(response);
+                SerializerOptions) ?? throw InvalidResponse(statusCode);
         }
         catch (JsonException exception)
         {
-            throw InvalidResponse(response, exception);
+            throw InvalidResponse(statusCode, exception);
         }
     }
 
+    private static ApiException ConnectionError(Exception exception)
+    {
+        return new ApiException(
+            "API_CONNECTION_ERROR",
+            "Blad laczenia z API",
+            innerException: exception);
+    }
+
+    private static ApiException TimeoutError(Exception exception)
+    {
+        return new ApiException(
+            "API_TIMEOUT",
+            "Przekroczono czas oczekiwania API response",
+            innerException: exception);
+    }
+
     private static ApiException InvalidResponse(
-        HttpResponseMessage response,
+        HttpStatusCode statusCode,
         Exception? innerException = null)
     {
-        var statusCode = (int)response.StatusCode;
-        var message = response.IsSuccessStatusCode
-            ? "Nieprawidłowy format danych od API"
-            : $"Błąd API status: {statusCode}";
+        var statusCodeValue = (int)statusCode;
+        var message = statusCodeValue is >= 200 and < 300
+            ? "Nieprawidlowy format danych od API"
+            : $"Blad API status: {statusCodeValue}";
 
         return new ApiException(
             "API_INVALID_RESPONSE",
             message,
-            response.StatusCode,
+            statusCode,
             innerException: innerException);
+    }
+
+    private sealed record RawApiResponse(
+        HttpStatusCode StatusCode,
+        string Body);
+
+    private sealed class BrowserApiResponse
+    {
+        public string ResponseId { get; init; } = string.Empty;
+
+        public int StatusCode { get; init; }
+
+        public int BodyLength { get; init; }
     }
 }

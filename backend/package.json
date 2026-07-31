@@ -14,6 +14,7 @@
     "prisma:seed": "node prisma/seed.js",
     "prisma:seed:measurements": "node prisma/seed.measurements.js",
     "prisma:seed:measurement:small": "node prisma/seed.measurements.small.js",
+    "prisma:seed:measurement:medium": "node prisma/seed.measurements.medium.js",
     "prisma:seed:measurement:large": "node prisma/seed.measurements.large.js",
     "prisma:studio": "prisma studio"
   },
