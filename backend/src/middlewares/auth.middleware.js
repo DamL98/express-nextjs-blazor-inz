@@ -3,8 +3,11 @@ import {
   getAuthCookieName,
   verifySessionToken,
 } from "../config/auth.js";
-import { ApiError } from "../errors/apiError.js";
-import { authService } from "../modules/auth/auth.service.js";
+import {
+  ForbiddenError,
+  UnauthorizedError,
+} from "../errors/httpErrors.js";
+import { getCurrentUser } from "../modules/auth/auth.service.js";
 
 export async function authenticate(req, res, next) {
   const token =
@@ -12,7 +15,12 @@ export async function authenticate(req, res, next) {
     req.cookies?.[getAuthCookieName()] || null;
 
   if (!token) {
-    return next(new ApiError(401, "AUTH_TOKEN_REQUIRED", "Wymagane zalogowanie # brak auth tokenu"));
+    return next(
+      new UnauthorizedError(
+        "Wymagane zalogowanie # brak auth tokenu",
+        "AUTH_TOKEN_REQUIRED",
+      ),
+    );
   }
 
   let session;
@@ -20,12 +28,15 @@ export async function authenticate(req, res, next) {
     session = verifySessionToken(token);
   } catch (error) {
     return next(
-      new ApiError(401, "AUTH_TOKEN_INVALID", "Nieprawidlowy token lub wygasl"),
+      new UnauthorizedError(
+        "Nieprawidlowy token lub wygasl",
+        "AUTH_TOKEN_INVALID",
+      ),
     );
   }
 
   try {
-    const user = await authService.getCurrentUser(session.sub);
+    const user = await getCurrentUser(session.sub);
     res.locals.auth = session;
     res.locals.user = user;
       return next();
@@ -37,7 +48,7 @@ export async function authenticate(req, res, next) {
 export function requireRole(...allowedRoles) {
   return (_req, res, next) => {
     if (!res.locals.user || !allowedRoles.includes(res.locals.user.role.name)) {
-      return next(new ApiError(403, "FORBIDDEN", "Brak uprawnien"));
+      return next(new ForbiddenError());
     }
 
     return next();

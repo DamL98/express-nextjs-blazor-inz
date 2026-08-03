@@ -1,51 +1,14 @@
-import { ZodError } from "zod";
-import { ApiError } from "../errors/apiError.js";
-import { errorResponse } from "../utils/api-response.js";
+import { ApiErrorMapper } from "../errors/apiErrorMapper.js";
+import { ApiResponse } from "../utils/api-response.js";
 
 export function errorMiddleware(error, _req, res, _next) {
-  if (error instanceof ApiError) {
-    return res.status(error.statusCode).json(
-      errorResponse(
-        error.code,
-        error.message,
-        error.details ?? null,
-      ),
-    );
+  const apiError = ApiErrorMapper.unknownErrorBuilder(error, {
+    includeDebugDetails: process.env.NODE_ENV === "development",
+  });
+
+  if (apiError.code === "INTERNAL_SERVER_ERROR") {
+    console.error("Nieprzewidziany error:", error);
   }
 
-  if (error instanceof ZodError) {
-    return res.status(400).json(
-      errorResponse(
-        "VALIDATION_ERROR",
-        "Błędne dane wejściowe",
-        error.flatten(),
-      ),
-    );
-  }
-
-  if (error?.statusCode && error?.code) {
-    return res.status(error.statusCode).json(
-      errorResponse(
-        error.code,
-        error.message || "Błąd aplikacji",
-        error.details ?? null,
-      ),
-    );
-  }
-
-  console.error("Nieprzewidziany error:", error);
-
-  return res.status(500).json(
-    errorResponse(
-      "INTERNAL_SERVER_ERROR",
-      "Błąd serwera",
-      process.env.NODE_ENV === "development"
-        ? {
-            name: error?.name,
-            message: error?.message,
-            stack: error?.stack,
-          }
-        : null,
-    ),
-  );
+  return ApiResponse.fromError(apiError).send(res);
 }

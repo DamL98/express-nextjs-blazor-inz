@@ -19,16 +19,12 @@ const { verifyGoogleIdTokenMock, buildGoogleAuthorizationUrlMock } = vi.hoisted(
 }));
 
 vi.mock("../../src/config/google-oauth.js", () => ({
-  createGoogleOAuthConfigError: (message) => Object.assign(new Error(message), { name: "GoogleOAuthConfigError" }),
-  createGoogleOAuthValidationError: (message) => Object.assign(new Error(message), { name: "GoogleOAuthValidationError" }),
   GOOGLE_CALENDAR_SCOPES: ["openid", "email", "profile", "https://www.googleapis.com/auth/calendar.events"],
   buildGoogleAuthorizationUrl: buildGoogleAuthorizationUrlMock,
   exchangeGoogleCode: vi.fn(),
   exchangeGoogleCodeForProfile: vi.fn(),
   getGoogleCalendarOAuthRedirectUri: () => "http://localhost:4000/api/v1/google-calendar/connect/callback",
   getGoogleOAuthRedirectUri: () => "http://localhost:4000/api/v1/auth/google/callback",
-  isGoogleOAuthConfigError: (error) => error instanceof Error && error.name === "GoogleOAuthConfigError",
-  isGoogleOAuthValidationError: (error) => error instanceof Error && error.name === "GoogleOAuthValidationError",
   validateFrontendRedirectUrl: (value) => value || "http://localhost:3000",
   verifyGoogleIdToken: verifyGoogleIdTokenMock,
   createGoogleOAuthClient: vi.fn(),
@@ -37,10 +33,8 @@ vi.mock("../../src/config/google-oauth.js", () => ({
 vi.mock("../../src/config/google-calendar.js", () => ({
   createGoogleCalendarApiFromRefreshToken: vi.fn(),
   createGoogleCalendarApiFromTokens: vi.fn(),
-  createGoogleCalendarConfigError: (message) => Object.assign(new Error(message), { name: "GoogleCalendarConfigError" }),
   decryptGoogleRefreshToken: vi.fn(),
   encryptGoogleRefreshToken: vi.fn(),
-  isGoogleCalendarConfigError: (error) => error instanceof Error && error.name === "GoogleCalendarConfigError",
 }));
 
 import { app } from "../../src/app.js";

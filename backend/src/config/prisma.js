@@ -2,12 +2,13 @@ import "dotenv/config"
 import pg from "pg"; // natywnego sterownik PostgreSQL
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { ConfigurationError } from "./config.errors.js";
 
 const { Pool } = pg;
 const connectionString = process.env.DATABASE_URL;
 
 if(!connectionString){
-  throw new Error("DATABASE_URL required");
+  throw new ConfigurationError("DATABASE_URL required");
 }
 
 const pool = new Pool({ connectionString });

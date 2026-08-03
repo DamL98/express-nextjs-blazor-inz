@@ -1,30 +1,35 @@
-import { successResponse } from "../../utils/api-response.js"
-import { reservationsService } from "./reservations.service.js"
+import { ApiResponse } from "../../utils/api-response.js"
+import {
+  cancelMyReservation as cancelMyReservationService,
+  createReservation as createReservationService,
+  getMyReservationById as getMyReservationByIdService,
+  getMyReservations as getMyReservationsService,
+} from "./reservations.service.js"
 
 export async function getMyReservations(_req, res) {
   const query = res.locals.validated.query
-  const reservations = await reservationsService.getMyReservations(res.locals.user.id, query)
+  const reservations = await getMyReservationsService(res.locals.user.id, query)
 
-  return res.status(200).json(successResponse(reservations))
+  return ApiResponse.ok(reservations).send(res)
 }
 
 export async function getReservationById(_req, res) {
   const params = res.locals.validated.params
-  const reservation = await reservationsService.getMyReservationById(res.locals.user.id, params.id)
+  const reservation = await getMyReservationByIdService(res.locals.user.id, params.id)
 
-  return res.status(200).json(successResponse(reservation))
+  return ApiResponse.ok(reservation).send(res)
 }
 
 export async function createReservation(_req, res) {
   const body = res.locals.validated.body
-  const reservation = await reservationsService.createReservation(res.locals.user.id, body)
+  const reservation = await createReservationService(res.locals.user.id, body)
 
-  return res.status(201).json(successResponse(reservation))
+  return ApiResponse.created(reservation).send(res)
 }
 
 export async function cancelMyReservation(_req, res) {
   const params = res.locals.validated.params
-  const reservation = await reservationsService.cancelMyReservation(res.locals.user.id, params.id)
+  const reservation = await cancelMyReservationService(res.locals.user.id, params.id)
 
-  return res.status(200).json(successResponse(reservation))
+  return ApiResponse.ok(reservation).send(res)
 }

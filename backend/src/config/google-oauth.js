@@ -1,4 +1,8 @@
 import { google } from "googleapis";
+import {
+  GoogleOAuthConfigurationError,
+  GoogleOAuthValidationError,
+} from "./config.errors.js";
 
 const GOOGLE_IDENTITY_SCOPES = ["openid", "email", "profile"];
 export const GOOGLE_CALENDAR_SCOPES = [
@@ -6,42 +10,31 @@ export const GOOGLE_CALENDAR_SCOPES = [
   "https://www.googleapis.com/auth/calendar.events",
 ];
 
-// ERROR HANLDING START - DLA GOOGLE OAUTH
-const GOOGLE_OAUTH_CONFIG_ERROR = "Error - Google OAuth Config";
-const GOOGLE_OAUTH_VALIDATION_ERROR = "Error - Google OAuth Validation";
-
-function builderOAuthError(name, message) {
-  const error = new Error(message);
-  error.name = name;
-  return error;
-}
-
-export function createGoogleOAuthConfigError(message) {
-  return builderOAuthError(GOOGLE_OAUTH_CONFIG_ERROR, message);
-}
-
-export function createGoogleOAuthValidationError(message) {
-  return builderOAuthError(GOOGLE_OAUTH_VALIDATION_ERROR, message);
-}
-
-export function isGoogleOAuthConfigError(error) {
-  return error instanceof Error && error.name === GOOGLE_OAUTH_CONFIG_ERROR;
-}
-
-export function isGoogleOAuthValidationError(error) {
-  return error instanceof Error && error.name === GOOGLE_OAUTH_VALIDATION_ERROR;
-}
-// ERROR HANLDING END
-
-
-
-
+// POBIERANIE SECRETS START
 export function getGoogleClientId() {
   return process.env.GOOGLE_OAUTH_CLIENT_ID?.trim();
 }
 
 function getGoogleClientSecret() {
   return process.env.GOOGLE_OAUTH_CLIENT_SECRET?.trim();
+}
+
+export function validateGoogleOAuthConfiguration() {
+  const missing = [];
+
+  if (!getGoogleClientId()) {
+    missing.push("GOOGLE_OAUTH_CLIENT_ID");
+  }
+
+  if (!getGoogleClientSecret()) {
+    missing.push("GOOGLE_OAUTH_CLIENT_SECRET");
+  }
+
+  if (missing.length > 0) {
+    throw new GoogleOAuthConfigurationError(
+      `Brak wymaganej konfiguracji Google OAuth: ${missing.join(", ")}`,
+    );
+  }
 }
 
 export function getGoogleOAuthRedirectUri() {
@@ -80,20 +73,38 @@ export function getDefaultFrontendRedirectUrl() {
 
 
 
-// local redirect url na nextjs(:3000) i blazor (:)
-// dozwolone sa tylko przypisane URL zeby ktos z reki nie zmienil redirect URL
+function parseRedirectUrl(value) {
+  try {
+    return new URL(value);
+  } catch (error) {
+    throw new GoogleOAuthValidationError("Nieprawidlowy redirect URL", {
+      cause: error,
+    });
+  }
+}
+
+function buildAllowedFrontendOrigins() {
+  try {
+    return new Set(
+      getAllowedFrontendOrigins().map((origin) => new URL(origin).origin),
+    );
+  } catch (error) {
+    throw new GoogleOAuthConfigurationError(
+      "Nieprawidlowy URL frontendu w konfiguracji",
+      { cause: error },
+    );
+  }
+}
+
+// Redirect może wskazywać dowolną ścieżkę, ale tylko na dozwolonym frontendzie.
 export function validateFrontendRedirectUrl(value) {
   const redirectUrl = value?.trim() || getDefaultFrontendRedirectUrl();
-  const url = new URL(redirectUrl);
-
-  const allowedOrigins = new Set(
-    getAllowedFrontendOrigins()
-    .map((origin) => new URL(origin).origin),
-  );
+  const url = parseRedirectUrl(redirectUrl);
+  const allowedOrigins = buildAllowedFrontendOrigins();
 
   if (!allowedOrigins.has(url.origin)) {
-    throw createGoogleOAuthValidationError(
-      `Niedozwolony redirect z frontendu ${url.origin} dozwolone: ${[...allowedOrigins].join(", ")}`,
+    throw new GoogleOAuthValidationError(
+      `Niedozwolony redirect z frontendu ${url.origin}`,
     );
   }
 
@@ -101,11 +112,12 @@ export function validateFrontendRedirectUrl(value) {
 }
 
 export function createGoogleOAuthClient(redirectUri = getGoogleOAuthRedirectUri()) {
-  return new google.auth.OAuth2(
-    getGoogleClientId(),
-    getGoogleClientSecret(),
-    redirectUri,
-  );
+  validateGoogleOAuthConfiguration();
+
+  const clientId = getGoogleClientId();
+  const clientSecret = getGoogleClientSecret();
+
+  return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 }
 
 // *****************************************************************
@@ -117,11 +129,11 @@ export function createGoogleOAuthClient(redirectUri = getGoogleOAuthRedirectUri(
 // *****************************************************************
 function normalizeGoogleProfile(profile) {
   if (!profile?.id) {
-    throw createGoogleOAuthValidationError("Google nie zwrocil user id");
+    throw new GoogleOAuthValidationError("Google nie zwrocil user id");
   }
 
   if (!profile?.email) {
-    throw createGoogleOAuthValidationError("Google nie zwrocil email usera");
+    throw new GoogleOAuthValidationError("Google nie zwrocil email usera");
   }
 
   return {

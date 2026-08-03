@@ -14,7 +14,7 @@ import { errorMiddleware } from "./middlewares/error.middleware.js";
 import { notFoundMiddleware } from "./middlewares/not-found.middleware.js";
 
 // utils
-import { successResponse } from "./utils/api-response.js";
+import { ApiResponse } from "./utils/api-response.js";
 
 export const app = express();
 
@@ -32,13 +32,11 @@ app.use(express.json());
 app.use(cookieParser());
 
 function healthHandler(_req, res) {
-  return res.status(200).json(
-    successResponse({
-      status: "ok",
-      service: "reservation-system-api",
-      timestamp: new Date().toISOString(),
-    }),
-  );
+  return ApiResponse.ok({
+    status: "ok",
+    service: "reservation-system-api",
+    timestamp: new Date().toISOString(),
+  }).send(res);
 }
 
 app.get("/health", healthHandler);

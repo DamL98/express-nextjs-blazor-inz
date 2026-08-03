@@ -1,6 +1,6 @@
 import { Router } from "express"
 
-import { validate } from "../../middlewares/validate.middleware.js"
+import { validateMiddleware } from "../../middlewares/validate.middleware.js"
 import { authenticate } from "../../middlewares/auth.middleware.js"
 
 import {
@@ -22,25 +22,25 @@ reservationsRoutes.use(authenticate)
 
 reservationsRoutes.get(
   "/my",
-  validate(getReservationsQuerySchema, "query"),
+  validateMiddleware(getReservationsQuerySchema, "query"),
   getMyReservations
 )
 
 reservationsRoutes.get(
   "/:id",
-  validate(reservationIdParamsSchema, "params"),
+  validateMiddleware(reservationIdParamsSchema, "params"),
   getReservationById
 )
 
 reservationsRoutes.post(
   "/",
-  validate(createReservationBodySchema, "body"),
+  validateMiddleware(createReservationBodySchema, "body"),
   createReservation
 )
 
 reservationsRoutes.patch(
   "/:id/cancel",
-  validate(reservationIdParamsSchema, "params"),
+  validateMiddleware(reservationIdParamsSchema, "params"),
   cancelMyReservation
 )
 

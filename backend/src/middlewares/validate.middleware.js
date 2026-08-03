@@ -1,14 +1,12 @@
-import { ApiError } from "../errors/apiError.js";
+import { ValidationError } from "../errors/validationError.js";
 
-export function validate(schema, target = "query") {
+export function validateMiddleware(schema, target = "query") {
   return (req, res, next) => {
     const result = schema.safeParse(req[target]);
 
     if (!result.success) {
       return next(
-        new ApiError(
-          400,
-          "VALIDATION_ERROR",
+        new ValidationError(
           "Błędne dane wejściowe",
           result.error.flatten(),
         ),

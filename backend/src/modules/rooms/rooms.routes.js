@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { validate } from "../../middlewares/validate.middleware.js";
+import { validateMiddleware } from "../../middlewares/validate.middleware.js";
 
 import {
   getRoomAvailabilityController,
@@ -19,20 +19,20 @@ const router = Router();
 
 router.get(
   "/",
-  validate(getRoomsQuerySchema, "query"),
+  validateMiddleware(getRoomsQuerySchema, "query"),
   getRoomsController,
 );
 
 router.get(
   "/:id/availability",
-  validate(roomIdParamsSchema, "params"),
-  validate(roomAvailabilityQuerySchema, "query"),
+  validateMiddleware(roomIdParamsSchema, "params"),
+  validateMiddleware(roomAvailabilityQuerySchema, "query"),
   getRoomAvailabilityController,
 );
 
 router.get(
   "/:id",
-  validate(roomIdParamsSchema, "params"),
+  validateMiddleware(roomIdParamsSchema, "params"),
   getRoomByIdController,
 );
 

@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 import { authenticate } from "../../middlewares/auth.middleware.js";
-import { validate } from "../../middlewares/validate.middleware.js";
+import { validateMiddleware } from "../../middlewares/validate.middleware.js";
 import {
   disconnectGoogleCalendar,
   getGoogleCalendarStatus,
@@ -19,7 +19,7 @@ router.use(authenticate);
 router.get("/status", getGoogleCalendarStatus);
 router.get(
   "/connect/start",
-  validate(googleCalendarConnectQuerySchema, "query"),
+  validateMiddleware(googleCalendarConnectQuerySchema, "query"),
   startGoogleCalendarConnection,
 );
 router.delete("/connection", disconnectGoogleCalendar);
