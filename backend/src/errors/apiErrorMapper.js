@@ -1,36 +1,34 @@
 import { ZodError } from "zod";
 
 import { ApiError } from "./apiError.js";
-import { InternalServerError } from "./serverErrors.js";
-import { ValidationError } from "./validationError.js";
+import { ProblemDefinitions } from "./problemDefinitions.js";
 
-export class ApiErrorMapper {
-  static unknownErrorBuilder(error, { includeDebugDetails = false } = {}) {
-    if (error instanceof ApiError) {
-      return error;
-    }
+export function toApiError(
+  error,
+  { includeDebugDetails = false } = {},
+) {
+  if (error instanceof ApiError) {
+    return error;
+  }
 
-    if (error instanceof ZodError) {
-      return ValidationError.fromZod(error);
-    }
+  if (error instanceof ZodError) {
+    return ApiError.from(ProblemDefinitions.VALIDATION_ERROR, {
+      extensions: { errors: error.flatten() },
+    });
+  }
 
-    if (Number.isInteger(error?.statusCode) && error?.code) {
-      return new ApiError(error.message || "Błąd aplikacji", {
-        statusCode: error.statusCode,
-        statusMessage: error.statusMessage,
-        code: error.code,
-        details: error.details ?? null,
-      });
-    }
-
-    const details = includeDebugDetails
-      ? {
+  const extensions = includeDebugDetails
+    ? {
+        debug: {
           name: error?.name,
           message: error?.message,
           stack: error?.stack,
-        }
-      : null;
+        },
+      }
+    : {};
 
-    return new InternalServerError(details);
-  }
+  return ApiError.from(ProblemDefinitions.INTERNAL_SERVER_ERROR, {
+    extensions,
+    cause: error,
+  });
 }

@@ -1,11 +1,10 @@
-import { BadRequestError } from "../../errors/httpErrors.js";
-import { InvalidTimeRangeError } from "../../errors/dateErrors.js";
+import { ApiError } from "../../errors/apiError.js";
+import { ProblemDefinitions } from "../../errors/problemDefinitions.js";
 import {
   findConflictingRoomReservations,
   findManyRooms,
   findRoomById,
 } from "../../repositories/room.repository.js";
-import { RoomNotFoundError } from "./rooms.errors.js";
 
 export async function getRooms(filters) {
   return findManyRooms(filters);
@@ -15,7 +14,7 @@ export async function getRoomById(id) {
   const room = await findRoomById(id);
 
   if (!room) {
-    throw new RoomNotFoundError();
+    throw ApiError.from(ProblemDefinitions.ROOM_NOT_FOUND);
   }
 
   return room;
@@ -25,21 +24,20 @@ export async function checkRoomAvailability(roomId, start, end) {
   const room = await findRoomById(roomId);
 
   if (!room) {
-    throw new RoomNotFoundError();
+    throw ApiError.from(ProblemDefinitions.ROOM_NOT_FOUND);
   }
 
   const startTime = new Date(start);
   const endTime = new Date(end);
 
   if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
-    throw new BadRequestError(
-      "startTime i endTime jest błędne",
-      "INVALID_DATE",
-    );
+    throw ApiError.from(ProblemDefinitions.INVALID_DATE, {
+      detail: "startTime i endTime maja nieprawidlowy format",
+    });
   }
 
   if (startTime >= endTime) {
-    throw new InvalidTimeRangeError();
+    throw ApiError.from(ProblemDefinitions.INVALID_TIME_RANGE);
   }
 
   const conflicts = await findConflictingRoomReservations(

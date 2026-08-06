@@ -11,7 +11,9 @@ export async function startApiRequest(
     method,
     token,
     body) {
-    const headers = {};
+    const headers = {
+        Accept: "application/json, application/problem+json",
+    };
 
     if (token) {
         headers.Authorization = `Bearer ${token}`;
@@ -35,6 +37,7 @@ export async function startApiRequest(
     return {
         responseId,
         statusCode: response.status,
+        contentType: response.headers.get("content-type"),
         bodyLength: responseBody.byteLength,
     };
 }

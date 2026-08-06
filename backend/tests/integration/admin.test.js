@@ -113,7 +113,7 @@ describe("Admin reservations API", () => {
       .set("Authorization", `Bearer ${adminToken}`);
 
     expect(response.status).toBe(404);
-    expect(response.body.error.code).toBe("RESERVATION_NOT_FOUND");
+    expect(response.body.code).toBe("RESERVATION_NOT_FOUND");
   });
 
   it("GET /api/v1/admin/reservations odrzuca zwyklego uzytkownika", async () => {
@@ -122,6 +122,6 @@ describe("Admin reservations API", () => {
       .set("Authorization", `Bearer ${userToken}`);
 
     expect(response.status).toBe(403);
-    expect(response.body.error.code).toBe("FORBIDDEN");
+    expect(response.body.code).toBe("FORBIDDEN");
   });
 });

@@ -1,8 +1,8 @@
 export class ApiResponse {
-  constructor(statusCode, body, statusMessage = null) {
+  constructor(statusCode, body, contentType = "application/json") {
     this.statusCode = statusCode;
-    this.statusMessage = statusMessage;
     this.body = body;
+    this.contentType = contentType;
   }
 
   static ok(data) {
@@ -19,24 +19,17 @@ export class ApiResponse {
     });
   }
 
-  static fromError(error) {
+  static problem(error, instance) {
     return new ApiResponse(
-      error.statusCode,
-      {
-        success: false,
-        error: error.toPayload(),
-      },
-      error.statusMessage,
+      error.status,
+      error.toProblemDetails(instance),
+      "application/problem+json",
     );
   }
 
   send(res) {
     res.status(this.statusCode);
-
-    if (this.statusMessage) {
-      res.statusMessage = this.statusMessage;
-    }
-
+    res.type(this.contentType);
     return res.json(this.body);
   }
 }

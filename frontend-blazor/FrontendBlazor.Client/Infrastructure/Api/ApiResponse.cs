@@ -8,6 +8,4 @@ public sealed class ApiResponse<T>
     public bool IsSuccess { get; init; }
 
     public T? Data { get; init; }
-
-    public ApiError? Error { get; init; }
 }

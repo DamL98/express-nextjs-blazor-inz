@@ -20,11 +20,8 @@ import {
   GoogleOAuthValidationError,
   OAuthStateVerificationError,
 } from "../../config/config.errors.js";
-import {
-  BadRequestError,
-  ConflictError,
-  NotFoundError,
-} from "../../errors/httpErrors.js";
+import { ApiError } from "../../errors/apiError.js";
+import { ProblemDefinitions } from "../../errors/problemDefinitions.js";
 import { calendarIntegrationRepository } from "../../repositories/calendar-integration.repository.js";
 import { reservationRepository } from "../../repositories/reservation.repository.js";
 import { userRepository } from "../../repositories/user.repository.js";
@@ -106,10 +103,9 @@ export function readConnectionState(state) {
     payload = verifyGoogleOAuthState(state);
   } catch (error) {
     if (error instanceof OAuthStateVerificationError) {
-      throw new BadRequestError(
-        "Nieprawidlowy stan polaczenia Google Calendar",
-        "GOOGLE_CALENDAR_STATE_INVALID",
-      );
+      throw ApiError.from(ProblemDefinitions.GOOGLE_CALENDAR_STATE_INVALID, {
+        cause: error,
+      });
     }
 
     throw error;
@@ -118,10 +114,9 @@ export function readConnectionState(state) {
   const parsed = googleCalendarStateSchema.safeParse(payload);
 
   if (!parsed.success) {
-    throw new BadRequestError(
-      "Nieprawidlowy stan polaczenia Google Calendar",
-      "GOOGLE_CALENDAR_STATE_INVALID",
-    );
+    throw ApiError.from(ProblemDefinitions.GOOGLE_CALENDAR_STATE_INVALID, {
+      extensions: { errors: parsed.error.flatten() },
+    });
   }
 
   try {
@@ -131,10 +126,9 @@ export function readConnectionState(state) {
     };
   } catch (error) {
     if (error instanceof GoogleOAuthValidationError) {
-      throw new BadRequestError(
-        "Nieprawidlowy stan polaczenia Google Calendar",
-        "GOOGLE_CALENDAR_STATE_INVALID",
-      );
+      throw ApiError.from(ProblemDefinitions.GOOGLE_CALENDAR_STATE_INVALID, {
+        cause: error,
+      });
     }
 
     throw error;
@@ -151,26 +145,21 @@ export async function connectCalendarFromCode(state, code, redirectUri) {
   const user = await userRepository.findPublicUserById(userId);
 
   if (!user) {
-    throw new NotFoundError(
-      "Uzytkownik nie istnieje",
-      "AUTH_SESSION_INVALID",
-    );
+    throw ApiError.from(ProblemDefinitions.AUTH_SESSION_INVALID);
   }
 
   const { googleUser, tokens } = await exchangeGoogleCode(code, redirectUri);
 
   if (googleUser.googleId !== user.googleId) {
-    throw new ConflictError(
-      "Polaczenie Google Calendar musi dotyczyc tego samego konta co logowanie",
-      "GOOGLE_ACCOUNT_MISMATCH",
-    );
+    throw ApiError.from(ProblemDefinitions.GOOGLE_ACCOUNT_MISMATCH, {
+      detail: "Polaczenie Calendar musi dotyczyc konta uzytego do logowania",
+    });
   }
 
   if (!tokens.refresh_token) {
-    throw new BadRequestError(
-      "Google nie zwrocil refresh tokena. Wymagane jest ponowne wyrazenie zgody",
-      "GOOGLE_REFRESH_TOKEN_MISSING",
-    );
+    throw ApiError.from(ProblemDefinitions.GOOGLE_REFRESH_TOKEN_MISSING, {
+      detail: "Google nie zwrocil refresh tokenu. Ponownie wyraz zgode",
+    });
   }
 
   // Po zgodzie refresh token jest używany do tworzenia wydarzeń w tle.

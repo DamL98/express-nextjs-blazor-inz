@@ -7,6 +7,7 @@ async function apiRequest(apiBaseUrl, path, options = {}) {
         method: options.method ?? "GET",
         credentials: "include",
         headers: {
+            Accept: "application/json, application/problem+json",
             "Content-Type": "application/json",
         },
     });
@@ -23,8 +24,8 @@ async function apiRequest(apiBaseUrl, path, options = {}) {
         return {
             success: false,
             statusCode: response.status,
-            errorCode: payload?.error?.code ?? `HTTP_${response.status}`,
-            errorMessage: payload?.error?.message ?? "Blad API",
+            errorCode: payload?.code ?? payload?.type ?? `HTTP_${response.status}`,
+            errorMessage: payload?.detail ?? payload?.title ?? "Blad API",
         };
     }
 

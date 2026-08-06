@@ -1,7 +1,8 @@
 import { ReservationStatus } from "@prisma/client"
 
+import { ApiError } from "../../errors/apiError.js"
+import { ProblemDefinitions } from "../../errors/problemDefinitions.js"
 import { adminRepository } from "../../repositories/admin.repository.js"
-import { ReservationNotFoundError } from "../reservations/reservations.errors.js"
 
 export async function getReservations(filters = {}) {
   return adminRepository.findReservations(filters)
@@ -11,7 +12,7 @@ export async function cancelReservation(id) {
   const reservation = await adminRepository.findReservationById(id)
 
   if (!reservation) {
-    throw new ReservationNotFoundError()
+    throw ApiError.from(ProblemDefinitions.RESERVATION_NOT_FOUND)
   }
 
   if (reservation.status === ReservationStatus.CANCELLED) {

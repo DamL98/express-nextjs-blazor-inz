@@ -1,39 +1,30 @@
 import { ReservationStatus } from "@prisma/client"
 
-import { BadRequestError } from "../../errors/httpErrors.js"
-import { InvalidTimeRangeError } from "../../errors/dateErrors.js"
+import { ApiError } from "../../errors/apiError.js"
+import { ProblemDefinitions } from "../../errors/problemDefinitions.js"
 import { findRoomById } from "../../repositories/room.repository.js"
 import { reservationRepository } from "../../repositories/reservation.repository.js"
 import {
   removeReservationFromCalendar,
   syncReservation,
 } from "../google-calendar/google-calendar.service.js"
-import { RoomInactiveError, RoomNotFoundError } from "../rooms/rooms.errors.js"
-import {
-  ReservationNotFoundError,
-  RoomAlreadyReservedError,
-} from "./reservations.errors.js"
 
 function parseTimeRange(start, end) {
   const startTime = new Date(start)
   const endTime = new Date(end)
 
   if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
-    throw new BadRequestError(
-      "startTime i endTime jest błędne",
-      "INVALID_DATE_FORMAT",
-    )
+    throw ApiError.from(ProblemDefinitions.INVALID_DATE_FORMAT, {
+      detail: "startTime i endTime maja nieprawidlowy format",
+    })
   }
 
   if (startTime >= endTime) {
-    throw new InvalidTimeRangeError()
+    throw ApiError.from(ProblemDefinitions.INVALID_TIME_RANGE)
   }
 
   if (startTime < new Date()) {
-    throw new BadRequestError(
-      "Rezerwacji nie może być w przeszłości",
-      "RESERVATION_IN_PAST",
-    )
+    throw ApiError.from(ProblemDefinitions.RESERVATION_IN_PAST)
   }
 
   return {
@@ -53,7 +44,7 @@ export async function getMyReservationById(userId, id) {
   const reservation = await reservationRepository.findById(id)
 
   if (!reservation || reservation.userId !== userId) {
-    throw new ReservationNotFoundError()
+    throw ApiError.from(ProblemDefinitions.RESERVATION_NOT_FOUND)
   }
 
   return reservation
@@ -63,11 +54,11 @@ export async function createReservation(userId, data) {
   const room = await findRoomById(data.roomId)
 
   if (!room) {
-    throw new RoomNotFoundError()
+    throw ApiError.from(ProblemDefinitions.ROOM_NOT_FOUND)
   }
 
   if (!room.isActive) {
-    throw new RoomInactiveError()
+    throw ApiError.from(ProblemDefinitions.ROOM_INACTIVE)
   }
 
   const { startTime, endTime } = parseTimeRange(
@@ -82,7 +73,7 @@ export async function createReservation(userId, data) {
   )
 
   if (conflict) {
-    throw new RoomAlreadyReservedError()
+    throw ApiError.from(ProblemDefinitions.ROOM_ALREADY_RESERVED)
   }
 
   const reservation = await reservationRepository.create({

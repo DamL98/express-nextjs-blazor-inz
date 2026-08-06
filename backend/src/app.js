@@ -14,7 +14,8 @@ import { errorMiddleware } from "./middlewares/error.middleware.js";
 import { notFoundMiddleware } from "./middlewares/not-found.middleware.js";
 
 // utils
-import { ApiResponse } from "./utils/api-response.js";
+import { ApiResponse } from "./utils/apiResponse.js";
+import { findProblemByType } from "./errors/problemDefinitions.js";
 
 export const app = express();
 
@@ -41,6 +42,34 @@ function healthHandler(_req, res) {
 
 app.get("/health", healthHandler);
 app.get("/api/v1/health", healthHandler);
+
+app.get("/problems/:slug", (req, res, next) => {
+  const definition = findProblemByType(
+    `/problems/${req.params.slug}`,
+  );
+
+  if (!definition) {
+    return next();
+  }
+
+  return res
+    .type("html")
+    .send(`<!doctype html>
+<html lang="pl">
+<head><meta charset="utf-8"><title>${definition.title}</title></head>
+<body>
+  <main>
+    <h1>${definition.title}</h1>
+    <dl>
+      <dt>Type</dt><dd><code>${definition.type}</code></dd>
+      <dt>HTTP status</dt><dd>${definition.status}</dd>
+      <dt>Code</dt><dd><code>${definition.code}</code></dd>
+      <dt>Default detail</dt><dd>${definition.detail}</dd>
+    </dl>
+  </main>
+</body>
+</html>`);
+});
 
 app.use("/api/v1/rooms", roomsRoutes);
 app.use("/api/v1/auth", authRoutes);

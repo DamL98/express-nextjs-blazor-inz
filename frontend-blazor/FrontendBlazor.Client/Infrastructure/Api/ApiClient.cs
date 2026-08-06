@@ -98,15 +98,18 @@ public sealed class ApiClient(
             var body = await response.Content.ReadAsStringAsync(
                 cancellationToken);
 
-            return new RawApiResponse(response.StatusCode, body);
+            return new RawApiResponse(
+                response.StatusCode,
+                response.Content.Headers.ContentType?.MediaType,
+                body);
         }
         catch (HttpRequestException exception)
         {
-            throw ConnectionError(exception);
+            throw CreateConnectionException(exception);
         }
         catch (TaskCanceledException exception) when (!cancellationToken.IsCancellationRequested)
         {
-            throw TimeoutError(exception);
+            throw CreateTimeoutException(exception);
         }
     }
 
@@ -151,6 +154,7 @@ public sealed class ApiClient(
 
                 return new RawApiResponse(
                     (HttpStatusCode)response.StatusCode,
+                    response.ContentType,
                     responseBody);
             }
             finally
@@ -162,33 +166,28 @@ public sealed class ApiClient(
         }
         catch (JSException exception)
         {
-            throw ConnectionError(exception);
+            throw CreateConnectionException(exception);
         }
         catch (TaskCanceledException exception) when (!cancellationToken.IsCancellationRequested)
         {
-            throw TimeoutError(exception);
+            throw CreateTimeoutException(exception);
         }
     }
 
     private static T ReadResponse<T>(RawApiResponse response)
     {
-        var body = Deserialize<T>(response.Body, response.StatusCode);
         var statusCode = (int)response.StatusCode;
 
-        if (statusCode is < 200 or >= 300 || !body.IsSuccess)
+        if (statusCode is < 200 or >= 300)
         {
-            var code = string.IsNullOrWhiteSpace(body.Error?.Code)
-                ? $"HTTP_{statusCode}"
-                : body.Error.Code;
-            var message = string.IsNullOrWhiteSpace(body.Error?.Message)
-                ? "Blad API"
-                : body.Error.Message;
+            throw CreateApiException(response);
+        }
 
-            throw new ApiException(
-                code,
-                message,
-                response.StatusCode,
-                body.Error?.Details);
+        var body = DeserializeSuccess<T>(response.Body, response.StatusCode);
+
+        if (!body.IsSuccess)
+        {
+            throw CreateInvalidResponseException(response.StatusCode);
         }
 
         return body.Data ?? throw new ApiException(
@@ -197,7 +196,7 @@ public sealed class ApiClient(
             response.StatusCode);
     }
 
-    private static ApiResponse<T> Deserialize<T>(
+    private static ApiResponse<T> DeserializeSuccess<T>(
         string json,
         HttpStatusCode statusCode)
     {
@@ -205,15 +204,63 @@ public sealed class ApiClient(
         {
             return JsonSerializer.Deserialize<ApiResponse<T>>(
                 json,
-                SerializerOptions) ?? throw InvalidResponse(statusCode);
+                SerializerOptions)
+                ?? throw CreateInvalidResponseException(statusCode);
         }
         catch (JsonException exception)
         {
-            throw InvalidResponse(statusCode, exception);
+            throw CreateInvalidResponseException(statusCode, exception);
         }
     }
 
-    private static ApiException ConnectionError(Exception exception)
+    private static ApiException CreateApiException(RawApiResponse response)
+    {
+        if (response.ContentType?.StartsWith(
+            "application/problem+json",
+            StringComparison.OrdinalIgnoreCase) != true)
+        {
+            return CreateInvalidResponseException(response.StatusCode);
+        }
+
+        ProblemDetailsDto problem;
+
+        try
+        {
+            problem = JsonSerializer.Deserialize<ProblemDetailsDto>(
+                response.Body,
+                SerializerOptions)
+                ?? throw CreateInvalidResponseException(response.StatusCode);
+        }
+        catch (JsonException exception)
+        {
+            return CreateInvalidResponseException(response.StatusCode, exception);
+        }
+
+        if (problem.Status != (int)response.StatusCode ||
+            string.IsNullOrWhiteSpace(problem.Type) ||
+            string.IsNullOrWhiteSpace(problem.Title))
+        {
+            return CreateInvalidResponseException(response.StatusCode);
+        }
+
+        var code = string.IsNullOrWhiteSpace(problem.Code)
+            ? problem.Type
+            : problem.Code;
+        var message = string.IsNullOrWhiteSpace(problem.Detail)
+            ? problem.Title
+            : problem.Detail;
+        var details = problem.Errors ?? problem.Details;
+
+        return new ApiException(
+            code,
+            message,
+            response.StatusCode,
+            details,
+            problem.Type,
+            problem.Instance);
+    }
+
+    private static ApiException CreateConnectionException(Exception exception)
     {
         return new ApiException(
             "API_CONNECTION_ERROR",
@@ -221,7 +268,7 @@ public sealed class ApiClient(
             innerException: exception);
     }
 
-    private static ApiException TimeoutError(Exception exception)
+    private static ApiException CreateTimeoutException(Exception exception)
     {
         return new ApiException(
             "API_TIMEOUT",
@@ -229,7 +276,7 @@ public sealed class ApiClient(
             innerException: exception);
     }
 
-    private static ApiException InvalidResponse(
+    private static ApiException CreateInvalidResponseException(
         HttpStatusCode statusCode,
         Exception? innerException = null)
     {
@@ -247,6 +294,7 @@ public sealed class ApiClient(
 
     private sealed record RawApiResponse(
         HttpStatusCode StatusCode,
+        string? ContentType,
         string Body);
 
     private sealed class BrowserApiResponse
@@ -254,6 +302,8 @@ public sealed class ApiClient(
         public string ResponseId { get; init; } = string.Empty;
 
         public int StatusCode { get; init; }
+
+        public string? ContentType { get; init; }
 
         public int BodyLength { get; init; }
     }

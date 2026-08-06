@@ -114,7 +114,7 @@ describe("Reservations API", () => {
     });
 
     expect(response.status).toBe(400);
-    expect(response.body.error.code).toBe("INVALID_TIME_RANGE");
+    expect(response.body.code).toBe("INVALID_TIME_RANGE");
   });
 
   it("POST /api/v1/reservations zwraca RESERVATION_IN_PAST", async () => {
@@ -125,7 +125,7 @@ describe("Reservations API", () => {
     });
 
     expect(response.status).toBe(400);
-    expect(response.body.error.code).toBe("RESERVATION_IN_PAST");
+    expect(response.body.code).toBe("RESERVATION_IN_PAST");
   });
 
   it("POST /api/v1/reservations zwraca ROOM_INACTIVE", async () => {
@@ -133,7 +133,7 @@ describe("Reservations API", () => {
       .send(body(inactiveRoom.id, 5, "inactive room"));
 
     expect(response.status).toBe(400);
-    expect(response.body.error.code).toBe("ROOM_INACTIVE");
+    expect(response.body.code).toBe("ROOM_INACTIVE");
   });
 
   it("POST /api/v1/reservations zwraca ROOM_ALREADY_RESERVED", async () => {
@@ -147,7 +147,7 @@ describe("Reservations API", () => {
 
     expect(firstResponse.status).toBe(201);
     expect(secondResponse.status).toBe(409);
-    expect(secondResponse.body.error.code).toBe("ROOM_ALREADY_RESERVED");
+    expect(secondResponse.body.code).toBe("ROOM_ALREADY_RESERVED");
   });
 
   it("GET /api/v1/reservations/:id zwraca RESERVATION_NOT_FOUND", async () => {
@@ -160,9 +160,9 @@ describe("Reservations API", () => {
     const missingResponse = await asUser(request(app).get(`${API}/${EMPTY_UUID}`), testUserToken);
 
     expect(foreignResponse.status).toBe(404);
-    expect(foreignResponse.body.error.code).toBe("RESERVATION_NOT_FOUND");
+    expect(foreignResponse.body.code).toBe("RESERVATION_NOT_FOUND");
     expect(missingResponse.status).toBe(404);
-    expect(missingResponse.body.error.code).toBe("RESERVATION_NOT_FOUND");
+    expect(missingResponse.body.code).toBe("RESERVATION_NOT_FOUND");
   });
 
   it("PATCH /api/v1/reservations/:id/cancel ustawia status CANCELLED", async () => {

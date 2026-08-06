@@ -5,12 +5,8 @@ import {
 } from "../../config/config.errors.js";
 import { getGoogleOAuthRedirectUri } from "../../config/google-oauth.js";
 import { ApiError } from "../../errors/apiError.js";
-import {
-  BadRequestError,
-  ServiceUnavailableError,
-  UnauthorizedError,
-} from "../../errors/httpErrors.js";
-import { ApiResponse } from "../../utils/api-response.js";
+import { ProblemDefinitions } from "../../errors/problemDefinitions.js";
+import { ApiResponse } from "../../utils/apiResponse.js";
 import {
   createGoogleAuthorizationUrl,
   createSessionFromAuthorizationCode,
@@ -35,6 +31,45 @@ function applySessionCookie(res, token) {
   res.cookie(getAuthCookieName(), token, getSessionCookieOptions());
 }
 
+function mapGoogleAuthenticationError(error, fallbackDetail) {
+  if (error instanceof ApiError) {
+    return error;
+  }
+
+  if (error instanceof GoogleOAuthConfigurationError) {
+    return ApiError.from(ProblemDefinitions.GOOGLE_OAUTH_NOT_CONFIGURED, {
+      detail: error.message,
+      cause: error,
+    });
+  }
+
+  if (error instanceof GoogleOAuthValidationError) {
+    return ApiError.from(ProblemDefinitions.GOOGLE_AUTH_FAILED, {
+      detail: error.message,
+      cause: error,
+    });
+  }
+
+  return ApiError.from(ProblemDefinitions.GOOGLE_AUTH_FAILED, {
+    detail: fallbackDetail,
+    cause: error,
+  });
+}
+
+function mapGoogleAuthorizationError(error) {
+  if (error instanceof GoogleOAuthConfigurationError) {
+    return ApiError.from(ProblemDefinitions.GOOGLE_OAUTH_NOT_CONFIGURED, {
+      detail: error.message,
+      cause: error,
+    });
+  }
+
+  return ApiError.from(ProblemDefinitions.INVALID_GOOGLE_REDIRECT, {
+    detail: error.message || "Nieprawidlowy adres przekierowania Google",
+    cause: error,
+  });
+}
+
 export async function getCurrentUser(_req, res) {
   return ApiResponse.ok(res.locals.user).send(res);
 }
@@ -44,10 +79,9 @@ export async function createSession(req, res, next) {
 
   if (!idToken && !authorizationCode) {
     return next(
-      new BadRequestError(
-        "Przekaz Google idToken w body Authorization lub authorizationCode",
-        "GOOGLE_AUTH_PAYLOAD_REQUIRED",
-      ),
+      ApiError.from(ProblemDefinitions.GOOGLE_AUTH_PAYLOAD_REQUIRED, {
+        detail: "Przekaz Google idToken lub authorizationCode",
+      }),
     );
   }
 
@@ -59,31 +93,10 @@ export async function createSession(req, res, next) {
     applySessionCookie(res, session.token);
     return ApiResponse.ok(session).send(res);
   } catch (error) {
-    if (error instanceof ApiError) {
-      return next(error);
-    }
-
-    if (error instanceof GoogleOAuthConfigurationError) {
-      return next(
-        new ServiceUnavailableError(
-          error.message,
-          "GOOGLE_OAUTH_NOT_CONFIGURED",
-        ),
-      );
-    }
-
-    if (error instanceof GoogleOAuthValidationError) {
-      return next(
-        new UnauthorizedError(error.message, "GOOGLE_AUTH_FAILED"),
-      );
-    }
-
-    return next(
-      new UnauthorizedError(
-        "Blad uwierzytelniania OAuth",
-        "GOOGLE_AUTH_FAILED",
-      ),
-    );
+    return next(mapGoogleAuthenticationError(
+      error,
+      "Blad uwierzytelniania OAuth",
+    ));
   }
 }
 
@@ -92,24 +105,7 @@ export async function getGoogleAuthorizationUrl(req, res, next) {
     const authorizationUrl = createGoogleAuthorizationUrl(req.query.redirectTo);
     return ApiResponse.ok({ authorizationUrl }).send(res);
   } catch (error) {
-    if (error instanceof GoogleOAuthConfigurationError) {
-      return next(
-        new ServiceUnavailableError(
-          error.message,
-          "GOOGLE_OAUTH_NOT_CONFIGURED",
-        ),
-      );
-    }
-
-    if (error instanceof GoogleOAuthValidationError) {
-      return next(
-        new BadRequestError(error.message, "INVALID_GOOGLE_REDIRECT"),
-      );
-    }
-
-    return next(
-      new BadRequestError(error.message, "INVALID_GOOGLE_REDIRECT"),
-    );
+    return next(mapGoogleAuthorizationError(error));
   }
 }
 
@@ -118,34 +114,16 @@ export async function redirectToGoogleAuthorization(req, res, next) {
     const authorizationUrl = createGoogleAuthorizationUrl(req.query.redirectTo);
     return res.redirect(302, authorizationUrl);
   } catch (error) {
-    if (error instanceof GoogleOAuthConfigurationError) {
-      return next(
-        new ServiceUnavailableError(
-          error.message,
-          "GOOGLE_OAUTH_NOT_CONFIGURED",
-        ),
-      );
-    }
-
-    if (error instanceof GoogleOAuthValidationError) {
-      return next(
-        new BadRequestError(error.message, "INVALID_GOOGLE_REDIRECT"),
-      );
-    }
-
-    return next(
-      new BadRequestError(error.message, "INVALID_GOOGLE_REDIRECT"),
-    );
+    return next(mapGoogleAuthorizationError(error));
   }
 }
 
 export async function handleGoogleOAuthCallback(req, res, next) {
   if (req.query.error) {
     return next(
-      new UnauthorizedError(
-        `Google OAuth logowanie z bledem: ${req.query.error}`,
-        "GOOGLE_AUTH_DENIED",
-      ),
+      ApiError.from(ProblemDefinitions.GOOGLE_AUTH_DENIED, {
+        detail: `Google OAuth zwrocilo blad: ${req.query.error}`,
+      }),
     );
   }
 
@@ -153,10 +131,7 @@ export async function handleGoogleOAuthCallback(req, res, next) {
 
   if (!code) {
     return next(
-      new BadRequestError(
-        "Brak code w callbacku Google OAuth",
-        "GOOGLE_AUTH_CODE_REQUIRED",
-      ),
+      ApiError.from(ProblemDefinitions.GOOGLE_AUTH_CODE_REQUIRED),
     );
   }
 
@@ -178,31 +153,10 @@ export async function handleGoogleOAuthCallback(req, res, next) {
 
     return ApiResponse.ok(session).send(res);
   } catch (error) {
-    if (error instanceof ApiError) {
-      return next(error);
-    }
-
-    if (error instanceof GoogleOAuthConfigurationError) {
-      return next(
-        new ServiceUnavailableError(
-          error.message,
-          "GOOGLE_OAUTH_NOT_CONFIGURED",
-        ),
-      );
-    }
-
-    if (error instanceof GoogleOAuthValidationError) {
-      return next(
-        new UnauthorizedError(error.message, "GOOGLE_AUTH_FAILED"),
-      );
-    }
-
-    return next(
-      new UnauthorizedError(
-        "Blad logowanie Google OAuth",
-        "GOOGLE_AUTH_FAILED",
-      ),
-    );
+    return next(mapGoogleAuthenticationError(
+      error,
+      "Blad logowania Google OAuth",
+    ));
   }
 }
 

@@ -3,10 +3,8 @@ import {
   getAuthCookieName,
   verifySessionToken,
 } from "../config/auth.js";
-import {
-  ForbiddenError,
-  UnauthorizedError,
-} from "../errors/httpErrors.js";
+import { ApiError } from "../errors/apiError.js";
+import { ProblemDefinitions } from "../errors/problemDefinitions.js";
 import { getCurrentUser } from "../modules/auth/auth.service.js";
 
 export async function authenticate(req, res, next) {
@@ -16,10 +14,7 @@ export async function authenticate(req, res, next) {
 
   if (!token) {
     return next(
-      new UnauthorizedError(
-        "Wymagane zalogowanie # brak auth tokenu",
-        "AUTH_TOKEN_REQUIRED",
-      ),
+      ApiError.from(ProblemDefinitions.AUTH_TOKEN_REQUIRED),
     );
   }
 
@@ -28,10 +23,7 @@ export async function authenticate(req, res, next) {
     session = verifySessionToken(token);
   } catch (error) {
     return next(
-      new UnauthorizedError(
-        "Nieprawidlowy token lub wygasl",
-        "AUTH_TOKEN_INVALID",
-      ),
+      ApiError.from(ProblemDefinitions.AUTH_TOKEN_INVALID),
     );
   }
 
@@ -48,7 +40,7 @@ export async function authenticate(req, res, next) {
 export function requireRole(...allowedRoles) {
   return (_req, res, next) => {
     if (!res.locals.user || !allowedRoles.includes(res.locals.user.role.name)) {
-      return next(new ForbiddenError());
+      return next(ApiError.from(ProblemDefinitions.FORBIDDEN));
     }
 
     return next();

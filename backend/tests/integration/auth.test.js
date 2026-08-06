@@ -44,7 +44,7 @@ describe("Google OAuth API", () => {
     const response = await request(app).get("/api/v1/auth/me");
 
     expect(response.status).toBe(401);
-    expect(response.body.error.code).toBe("AUTH_TOKEN_REQUIRED");
+    expect(response.body.code).toBe("AUTH_TOKEN_REQUIRED");
   });
 
   it("POST /api/v1/auth/session synchronizuje konto Google i zwraca sesje backendu", async () => {
@@ -79,7 +79,7 @@ describe("Google OAuth API", () => {
       .set("Authorization", "Bearer invalid-google-token");
 
     expect(response.status).toBe(401);
-    expect(response.body.error.code).toBe("GOOGLE_AUTH_FAILED");
+    expect(response.body.code).toBe("GOOGLE_AUTH_FAILED");
   });
 
   it("GET /api/v1/auth/google/url zwraca URL autoryzacji Google", async () => {

@@ -4,11 +4,8 @@ import {
   GoogleOAuthValidationError,
 } from "../../config/config.errors.js";
 import { ApiError } from "../../errors/apiError.js";
-import {
-  BadRequestError,
-  ServiceUnavailableError,
-} from "../../errors/httpErrors.js";
-import { ApiResponse } from "../../utils/api-response.js";
+import { ProblemDefinitions } from "../../errors/problemDefinitions.js";
+import { ApiResponse } from "../../utils/apiResponse.js";
 import {
   connectCalendarFromCode,
   createConnectionAuthorizationUrl,
@@ -30,6 +27,24 @@ function buildRedirectUrl(redirectTo, status, reason = null) {
   return url.toString();
 }
 
+function mapCalendarStartError(error) {
+  if (error instanceof ConfigurationError) {
+    return ApiError.from(ProblemDefinitions.GOOGLE_CALENDAR_NOT_CONFIGURED, {
+      detail: error.message,
+      cause: error,
+    });
+  }
+
+  if (error instanceof GoogleOAuthValidationError) {
+    return ApiError.from(ProblemDefinitions.INVALID_GOOGLE_REDIRECT, {
+      detail: error.message,
+      cause: error,
+    });
+  }
+
+  return error;
+}
+
 export async function getGoogleCalendarStatus(_req, res) {
   const status = await getConnectionStatus(
     res.locals.user.id,
@@ -48,22 +63,7 @@ export async function startGoogleCalendarConnection(req, res, next) {
 
     return res.redirect(302, authorizationUrl);
   } catch (error) {
-    if (error instanceof ConfigurationError) {
-      return next(
-        new ServiceUnavailableError(
-          error.message,
-          "GOOGLE_CALENDAR_NOT_CONFIGURED",
-        ),
-      );
-    }
-
-    if (error instanceof GoogleOAuthValidationError) {
-      return next(
-        new BadRequestError(error.message, "INVALID_GOOGLE_REDIRECT"),
-      );
-    }
-
-    return next(error);
+    return next(mapCalendarStartError(error));
   }
 }
 
@@ -72,10 +72,7 @@ export async function handleGoogleCalendarCallback(req, res, next) {
 
   if (!state) {
     return next(
-      new BadRequestError(
-        "Brak state w callbacku Google Calendar",
-        "GOOGLE_CALENDAR_STATE_REQUIRED",
-      ),
+      ApiError.from(ProblemDefinitions.GOOGLE_CALENDAR_STATE_REQUIRED),
     );
   }
 
@@ -114,12 +111,10 @@ export async function handleGoogleCalendarCallback(req, res, next) {
     return res.redirect(302, buildRedirectUrl(redirectTo, "connected"));
   } catch (error) {
     if (error instanceof ConfigurationError) {
-      return next(
-        new ServiceUnavailableError(
-          error.message,
-          "GOOGLE_CALENDAR_NOT_CONFIGURED",
-        ),
-      );
+      return next(ApiError.from(
+        ProblemDefinitions.GOOGLE_CALENDAR_NOT_CONFIGURED,
+        { detail: error.message, cause: error },
+      ));
     }
 
     if (error instanceof ApiError) {

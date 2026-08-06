@@ -1,4 +1,4 @@
-import { ApiResponse } from "../../utils/api-response.js"
+import { ApiResponse } from "../../utils/apiResponse.js"
 import {
   cancelMyReservation as cancelMyReservationService,
   createReservation as createReservationService,

@@ -2,49 +2,52 @@ import { z } from "zod";
 import { describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "../../src/errors/apiError.js";
-import { ApiErrorMapper } from "../../src/errors/apiErrorMapper.js";
-import { NotFoundError } from "../../src/errors/httpErrors.js";
-import { ValidationError } from "../../src/errors/validationError.js";
-import { ApiResponse } from "../../src/utils/api-response.js";
+import { toApiError } from "../../src/errors/apiErrorMapper.js";
+import { ProblemDefinitions } from "../../src/errors/problemDefinitions.js";
+import { ApiResponse } from "../../src/utils/apiResponse.js";
 
 function createResponseMock() {
   return {
     json: vi.fn(),
     status: vi.fn(),
-    statusMessage: "",
+    type: vi.fn(),
   };
 }
 
 describe("ApiError", () => {
-  it("buduje blad HTTP z kodem aplikacji i payloadem API", () => {
-    const error = new NotFoundError("Nie znaleziono zasobu", "RESOURCE_NOT_FOUND");
+  it("buduje ApiError zgodny z modelem Problem Details", () => {
+    const error = ApiError.from(ProblemDefinitions.ROOM_NOT_FOUND);
 
     expect(error).toBeInstanceOf(ApiError);
-    expect(error.statusCode).toBe(404);
-    expect(error.statusMessage).toBe("Not Found");
-    expect(error.toPayload()).toEqual({
-      code: "RESOURCE_NOT_FOUND",
-      message: "Nie znaleziono zasobu",
-      details: null,
+    expect(error.status).toBe(404);
+    expect(error.toProblemDetails("urn:uuid:test-instance")).toEqual({
+      type: "/problems/room-not-found",
+      title: "Nie znaleziono sali",
+      status: 404,
+      detail: "Nie znaleziono sali",
+      instance: "urn:uuid:test-instance",
+      code: "ROOM_NOT_FOUND",
     });
   });
 
-  it("mapuje ZodError na ValidationError ze szczegolami walidacji", () => {
+  it("mapuje ZodError na ApiError z rozszerzeniem errors", () => {
     const result = z.object({ name: z.string().min(1) }).safeParse({ name: "" });
-    const error = ApiErrorMapper.unknownErrorBuilder(result.error);
+    const error = toApiError(result.error);
+    const problem = error.toProblemDetails();
 
-    expect(error).toBeInstanceOf(ValidationError);
-    expect(error.statusCode).toBe(400);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.status).toBe(400);
     expect(error.code).toBe("VALIDATION_ERROR");
-    expect(error.details.fieldErrors.name).toBeDefined();
+    expect(problem.errors.fieldErrors.name).toBeDefined();
   });
 
   it("nie ujawnia szczegolow nieoczekiwanego bledu poza development", () => {
-    const error = ApiErrorMapper.unknownErrorBuilder(new Error("sekret"));
+    const error = toApiError(new Error("sekret"));
+    const problem = error.toProblemDetails();
 
-    expect(error.statusCode).toBe(500);
+    expect(error.status).toBe(500);
     expect(error.code).toBe("INTERNAL_SERVER_ERROR");
-    expect(error.details).toBeNull();
+    expect(problem).not.toHaveProperty("debug");
   });
 });
 
@@ -52,6 +55,7 @@ describe("ApiResponse", () => {
   it("wysyla odpowiedz success przez Express response", () => {
     const res = createResponseMock();
     res.status.mockReturnValue(res);
+    res.type.mockReturnValue(res);
     res.json.mockReturnValue(res);
 
     ApiResponse.created({ id: "reservation-1" }).send(res);
@@ -63,23 +67,24 @@ describe("ApiResponse", () => {
     });
   });
 
-  it("wysyla odpowiedz error z HTTP statusMessage i dotychczasowym envelope", () => {
+  it("wysyla odpowiedz application/problem+json bez envelope", () => {
     const res = createResponseMock();
     res.status.mockReturnValue(res);
+    res.type.mockReturnValue(res);
     res.json.mockReturnValue(res);
-    const error = new NotFoundError("Nie znaleziono zasobu", "RESOURCE_NOT_FOUND");
+    const error = ApiError.from(ProblemDefinitions.ROOM_NOT_FOUND);
 
-    ApiResponse.fromError(error).send(res);
+    ApiResponse.problem(error, "urn:uuid:test-instance").send(res);
 
     expect(res.status).toHaveBeenCalledWith(404);
-    expect(res.statusMessage).toBe("Not Found");
+    expect(res.type).toHaveBeenCalledWith("application/problem+json");
     expect(res.json).toHaveBeenCalledWith({
-      success: false,
-      error: {
-        code: "RESOURCE_NOT_FOUND",
-        message: "Nie znaleziono zasobu",
-        details: null,
-      },
+      type: "/problems/room-not-found",
+      title: "Nie znaleziono sali",
+      status: 404,
+      detail: "Nie znaleziono sali",
+      instance: "urn:uuid:test-instance",
+      code: "ROOM_NOT_FOUND",
     });
   });
 });

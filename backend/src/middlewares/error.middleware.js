@@ -1,8 +1,10 @@
-import { ApiErrorMapper } from "../errors/apiErrorMapper.js";
-import { ApiResponse } from "../utils/api-response.js";
+import { randomUUID } from "node:crypto";
+
+import { toApiError } from "../errors/apiErrorMapper.js";
+import { ApiResponse } from "../utils/apiResponse.js";
 
 export function errorMiddleware(error, _req, res, _next) {
-  const apiError = ApiErrorMapper.unknownErrorBuilder(error, {
+  const apiError = toApiError(error, {
     includeDebugDetails: process.env.NODE_ENV === "development",
   });
 
@@ -10,5 +12,5 @@ export function errorMiddleware(error, _req, res, _next) {
     console.error("Nieprzewidziany error:", error);
   }
 
-  return ApiResponse.fromError(apiError).send(res);
+  return ApiResponse.problem(apiError, `urn:uuid:${randomUUID()}`).send(res);
 }

@@ -12,11 +12,8 @@ import {
   validateFrontendRedirectUrl,
   verifyGoogleIdToken,
 } from "../../config/google-oauth.js";
-import {
-  ConflictError,
-  ForbiddenError,
-  UnauthorizedError,
-} from "../../errors/httpErrors.js";
+import { ApiError } from "../../errors/apiError.js";
+import { ProblemDefinitions } from "../../errors/problemDefinitions.js";
 import { userRepository } from "../../repositories/user.repository.js";
 
 function fallbackName(email) {
@@ -25,17 +22,15 @@ function fallbackName(email) {
 
 async function synchronizeGoogleUser(googleUser) {
   if (!googleUser.googleId) {
-    throw new ForbiddenError(
-      "Brak identyfikatora konta Google",
-      "GOOGLE_ACCOUNT_INCOMPLETE",
-    );
+    throw ApiError.from(ProblemDefinitions.GOOGLE_ACCOUNT_INCOMPLETE, {
+      detail: "Brak identyfikatora konta Google",
+    });
   }
 
   if (!googleUser.email) {
-    throw new ForbiddenError(
-      "Brak email w koncie Google",
-      "GOOGLE_ACCOUNT_INCOMPLETE",
-    );
+    throw ApiError.from(ProblemDefinitions.GOOGLE_ACCOUNT_INCOMPLETE, {
+      detail: "Brak adresu e-mail na koncie Google",
+    });
   }
 
   const email = googleUser.email.trim().toLowerCase();
@@ -50,10 +45,9 @@ async function synchronizeGoogleUser(googleUser) {
     });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      throw new ConflictError(
-        "E-mail jest powiazany z innym kontem",
-        "ACCOUNT_LINK_CONFLICT",
-      );
+      throw ApiError.from(ProblemDefinitions.ACCOUNT_LINK_CONFLICT, {
+        detail: "E-mail jest powiazany z innym kontem",
+      });
     }
 
     throw error;
@@ -99,10 +93,7 @@ export async function getCurrentUser(userId) {
   const user = await userRepository.findPublicUserById(userId);
 
   if (!user) {
-    throw new UnauthorizedError(
-      "Sesja wygasla lub uzytkownik nie istnieje",
-      "AUTH_SESSION_INVALID",
-    );
+    throw ApiError.from(ProblemDefinitions.AUTH_SESSION_INVALID);
   }
 
   return user;

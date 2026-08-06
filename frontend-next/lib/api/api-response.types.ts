@@ -3,13 +3,13 @@ export type ApiSuccess<T> = {
   data: T;
 };
 
-export type ApiErrorResponse = {
-  success: false;
-  error: {
-    code: string;
-    message: string;
-    details: unknown;
-  };
+export type ProblemDetails = {
+  type: string;
+  title: string;
+  status: number;
+  detail?: string;
+  instance?: string;
+  code?: string;
+  errors?: unknown;
+  details?: unknown;
 };
-
-export type ApiResponse<T> = ApiSuccess<T> | ApiErrorResponse;
