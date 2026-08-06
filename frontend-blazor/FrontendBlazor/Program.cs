@@ -7,8 +7,16 @@ using FrontendBlazor.Client.Infrastructure.Auth;
 using FrontendBlazor.Client.Infrastructure.Browser;
 using FrontendBlazor.Client.Pages;
 using FrontendBlazor.Components;
+using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
+
+if (builder.Configuration.GetValue<bool>(
+    "Measurement:UseEphemeralDataProtection"))
+{
+    builder.Services.AddDataProtection()
+        .UseEphemeralDataProtectionProvider();
+}
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

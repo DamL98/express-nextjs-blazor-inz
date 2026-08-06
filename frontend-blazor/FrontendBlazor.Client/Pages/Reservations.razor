@@ -9,7 +9,11 @@
 
 <PageTitle>Moje rezerwacje</PageTitle>
 
-<section class="reservations-page">
+<section
+    class="reservations-page"
+    data-measurement-page="reservations"
+    data-measurement-state="@GetMeasurementState()"
+    data-measurement-count="@_reservations.Count">
     <div class="page-heading">
         <div>
             <h1>Moje rezerwacje</h1>
@@ -190,5 +194,10 @@
             ReservationStatus.CANCELLED => "cancelled",
             _ => "cancelled",
         };
+    }
+
+    private string GetMeasurementState()
+    {
+        return _isLoading ? "loading" : _loadError is null ? "ready" : "error";
     }
 }

@@ -5,6 +5,12 @@
 @inject AuthContext Auth
 @inject NavigationManager Navigation
 
+<span
+    hidden
+    data-measurement-renderer="@RendererInfo.Name"
+    data-measurement-interactive="@(RendererInfo.IsInteractive ? "true" : "false")">
+</span>
+
 @if (Auth.IsLoading)
 {
     <main class="session-loading">

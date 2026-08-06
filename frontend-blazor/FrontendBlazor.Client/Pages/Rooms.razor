@@ -7,7 +7,11 @@
 
 <PageTitle>Sale</PageTitle>
 
-<section class="rooms-page">
+<section
+    class="rooms-page"
+    data-measurement-page="rooms"
+    data-measurement-state="@GetMeasurementState()"
+    data-measurement-count="@_rooms.Count">
     <header class="rooms-header">
         <h1>Lista sal</h1>
         <p>Wybierz salę</p>
@@ -75,5 +79,10 @@
     {
         _requestCancellation.Cancel();
         _requestCancellation.Dispose();
+    }
+
+    private string GetMeasurementState()
+    {
+        return _isLoading ? "loading" : _errorMessage is null ? "ready" : "error";
     }
 }

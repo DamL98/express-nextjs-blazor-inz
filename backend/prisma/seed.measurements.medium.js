@@ -5,6 +5,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 const MEASUREMENT_TITLE_PREFIX = "[MEASUREMENT]";
+const WRITE_TEST_TITLE_PREFIX = "[TEST-RUN]";
 const GENERATED_ROOM_PREFIX = "Sala Pomiarowa ";
 
 const mediumDataset = {
@@ -244,6 +245,34 @@ async function removeStaleGeneratedRooms(
   return { removedRooms, retainedRooms };
 }
 
+async function validateStrictDataset(
+  transaction,
+  userId,
+  expectedRoomCount,
+  expectedReservationCount,
+) {
+  if (process.env.MEASUREMENT_STRICT_DATASET !== "true") {
+    return;
+  }
+
+  const [roomCount, reservationCount] = await Promise.all([
+    transaction.room.count(),
+    transaction.reservation.count({ where: { userId } }),
+  ]);
+
+  if (
+    roomCount !== expectedRoomCount ||
+    reservationCount !== expectedReservationCount
+  ) {
+    throw new Error(
+      "Baza pomiarowa zawiera dane spoza datasetu. " +
+        `Sale: ${roomCount}/${expectedRoomCount}, ` +
+        `rezerwacje uzytkownika: ${reservationCount}/${expectedReservationCount}. ` +
+        "Uzyj osobnej, czystej bazy i dedykowanego konta pomiarowego.",
+    );
+  }
+}
+
 export async function runMeasurementSeed({
   name: datasetName,
   roomCount,
@@ -292,7 +321,10 @@ export async function runMeasurementSeed({
         await transaction.reservation.deleteMany({
           where: {
             userId: user.id,
-            title: { startsWith: MEASUREMENT_TITLE_PREFIX },
+            OR: [
+              { title: { startsWith: MEASUREMENT_TITLE_PREFIX } },
+              { title: { startsWith: WRITE_TEST_TITLE_PREFIX } },
+            ],
           },
         });
 
@@ -336,6 +368,13 @@ export async function runMeasurementSeed({
         });
 
         await transaction.reservation.createMany({ data: reservations });
+
+        await validateStrictDataset(
+          transaction,
+          user.id,
+          roomDefinitions.length,
+          reservations.length,
+        );
 
         return {
           ...staleRoomResult,

@@ -9,7 +9,10 @@
 
 <PageTitle>Dashboard</PageTitle>
 
-<section class="dashboard-page">
+<section
+    class="dashboard-page"
+    data-measurement-page="dashboard"
+    data-measurement-state="@GetMeasurementState()">
     <header class="page-header">
         <h1>Dashboard</h1>
         <p>Aktywne sale: @_activeRoomsCount</p>
@@ -115,5 +118,10 @@
     private static string FormatDateTime(DateTimeOffset value)
     {
         return value.ToLocalTime().ToString("d MMM yyyy, HH:mm");
+    }
+
+    private string GetMeasurementState()
+    {
+        return _isLoading ? "loading" : _errorMessage is null ? "ready" : "error";
     }
 }

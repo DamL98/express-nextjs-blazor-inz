@@ -1,39 +1,36 @@
 import { expect, test } from "@playwright/test";
 import {
+  expectedCount,
   measureStep,
-  waitForUi,
+  prepareCacheState,
+  waitForMeasurementPage,
 } from "./measurement-utils";
 
 test("read-only user flow", async ({ page }, testInfo) => {
-  await measureStep(testInfo, "dashboard-ready", async () => {
+  await prepareCacheState(page, testInfo);
+
+  await measureStep(testInfo, page, "dashboard-ready", async () => {
     await page.goto("/");
-    await waitForUi(page);
-
-    // Dopasuj tekst do identycznego elementu w obu aplikacjach.
-    await expect(
-      page.getByRole("heading", { name: /dashboard/i }),
-    ).toBeVisible();
-
-    // Element potwierdzający, że dane API zostały załadowane.
-    await expect(
-      page.getByText(/aktywne sale/i).first(),
-    ).toBeVisible();
+    await waitForMeasurementPage(page, "dashboard");
   });
 
-  await measureStep(testInfo, "rooms-list-ready", async () => {
+  await expect(
+    page.getByRole("heading", { name: /dashboard/i }),
+  ).toBeVisible();
+
+  await measureStep(testInfo, page, "rooms-list-ready", async () => {
     await page.goto("/rooms");
-
-    await expect(
-      page.getByRole("heading", { name: /sale/i }),
-    ).toBeVisible();
-
-    // Przy seedzie pomiarowym powinny pojawić się konkretne sale.
-    await expect(
-      page.getByText("Sala A-101", { exact: true }),
-    ).toBeVisible();
+    await waitForMeasurementPage(page, "rooms");
   });
 
-  await measureStep(testInfo, "room-details-ready", async () => {
+  const roomsPage = page.locator('[data-measurement-page="rooms"]');
+  await expect(roomsPage).toHaveAttribute(
+    "data-measurement-count",
+    String(expectedCount(testInfo, "roomCount")),
+  );
+  await expect(page.getByText("Sala A-101", { exact: true })).toBeVisible();
+
+  await measureStep(testInfo, page, "room-details-ready", async () => {
     const roomCard = page.locator("article").filter({
       has: page.getByRole("heading", {
         name: "Sala A-101",
@@ -41,30 +38,27 @@ test("read-only user flow", async ({ page }, testInfo) => {
       }),
     });
 
-    await roomCard
-      .getByRole("link", { name: /zobacz szczeg/i })
-      .click();
-
-    await expect(page).toHaveURL(/\/rooms\/.+/);
-
-    await expect(
-      page.getByRole("heading", { name: "Sala A-101" }),
-    ).toBeVisible();
-
-    await expect(
-      page.getByLabel(/nazwa rezerwacji/i),
-    ).toBeVisible();
+    await roomCard.getByRole("link", { name: /zobacz szczeg/i }).click();
+    await waitForMeasurementPage(page, "room-details");
   });
 
-  await measureStep(testInfo, "reservations-list-ready", async () => {
+  await expect(page).toHaveURL(/\/rooms\/.+/);
+  await expect(
+    page.getByRole("heading", { name: "Sala A-101" }),
+  ).toBeVisible();
+  await expect(page.getByLabel(/nazwa rezerwacji/i)).toBeVisible();
+
+  await measureStep(testInfo, page, "reservations-list-ready", async () => {
     await page.goto("/reservations");
-
-    await expect(
-      page.getByRole("heading", { name: /moje rezerwacje/i }),
-    ).toBeVisible();
-
-    await expect(
-      page.getByText(/\[MEASUREMENT\]/i).first(),
-    ).toBeVisible();
+    await waitForMeasurementPage(page, "reservations");
   });
+
+  const reservationsPage = page.locator(
+    '[data-measurement-page="reservations"]',
+  );
+  await expect(reservationsPage).toHaveAttribute(
+    "data-measurement-count",
+    String(expectedCount(testInfo, "reservationCount")),
+  );
+  await expect(page.getByText(/\[MEASUREMENT\]/i).first()).toBeVisible();
 });

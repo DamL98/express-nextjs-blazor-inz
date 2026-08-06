@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { measureStep } from "./measurement-utils";
+import {
+  expectedCount,
+  measureStep,
+  prepareCacheState,
+  waitForMeasurementPage,
+} from "./measurement-utils";
 
 function toDateTimeLocal(date: Date): string {
   const local = new Date(
@@ -10,7 +15,10 @@ function toDateTimeLocal(date: Date): string {
 }
 
 test("create and cancel reservation", async ({ page }, testInfo) => {
-  const uniqueSuffix = `${testInfo.project.name}-${Date.now()}`;
+  await prepareCacheState(page, testInfo);
+
+  const sampleIndex = process.env.MEASUREMENT_SAMPLE_INDEX ?? "manual";
+  const uniqueSuffix = `${testInfo.project.name}-${sampleIndex}-${Date.now()}`;
 
   const title = `[TEST-RUN] ${uniqueSuffix}`;
 
@@ -25,10 +33,23 @@ test("create and cancel reservation", async ({ page }, testInfo) => {
   end.setHours(11, 0, 0, 0);
 
   await page.goto("/rooms");
+  const roomsPage = await waitForMeasurementPage(page, "rooms");
+  await expect(roomsPage).toHaveAttribute(
+    "data-measurement-count",
+    String(expectedCount(testInfo, "roomCount")),
+  );
 
-  await page.getByText("Sala A-101", { exact: true }).first().click();
+  const roomCard = page.locator("article").filter({
+    has: page.getByRole("heading", {
+      name: "Sala A-101",
+      exact: true,
+    }),
+  });
 
-  await measureStep(testInfo, "create-reservation", async () => {
+  await roomCard.getByRole("link", { name: /zobacz szczeg/i }).click();
+  await waitForMeasurementPage(page, "room-details");
+
+  await measureStep(testInfo, page, "create-reservation", async () => {
     await page.getByLabel(/tytuł|tytul/i).fill(title);
 
     const description = page.getByLabel(/opis/i);
@@ -55,8 +76,9 @@ test("create and cancel reservation", async ({ page }, testInfo) => {
     ).toBeVisible();
   });
 
-  await measureStep(testInfo, "new-reservation-visible", async () => {
+  await measureStep(testInfo, page, "new-reservation-visible", async () => {
     await page.goto("/reservations");
+    await waitForMeasurementPage(page, "reservations");
     await expect(page.getByText(title)).toBeVisible();
   });
 
@@ -64,7 +86,7 @@ test("create and cancel reservation", async ({ page }, testInfo) => {
     await dialog.accept();
   });
 
-  await measureStep(testInfo, "cancel-reservation", async () => {
+  await measureStep(testInfo, page, "cancel-reservation", async () => {
     const reservationContainer = page
       .locator("article, li, div")
       .filter({ hasText: title })

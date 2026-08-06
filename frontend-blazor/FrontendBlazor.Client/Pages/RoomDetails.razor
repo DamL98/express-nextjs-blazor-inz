@@ -10,7 +10,10 @@
 
 <PageTitle>@(_room?.Name ?? "Szczegoly sali")</PageTitle>
 
-<section class="room-details-page">
+<section
+    class="room-details-page"
+    data-measurement-page="room-details"
+    data-measurement-state="@GetMeasurementState()">
     <a class="back-link" href="/rooms">← Wroc do listy sal</a>
 
     @if (_isLoading)
@@ -245,6 +248,15 @@
     {
         _requestCancellation.Cancel();
         _requestCancellation.Dispose();
+    }
+
+    private string GetMeasurementState()
+    {
+        return _isLoading
+            ? "loading"
+            : _errorMessage is null && _room is not null
+                ? "ready"
+                : "error";
     }
 
     private sealed class ReservationFormState

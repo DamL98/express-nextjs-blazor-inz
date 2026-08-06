@@ -3,6 +3,8 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 const MEASUREMENT_TITLE_PREFIX = "[MEASUREMENT]";
+const WRITE_TEST_TITLE_PREFIX = "[TEST-RUN]";
+const GENERATED_ROOM_PREFIX = "Sala Pomiarowa ";
 
 const connectionString = process.env.DATABASE_URL;
 const measurementUserEmail = process.env.MEASUREMENT_USER_EMAIL?.trim();
@@ -134,6 +136,61 @@ function getReservationTime(baseDate, definition) {
   return { startTime, endTime };
 }
 
+async function removeGeneratedRooms(transaction) {
+  const generatedRooms = await transaction.room.findMany({
+    where: {
+      name: { startsWith: GENERATED_ROOM_PREFIX },
+    },
+    select: { id: true },
+  });
+
+  let removedRooms = 0;
+  let retainedRooms = 0;
+
+  for (const room of generatedRooms) {
+    const reservationCount = await transaction.reservation.count({
+      where: { roomId: room.id },
+    });
+
+    if (reservationCount === 0) {
+      await transaction.room.delete({ where: { id: room.id } });
+      removedRooms += 1;
+    } else {
+      retainedRooms += 1;
+    }
+  }
+
+  return { removedRooms, retainedRooms };
+}
+
+async function validateStrictDataset(
+  transaction,
+  userId,
+  expectedRoomCount,
+  expectedReservationCount,
+) {
+  if (process.env.MEASUREMENT_STRICT_DATASET !== "true") {
+    return;
+  }
+
+  const [roomCount, reservationCount] = await Promise.all([
+    transaction.room.count(),
+    transaction.reservation.count({ where: { userId } }),
+  ]);
+
+  if (
+    roomCount !== expectedRoomCount ||
+    reservationCount !== expectedReservationCount
+  ) {
+    throw new Error(
+      "Baza pomiarowa zawiera dane spoza datasetu. " +
+        `Sale: ${roomCount}/${expectedRoomCount}, ` +
+        `rezerwacje uzytkownika: ${reservationCount}/${expectedReservationCount}. ` +
+        "Uzyj osobnej, czystej bazy i dedykowanego konta pomiarowego.",
+    );
+  }
+}
+
 async function main() {
   const user = await prisma.user.findFirst({
     where: {
@@ -154,6 +211,17 @@ async function main() {
 
   const result = await prisma.$transaction(
     async (transaction) => {
+      await transaction.reservation.deleteMany({
+        where: {
+          userId: user.id,
+          OR: [
+            { title: { startsWith: MEASUREMENT_TITLE_PREFIX } },
+            { title: { startsWith: WRITE_TEST_TITLE_PREFIX } },
+          ],
+        },
+      });
+
+      const staleRoomResult = await removeGeneratedRooms(transaction);
       const roomsByName = new Map();
       let createdRooms = 0;
       let updatedRooms = 0;
@@ -179,13 +247,6 @@ async function main() {
 
         roomsByName.set(room.name, room);
       }
-
-      await transaction.reservation.deleteMany({
-        where: {
-          userId: user.id,
-          title: { startsWith: MEASUREMENT_TITLE_PREFIX },
-        },
-      });
 
       const reservations = reservationDefinitions.map((definition, index) => {
         const room = roomsByName.get(definition.roomName);
@@ -215,7 +276,15 @@ async function main() {
 
       await transaction.reservation.createMany({ data: reservations });
 
+      await validateStrictDataset(
+        transaction,
+        user.id,
+        roomDefinitions.length,
+        reservations.length,
+      );
+
       return {
+        ...staleRoomResult,
         createdRooms,
         updatedRooms,
         activeReservations: reservations.filter(
@@ -236,6 +305,14 @@ async function main() {
   );
   console.log(`Rezerwacje ACTIVE: ${result.activeReservations}`);
   console.log(`Rezerwacje CANCELLED: ${result.cancelledReservations}`);
+  console.log(`Usuniete nieuzywane sale pomiarowe: ${result.removedRooms}`);
+
+  if (result.retainedRooms > 0) {
+    console.warn(
+      `Zachowano ${result.retainedRooms} starszych sal pomiarowych, poniewaz maja zwykle rezerwacje.`,
+    );
+  }
+
   console.log(`Data bazowa (UTC): ${baseDate.toISOString()}`);
 }
 
