@@ -21,6 +21,7 @@
 # Backend info
 ## Wzorzec projektowy
 - Architektura Warstwowa
+- Moduły funkcjonalne
 - Controller - Service - Repository Pattern
 
 ## Struktura folderow
@@ -45,17 +46,16 @@ HTTP request
 -> response
 
 # Lista modułów
-- Rooms - in progress
-- Reservations - in progress
-- Google-Services - TODO
-- Admin - TODO
+- Rooms
+- Reservations
+- Google-Services - Calendar
 - Auth - Google OAuth + JWT/cookie session
+- Admin - TODO
 
 
 # Endpointy
 ## Health check
 - /health
-- /api/v1/rooms
 
 ## Rooms
 - GET /api/v1/rooms
@@ -70,27 +70,38 @@ HTTP request
 - POST /api/v1/reservations
 - PATCH /api/v1/reservations/:id/cancel
 
+## OAuth
 
 
 # Use Case's - backend
-- health check api
-- sale
-  - pobranie listy
-  - szczegółów
-  - filtrowanie po statusie i pojemności sali
-  - czy dostepna w przedziale czasowym
+- health check api status
+- sale [rooms]
+  - pobranie listy wszystkich dostępych
+  - pobranie szczegółów jednej sali po id *:id*
+  - filtrowanie po statusie *Active*
+  - filtrowanie po pojemności *capacityMin*
+  - filtrowanie po dostępności czasu *start* -> *end*
 
-- rezerwacje
+- rezerwacje [reservations]
   - pobranie swoich rezerwacji
-  - pobranie jednej swojej rezerwacji
-  - anulowanie rezerwacji
+  - pobranie szczegółow swojej jednej rezerwacji *id*
+  - utworzenie jednej rezerwacji
+  - anulowanie jednej rezerwacji po id
   - walidacja przy tworzeniu rezerwacji
   - utw. rezerwacji dla demo usera
-    - porawnosc dat
-    - zakresu czasu
-    - blokady sal anulowanych/zajetych
+    - porawnosc data start/stop
+    - zakresu czasu start/stop *TODO* -> Minimum 30min. na rezerwacje
+    - blokada sal anulowanych/zajetych aby nie utworzyć rezerwacji
+    - Blokadu czasu rezerwacji jeśli
 
-- oauth
+- OAuth
+  - User może zalogować się swoim kontem Google na stronie
+  - User może zsynchronizować Konto na stronie z Google Calendar
+  - User może stworzyć rezerwacje, która zostanie wpisana w kalendarzu do zalogowanego konta Google użytkownika
+
+- Lokalne login/register
+  - User może zarejestrować/zalogować się danymi, które przechowywane będą zaszyfrowane w bazie danych
+  - Jak połączyć to z Google Calendar? Dać mu możliwość "synchronizacji" i podpiąć GoogleId z OAuth do istniejącego lokalengo konta w DB?
 
 # Testy api
 - health check
@@ -107,11 +118,11 @@ HTTP request
 
 # Baza danych
 ## Modele
-- Room
-- Reservation
-- CalendarIntegration
-- User
-- Role
+- `Room` – reprezentuje salę, którą można zarezerwować
+- `Reservation` – informacje o rezerwacji sali przez usera
+- `User` – reprezentuje użytkownika korzystającego z systemu
+- `Role` – poziom uprawnień usera User/Admin
+- `CalendarIntegration` – dane potrzebne do opcjonalnej integracji konta użytkownika z Google Calendar
 
 ## Relacje
 - Room 1:N Reservation
@@ -120,14 +131,7 @@ HTTP request
 - Role 1:N User
 
 # Nastepne do wdrozenia
-- endpointy dla admina
-- testy dla reservations
-- testy dla admina
-- uwierzytelnienie przez Google OAuth
-- jwt / refresh token
-- poprawienie bazy dla usera z lokalnego logowania/rejestracji
-- endpointy od lokalnego logowania/rejestracji
-- testy na prawdziwym userze z bazy nie demo
+- lokalne register/login bez konta Googla
 - dokumentacja endpointow
 
 # Badania
@@ -138,7 +142,7 @@ HTTP request
 
 ## Co zbadać?
 ### Core Web Vitals
-    "Standard wskaźników wydajności: pomiaru szybkości ładowania, stabilności wizualnej, interaktywności"
+"Standard wskaźników wydajności: pomiaru szybkości ładowania, stabilności wizualnej, interaktywności"
 - FCP - kiedy pojawi się pierwszy element strony
 - LCP - czas ładowania największego elementu strony
 - INP - responsywność interakcji usera
@@ -147,43 +151,6 @@ HTTP request
 ### Rozmiar aplikacji i zasoby pobrane przez przeglądarke
   - Chrome DevTools
 ### Wydajność scenariusza użytkownika / E2E
-  - Playwright
+  - Playwright / Lighthouse
 ### Testy obciążeniowe serwera frontendu dla X userów
   - k6
-### Jakość i struktura kodu
-  - własna opinia
-
-# Spis tresci
-## Wstęp
-## Charakterystyka technologii
-  - next.js
-  - blazor - Interactive Server
-  - modele renderowania
-  - roznice w architekturze?
-## Projekt aplikacji testowej
-  - krótki opis aplikacji
-  - wymagania funkcjonalne
-  - model danych w db
-  - lista wykorzystanych endpointow do testowania
-## Implementacja Next.js
-  - Struktura projektu
-  - Routing
-  - Formularze
-  - Komunikacja z API
-  - Napotkane problemy?
-## Implementacja Blazor
-  - j.w.
-## Metodyka Badań
-  - Opis środowiska testowego
-  - Wersje technologii
-  - Narzędzia badawcze
-  - Scenariusz testowy
-  - Sposób zbierania wyników
-  - Wyniki testów
-  -
-## Wyniki testów
-## Wynioski
-
-
-## TODOo
-- Uwierzytelnienie, JWT, refresh_token,
