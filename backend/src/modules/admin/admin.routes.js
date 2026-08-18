@@ -1,6 +1,6 @@
 import { Router } from "express"
 
-import { validate } from "../../middlewares/validate.middleware.js"
+import { validateMiddleware } from "../../middlewares/validate.middleware.js"
 import { authenticate, requireRole } from "../../middlewares/auth.middleware.js"
 import {
   cancelAdminReservation,
@@ -17,13 +17,13 @@ router.use(authenticate, requireRole("admin"))
 
 router.get(
   "/reservations",
-  validate(getAdminReservationsQuerySchema, "query"),
+  validateMiddleware(getAdminReservationsQuerySchema, "query"),
   getAdminReservations
 )
 
 router.patch(
   "/reservations/:id/cancel",
-  validate(adminReservationIdParamsSchema, "params"),
+  validateMiddleware(adminReservationIdParamsSchema, "params"),
   cancelAdminReservation
 )
 

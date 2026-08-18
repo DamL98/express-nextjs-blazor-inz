@@ -75,7 +75,11 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 md:px-8">
+    <div
+      className="mx-auto max-w-6xl px-4 py-8 md:px-8"
+      data-measurement-page="dashboard"
+      data-measurement-state={loading ? "loading" : error ? "error" : "ready"}
+    >
       <div>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
           Dashboard

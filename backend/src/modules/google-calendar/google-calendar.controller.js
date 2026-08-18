@@ -1,8 +1,18 @@
 import { getGoogleCalendarOAuthRedirectUri } from "../../config/google-oauth.js";
-import { isGoogleCalendarConfigError } from "../../config/google-calendar.js";
+import {
+  ConfigurationError,
+  GoogleOAuthValidationError,
+} from "../../config/config.errors.js";
 import { ApiError } from "../../errors/apiError.js";
-import { successResponse } from "../../utils/api-response.js";
-import { googleCalendarService } from "./google-calendar.service.js";
+import { ProblemDefinitions } from "../../errors/problemDefinitions.js";
+import { ApiResponse } from "../../utils/apiResponse.js";
+import {
+  connectCalendarFromCode,
+  createConnectionAuthorizationUrl,
+  disconnectCalendar,
+  getConnectionStatus,
+  readConnectionState,
+} from "./google-calendar.service.js";
 
 function buildRedirectUrl(redirectTo, status, reason = null) {
   const url = new URL(redirectTo);
@@ -17,31 +27,43 @@ function buildRedirectUrl(redirectTo, status, reason = null) {
   return url.toString();
 }
 
+function mapCalendarStartError(error) {
+  if (error instanceof ConfigurationError) {
+    return ApiError.from(ProblemDefinitions.GOOGLE_CALENDAR_NOT_CONFIGURED, {
+      detail: error.message,
+      cause: error,
+    });
+  }
+
+  if (error instanceof GoogleOAuthValidationError) {
+    return ApiError.from(ProblemDefinitions.INVALID_GOOGLE_REDIRECT, {
+      detail: error.message,
+      cause: error,
+    });
+  }
+
+  return error;
+}
+
 export async function getGoogleCalendarStatus(_req, res) {
-  const status = await googleCalendarService.getConnectionStatus(
+  const status = await getConnectionStatus(
     res.locals.user.id,
   );
 
-  return res.status(200).json(successResponse(status));
+  return ApiResponse.ok(status).send(res);
 }
 
 export async function startGoogleCalendarConnection(req, res, next) {
   try {
     const redirectTo = res.locals.validated.query.redirectTo;
-    const authorizationUrl = googleCalendarService.createConnectionAuthorizationUrl(
+    const authorizationUrl = createConnectionAuthorizationUrl(
       res.locals.user.id,
       redirectTo,
     );
 
     return res.redirect(302, authorizationUrl);
   } catch (error) {
-    if (isGoogleCalendarConfigError(error)) {
-      return next(
-        new ApiError(503, "GOOGLE_CALENDAR_NOT_CONFIGURED", error.message),
-      );
-    }
-
-    return next(error);
+    return next(mapCalendarStartError(error));
   }
 }
 
@@ -50,18 +72,14 @@ export async function handleGoogleCalendarCallback(req, res, next) {
 
   if (!state) {
     return next(
-      new ApiError(
-        400,
-        "GOOGLE_CALENDAR_STATE_REQUIRED",
-        "Brak state w callbacku Google Calendar",
-      ),
+      ApiError.from(ProblemDefinitions.GOOGLE_CALENDAR_STATE_REQUIRED),
     );
   }
 
   let redirectTo;
 
   try {
-    redirectTo = googleCalendarService.readConnectionState(state).redirectTo;
+    redirectTo = readConnectionState(state).redirectTo;
   } catch (error) {
     return next(error);
   }
@@ -84,7 +102,7 @@ export async function handleGoogleCalendarCallback(req, res, next) {
 
   try {
     // callback kończy osobny flow połączenia Google Calendar i odsyła usera z powrotem na frontend
-    await googleCalendarService.connectCalendarFromCode(
+    await connectCalendarFromCode(
       state,
       code,
       getGoogleCalendarOAuthRedirectUri(),
@@ -92,10 +110,11 @@ export async function handleGoogleCalendarCallback(req, res, next) {
 
     return res.redirect(302, buildRedirectUrl(redirectTo, "connected"));
   } catch (error) {
-    if (isGoogleCalendarConfigError(error)) {
-      return next(
-        new ApiError(503, "GOOGLE_CALENDAR_NOT_CONFIGURED", error.message),
-      );
+    if (error instanceof ConfigurationError) {
+      return next(ApiError.from(
+        ProblemDefinitions.GOOGLE_CALENDAR_NOT_CONFIGURED,
+        { detail: error.message, cause: error },
+      ));
     }
 
     if (error instanceof ApiError) {
@@ -114,9 +133,9 @@ export async function handleGoogleCalendarCallback(req, res, next) {
 }
 
 export async function disconnectGoogleCalendar(_req, res) {
-  const result = await googleCalendarService.disconnectCalendar(
+  const result = await disconnectCalendar(
     res.locals.user.id,
   );
 
-  return res.status(200).json(successResponse(result));
+  return ApiResponse.ok(result).send(res);
 }

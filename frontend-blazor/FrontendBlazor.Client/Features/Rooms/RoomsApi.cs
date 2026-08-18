@@ -1,28 +1,29 @@
 using System.Globalization;
+using FrontendBlazor.Client.Features.Rooms.DTOs;
 using FrontendBlazor.Client.Infrastructure.Api;
 
 namespace FrontendBlazor.Client.Features.Rooms;
 
 public sealed class RoomsApi(ApiClient apiClient)
 {
-    public async Task<IReadOnlyList<Room>> GetRoomsAsync(
+    public async Task<IReadOnlyList<RoomDto>> GetRoomsAsync(
         CancellationToken cancellationToken = default)
     {
-        return await apiClient.ApiRequestAsync<List<Room>>(
+        return await apiClient.ApiRequestAsync<List<RoomDto>>(
             "/rooms",
             cancellationToken: cancellationToken);
     }
 
-    public Task<Room> GetRoomByIdAsync(
+    public Task<RoomDto> GetRoomByIdAsync(
         string id,
         CancellationToken cancellationToken = default)
     {
-        return apiClient.ApiRequestAsync<Room>(
+        return apiClient.ApiRequestAsync<RoomDto>(
             $"/rooms/{Uri.EscapeDataString(id)}",
             cancellationToken: cancellationToken);
     }
 
-    public Task<RoomAvailability> GetRoomAvailabilityAsync(
+    public Task<RoomAvailabilityDto> GetRoomAvailabilityAsync(
         string roomId,
         DateTime start,
         DateTime end,
@@ -33,7 +34,7 @@ public sealed class RoomsApi(ApiClient apiClient)
         var endValue = Uri.EscapeDataString(
             end.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
 
-        return apiClient.ApiRequestAsync<RoomAvailability>(
+        return apiClient.ApiRequestAsync<RoomAvailabilityDto>(
             $"/rooms/{Uri.EscapeDataString(roomId)}/availability" +
             $"?start={startValue}&end={endValue}",
             cancellationToken: cancellationToken);

@@ -1,4 +1,5 @@
 import { ApiError } from "../../errors/apiError.js";
+import { ProblemDefinitions } from "../../errors/problemDefinitions.js";
 import {
   findConflictingRoomReservations,
   findManyRooms,
@@ -13,7 +14,7 @@ export async function getRoomById(id) {
   const room = await findRoomById(id);
 
   if (!room) {
-    throw new ApiError(404, "ROOM_NOT_FOUND", "Nie znaleziono sali");
+    throw ApiError.from(ProblemDefinitions.ROOM_NOT_FOUND);
   }
 
   return room;
@@ -23,26 +24,20 @@ export async function checkRoomAvailability(roomId, start, end) {
   const room = await findRoomById(roomId);
 
   if (!room) {
-    throw new ApiError(404, "ROOM_NOT_FOUND", "Nie znaleziono sali");
+    throw ApiError.from(ProblemDefinitions.ROOM_NOT_FOUND);
   }
 
   const startTime = new Date(start);
   const endTime = new Date(end);
 
   if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
-    throw new ApiError(
-      400,
-      "INVALID_DATE",
-      "startTime i endTime jest błędne",
-    );
+    throw ApiError.from(ProblemDefinitions.INVALID_DATE, {
+      detail: "startTime i endTime maja nieprawidlowy format",
+    });
   }
 
   if (startTime >= endTime) {
-    throw new ApiError(
-      400,
-      "INVALID_TIME_RANGE",
-      "startTime musi byc wczesniej niz endTime",
-    );
+    throw ApiError.from(ProblemDefinitions.INVALID_TIME_RANGE);
   }
 
   const conflicts = await findConflictingRoomReservations(

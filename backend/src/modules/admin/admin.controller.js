@@ -1,16 +1,19 @@
-import { successResponse } from "../../utils/api-response.js"
-import { adminService } from "./admin.service.js"
+import { ApiResponse } from "../../utils/apiResponse.js"
+import {
+  cancelReservation,
+  getReservations,
+} from "./admin.service.js"
 
 export async function getAdminReservations(_req, res) {
   const query = res.locals.validated.query
-  const reservations = await adminService.getReservations(query)
+  const reservations = await getReservations(query)
 
-  return res.status(200).json(successResponse(reservations))
+  return ApiResponse.ok(reservations).send(res)
 }
 
 export async function cancelAdminReservation(_req, res) {
   const params = res.locals.validated.params
-  const reservation = await adminService.cancelReservation(params.id)
+  const reservation = await cancelReservation(params.id)
 
-  return res.status(200).json(successResponse(reservation))
+  return ApiResponse.ok(reservation).send(res)
 }

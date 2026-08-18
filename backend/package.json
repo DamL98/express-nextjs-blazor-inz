@@ -11,12 +11,20 @@
     "test:coverage": "vitest run --coverage",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:seed": "node prisma/seed.js",
+    "prisma:seed:measurements": "npm run prisma:seed:measurement:small",
+    "prisma:seed:measurement:small": "node prisma/seed.measurements.small.js",
+    "prisma:seed:measurement:medium": "node prisma/seed.measurements.medium.js",
+    "prisma:seed:measurement:large": "node prisma/seed.measurements.large.js",
     "prisma:studio": "prisma studio"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "engines": {
+    "node": ">=24.19.0 <25"
+  },
   "type": "module",
   "dependencies": {
     "@prisma/adapter-pg": "7.8.0",

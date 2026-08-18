@@ -1,7 +1,203 @@
 @page "/reservations"
+@using FrontendBlazor.Client.Features.GoogleCalendar
+@using FrontendBlazor.Client.Features.Reservations
+@using FrontendBlazor.Client.Features.Reservations.DTOs
+@using FrontendBlazor.Client.Infrastructure.Api
+@using FrontendBlazor.Client.Infrastructure.Browser
+@inject ReservationsApi ReservationsApi
+@inject BrowserDialogService BrowserDialog
 
 <PageTitle>Moje rezerwacje</PageTitle>
 
-<section class="placeholder-page">
-    <h1>Moje rezerwacje</h1>
+<section
+    class="reservations-page"
+    data-measurement-page="reservations"
+    data-measurement-state="@GetMeasurementState()"
+    data-measurement-count="@_reservations.Count">
+    <div class="page-heading">
+        <div>
+            <h1>Moje rezerwacje</h1>
+            <p>Lista Twoich rezerwacji.</p>
+        </div>
+
+        <a class="primary-link" href="/rooms">Zarezerwuj sale</a>
+    </div>
+
+    <div class="calendar-section">
+        <GoogleCalendarCard />
+    </div>
+
+    <div class="reservations-section">
+        @if (_isLoading)
+        {
+            <div class="state-card">Ladowanie rezerwacji...</div>
+        }
+        else if (_loadError is not null)
+        {
+            <div class="error-alert" role="alert">@_loadError</div>
+        }
+        else if (_reservations.Count == 0)
+        {
+            <div class="empty-card">
+                <a href="/rooms">← back /rooms</a>
+                <p>Nie masz jeszcze zadnych rezerwacji</p>
+            </div>
+        }
+        else
+        {
+            <section class="reservation-list">
+                @if (_actionError is not null)
+                {
+                    <div class="error-alert" role="alert">@_actionError</div>
+                }
+
+                @foreach (var reservation in _reservations)
+                {
+                    <article class="reservation-card">
+                        <div class="reservation-heading">
+                            <div>
+                                <h2>@reservation.Title</h2>
+                                <p>@(reservation.Room?.Name ?? $"Sala: {reservation.RoomId}")</p>
+                            </div>
+
+                            <span class="@($"status-badge {GetStatusClass(reservation.Status)}")">
+                                @GetStatusLabel(reservation.Status)
+                            </span>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(reservation.Description))
+                        {
+                            <p class="reservation-description">@reservation.Description</p>
+                        }
+
+                        <dl class="reservation-dates">
+                            <div>
+                                <dt>Poczatek</dt>
+                                <dd>@FormatDateTime(reservation.StartTime)</dd>
+                            </div>
+
+                            <div>
+                                <dt>Koniec</dt>
+                                <dd>@FormatDateTime(reservation.EndTime)</dd>
+                            </div>
+                        </dl>
+
+                        @if (reservation.Status == ReservationStatus.ACTIVE)
+                        {
+                            <button
+                                type="button"
+                                class="cancel-button"
+                                disabled="@(_pendingReservationId == reservation.Id)"
+                                @onclick="() => CancelReservationAsync(reservation.Id)">
+                                @(_pendingReservationId == reservation.Id
+                                    ? "Anulowanie..."
+                                    : "Anuluj rezerwacje")
+                            </button>
+                        }
+                    </article>
+                }
+            </section>
+        }
+    </div>
 </section>
+
+@code {
+    private IReadOnlyList<ReservationDto> _reservations = [];
+    private bool _isLoading = true;
+    private string? _loadError;
+    private string? _actionError;
+    private string? _pendingReservationId;
+
+    protected override async Task OnAfterRenderAsync(bool isFirstRender)
+    {
+        if (!isFirstRender || !RendererInfo.IsInteractive)
+        {
+            return;
+        }
+
+        await LoadReservationsAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadReservationsAsync()
+    {
+        try
+        {
+            _reservations = await ReservationsApi.GetMyReservationsAsync();
+        }
+        catch (Exception exception)
+        {
+            _loadError = ApiErrorMessage.FromException(
+                exception,
+                "Blad pobierania rezerwacji");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task CancelReservationAsync(string reservationId)
+    {
+        var isConfirmed = await BrowserDialog.ConfirmAsync(
+            "Czy na pewno chcesz anulowac te rezerwacje?");
+
+        if (!isConfirmed)
+        {
+            return;
+        }
+
+        _pendingReservationId = reservationId;
+        _actionError = null;
+
+        try
+        {
+            var cancelledReservation = await ReservationsApi.CancelReservationAsync(reservationId);
+            _reservations = _reservations
+                .Select(reservation => reservation.Id == reservationId
+                    ? cancelledReservation
+                    : reservation)
+                .ToList();
+        }
+        catch (Exception exception)
+        {
+            _actionError = ApiErrorMessage.FromException(
+                exception,
+                "Blad anulowania rezerwacji");
+        }
+        finally
+        {
+            _pendingReservationId = null;
+        }
+    }
+
+    private static string FormatDateTime(DateTimeOffset value)
+    {
+        return value.ToLocalTime().ToString("d MMM yyyy, HH:mm");
+    }
+
+    private static string GetStatusLabel(ReservationStatus status)
+    {
+        return status switch
+        {
+            ReservationStatus.ACTIVE => "Aktywna",
+            ReservationStatus.CANCELLED => "Anulowana",
+            _ => status.ToString(),
+        };
+    }
+
+    private static string GetStatusClass(ReservationStatus status)
+    {
+        return status switch
+        {
+            ReservationStatus.ACTIVE => "active",
+            ReservationStatus.CANCELLED => "cancelled",
+            _ => "cancelled",
+        };
+    }
+
+    private string GetMeasurementState()
+    {
+        return _isLoading ? "loading" : _loadError is null ? "ready" : "error";
+    }
+}

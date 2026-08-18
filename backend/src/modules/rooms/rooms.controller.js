@@ -1,4 +1,4 @@
-import { successResponse } from "../../utils/api-response.js";
+import { ApiResponse } from "../../utils/apiResponse.js";
 import {
   checkRoomAvailability,
   getRoomById,
@@ -7,25 +7,22 @@ import {
 
 export async function getRoomsController(_req, res) {
   const filters = res.locals.validated?.query ?? {};
-
   const rooms = await getRooms(filters);
 
-  return res.status(200).json(successResponse(rooms));
+  return ApiResponse.ok(rooms).send(res);
 }
 
 export async function getRoomByIdController(_req, res) {
   const { id } = res.locals.validated.params;
-
   const room = await getRoomById(id);
 
-  return res.status(200).json(successResponse(room));
+  return ApiResponse.ok(room).send(res);
 }
 
 export async function getRoomAvailabilityController(_req, res) {
   const { id } = res.locals.validated.params;
   const { start, end } = res.locals.validated.query;
-
   const availability = await checkRoomAvailability(id, start, end);
 
-  return res.status(200).json(successResponse(availability));
+  return ApiResponse.ok(availability).send(res);
 }

@@ -48,7 +48,12 @@ export default function ReservationsPage() {
   }, [getIdToken]);
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <main
+      className="mx-auto max-w-5xl px-6 py-8"
+      data-measurement-page="reservations"
+      data-measurement-state={loading ? "loading" : error ? "error" : "ready"}
+      data-measurement-count={reservations.length}
+    >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">

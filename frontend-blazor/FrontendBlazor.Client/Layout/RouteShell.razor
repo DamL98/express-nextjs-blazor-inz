@@ -5,7 +5,13 @@
 @inject AuthContext Auth
 @inject NavigationManager Navigation
 
-@if (Auth.Loading)
+<span
+    hidden
+    data-measurement-renderer="@RendererInfo.Name"
+    data-measurement-interactive="@(RendererInfo.IsInteractive ? "true" : "false")">
+</span>
+
+@if (Auth.IsLoading)
 {
     <main class="session-loading">
         <div class="session-loading-card">Ładowanie sesji...</div>
@@ -38,9 +44,9 @@ else
         UpdateCurrentPage();
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool isFirstRender)
     {
-        if (!firstRender || !RendererInfo.IsInteractive)
+        if (!isFirstRender || !RendererInfo.IsInteractive)
         {
             return;
         }
@@ -78,7 +84,7 @@ else
 
     private void ApplyRoutingRules()
     {
-        if (Auth.Loading)
+        if (Auth.IsLoading)
         {
             return;
         }

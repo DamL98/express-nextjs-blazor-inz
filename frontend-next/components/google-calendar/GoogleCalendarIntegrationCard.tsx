@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import {
-  disconnectGoogleCalendarConnection,
   getGoogleCalendarStatus,
   redirectToGoogleCalendarConnection,
 } from "@/features/google-calendar/google-calendar.api";
@@ -57,7 +56,6 @@ export function GoogleCalendarIntegrationCard() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<GoogleCalendarConnectionStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pendingDisconnect, setPendingDisconnect] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -101,34 +99,6 @@ export function GoogleCalendarIntegrationCard() {
     [searchParams],
   );
 
-  async function handleDisconnect() {
-    setPendingDisconnect(true);
-    setError(null);
-
-    try {
-      const result = await disconnectGoogleCalendarConnection();
-
-      if (result.disconnected) {
-        setStatus({
-          connected: false,
-          provider: null,
-          calendarEmail: null,
-          connectedAt: null,
-          tokenExpiresAt: null,
-          syncEnabled: false,
-        });
-      }
-    } catch (disconnectError) {
-      setError(
-        disconnectError instanceof Error
-          ? disconnectError.message
-          : "Nie udalo sie odlaczyc Google Calendar",
-      );
-    } finally {
-      setPendingDisconnect(false);
-    }
-  }
-
   function handleConnect() {
     redirectToGoogleCalendarConnection(window.location.href);
   }
@@ -147,24 +117,15 @@ export function GoogleCalendarIntegrationCard() {
           </p>
         </div>
 
-        {status?.connected ? (
-          <button
-            type="button"
-            onClick={() => void handleDisconnect()}
-            disabled={pendingDisconnect}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {pendingDisconnect ? "Odłączanie..." : "Odłącz konto"}
-          </button>
-        ) : (
+        {!status?.connected ? (
           <button
             type="button"
             onClick={handleConnect}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
-            Połącz z Google
+            Polacz z Google
           </button>
-        )}
+        ) : null}
       </div>
 
       {callbackMessage ? (
@@ -187,25 +148,25 @@ export function GoogleCalendarIntegrationCard() {
 
       <div className="mt-5 rounded-lg border border-gray-200 bg-gray-50 p-4">
         {loading ? (
-          <p className="text-sm text-gray-600">Ładowanie statusu..</p>
+          <p className="text-sm text-gray-600">Ladowanie statusu...</p>
         ) : status?.connected ? (
           <div className="space-y-2 text-sm text-gray-700">
             <p>
               <span className="font-medium text-gray-900">Status:</span>{" "}
-              połączono
+              polaczono
             </p>
             <p>
               <span className="font-medium text-gray-900">Konto:</span>{" "}
               {status.calendarEmail || "brak danych"}
             </p>
             <p>
-              <span className="font-medium text-gray-900">Połączono:</span>{" "}
+              <span className="font-medium text-gray-900">Polaczono:</span>{" "}
               {connectedAt || "brak danych"}
             </p>
           </div>
         ) : (
           <p className="text-sm text-gray-600">
-            Konto Google nie jest jeszcze połączone z Google Calendar
+            Konto Google nie jest jeszcze polaczone z Google Calendar
           </p>
         )}
       </div>

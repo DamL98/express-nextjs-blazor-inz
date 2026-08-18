@@ -1,17 +1,24 @@
 @page "/rooms/{Id}"
 @implements IDisposable
+@using FrontendBlazor.Client.Features.Reservations
+@using FrontendBlazor.Client.Features.Reservations.DTOs
 @using FrontendBlazor.Client.Features.Rooms
+@using FrontendBlazor.Client.Features.Rooms.DTOs
 @using FrontendBlazor.Client.Infrastructure.Api
 @inject RoomsApi RoomsApi
+@inject ReservationsApi ReservationsApi
 
-<PageTitle>@(_room?.Name ?? "Szczegóły sali")</PageTitle>
+<PageTitle>@(_room?.Name ?? "Szczegoly sali")</PageTitle>
 
-<section class="room-details-page">
-    <a class="back-link" href="/rooms">← Wróć do listy sal</a>
+<section
+    class="room-details-page"
+    data-measurement-page="room-details"
+    data-measurement-state="@GetMeasurementState()">
+    <a class="back-link" href="/rooms">← Wroc do listy sal</a>
 
     @if (_isLoading)
     {
-        <div class="state-card">Ładowanie...</div>
+        <div class="state-card">Ladowanie...</div>
     }
     else if (_errorMessage is not null)
     {
@@ -39,14 +46,93 @@
                 <p class="room-description">@_room.Description</p>
             }
         </article>
+
+        @if (_room.IsActive)
+        {
+            <section class="reservation-form-card">
+                <h2>Zarezerwuj sale</h2>
+
+                <EditForm FormName="reservation-form" Model="_form" OnSubmit="SubmitReservationAsync" class="reservation-form">
+                    <div class="form-field">
+                        <label for="title">Nazwa rezerwacji</label>
+                        <InputText
+                            id="title"
+                            @bind-Value="_form.Title"
+                            required
+                            class="form-control" />
+                    </div>
+
+                    <div class="form-field">
+                        <label for="description">Opis</label>
+                        <InputTextArea
+                            id="description"
+                            @bind-Value="_form.Description"
+                            class="form-control textarea"
+                            placeholder="Opis opcjonalny" />
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="startTime">Poczatek</label>
+                            <InputText
+                                id="startTime"
+                                type="datetime-local"
+                                @bind-Value="_form.StartTime"
+                                required
+                                class="form-control" />
+                        </div>
+
+                        <div class="form-field">
+                            <label for="endTime">Koniec</label>
+                            <InputText
+                                id="endTime"
+                                type="datetime-local"
+                                @bind-Value="_form.EndTime"
+                                required
+                                class="form-control" />
+                        </div>
+                    </div>
+
+                    @if (_formError is not null)
+                    {
+                        <div class="message-box error-message" role="alert">@_formError</div>
+                    }
+
+                    @if (_successMessage is not null)
+                    {
+                        <div class="message-box success-message">
+                            <p>@_successMessage</p>
+                            <a href="/reservations">Przejdz do moich rezerwacji</a>
+                        </div>
+                    }
+
+                    <button
+                        type="submit"
+                        class="primary-button"
+                        disabled="@_isSubmitting">
+                        @(_isSubmitting ? "Tworzenie..." : "Utworz rezerwacje")
+                    </button>
+                </EditForm>
+            </section>
+        }
+        else
+        {
+            <section class="inactive-room-card">
+                Ta sala jest nieaktywna i nie mozna jej zarezerwowac.
+            </section>
+        }
     }
 </section>
 
 @code {
     private readonly CancellationTokenSource _requestCancellation = new();
-    private Room? _room;
+    private RoomDto? _room;
     private bool _isLoading = true;
+    private bool _isSubmitting;
     private string? _errorMessage;
+    private string? _formError;
+    private string? _successMessage;
+    private ReservationFormState _form = new();
 
     [Parameter]
     public string Id { get; set; } = string.Empty;
@@ -73,13 +159,11 @@
         catch (OperationCanceledException) when (_requestCancellation.IsCancellationRequested)
         {
         }
-        catch (ApiException exception)
+        catch (Exception exception)
         {
-            _errorMessage = exception.Message;
-        }
-        catch (Exception)
-        {
-            _errorMessage = "Błąd pobierania danych sal";
+            _errorMessage = ApiErrorMessage.FromException(
+                exception,
+                "Blad pobierania danych sal");
         }
         finally
         {
@@ -87,9 +171,102 @@
         }
     }
 
+    private async Task SubmitReservationAsync()
+    {
+        _formError = ValidateForm();
+        _successMessage = null;
+
+        if (_formError is not null || _room is null)
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+
+        try
+        {
+            var start = DateTime.Parse(_form.StartTime).ToUniversalTime();
+            var end = DateTime.Parse(_form.EndTime).ToUniversalTime();
+
+            await ReservationsApi.CreateReservationAsync(
+                new CreateReservationRequestDto(
+                    _room.Id,
+                    _form.Title.Trim(),
+                    string.IsNullOrWhiteSpace(_form.Description)
+                        ? null
+                        : _form.Description.Trim(),
+                    start.ToString("O"),
+                    end.ToString("O")));
+
+            _form = new ReservationFormState();
+            _successMessage = "Rezerwacja utworzona";
+        }
+        catch (Exception exception)
+        {
+            _formError = ApiErrorMessage.FromException(
+                exception,
+                "Nie udalo sie utworzyc rezerwacji");
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private string? ValidateForm()
+    {
+        if (string.IsNullOrWhiteSpace(_form.Title))
+        {
+            return "Tytul jest wymagany";
+        }
+
+        if (string.IsNullOrWhiteSpace(_form.StartTime))
+        {
+            return "Poczatek rezerwacji jest wymagany";
+        }
+
+        if (string.IsNullOrWhiteSpace(_form.EndTime))
+        {
+            return "Koniec rezerwacji jest wymagany";
+        }
+
+        if (!DateTime.TryParse(_form.StartTime, out var start) ||
+            !DateTime.TryParse(_form.EndTime, out var end))
+        {
+            return "Podaj poprawny zakres czasu";
+        }
+
+        if (start >= end)
+        {
+            return "Poczatek musi byc wczesniej niz koniec";
+        }
+
+        return null;
+    }
+
     public void Dispose()
     {
         _requestCancellation.Cancel();
         _requestCancellation.Dispose();
+    }
+
+    private string GetMeasurementState()
+    {
+        return _isLoading
+            ? "loading"
+            : _errorMessage is null && _room is not null
+                ? "ready"
+                : "error";
+    }
+
+    private sealed class ReservationFormState
+    {
+        public string Title { get; set; } = string.Empty;
+
+        public string? Description { get; set; }
+
+        public string StartTime { get; set; } = string.Empty;
+
+        public string EndTime { get; set; } = string.Empty;
     }
 }

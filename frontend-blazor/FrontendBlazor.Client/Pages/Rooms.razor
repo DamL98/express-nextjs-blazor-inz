@@ -1,12 +1,17 @@
 @page "/rooms"
 @implements IDisposable
 @using FrontendBlazor.Client.Features.Rooms
+@using FrontendBlazor.Client.Features.Rooms.DTOs
 @using FrontendBlazor.Client.Infrastructure.Api
 @inject RoomsApi RoomsApi
 
 <PageTitle>Sale</PageTitle>
 
-<section class="rooms-page">
+<section
+    class="rooms-page"
+    data-measurement-page="rooms"
+    data-measurement-state="@GetMeasurementState()"
+    data-measurement-count="@_rooms.Count">
     <header class="rooms-header">
         <h1>Lista sal</h1>
         <p>Wybierz salę</p>
@@ -45,7 +50,7 @@
 
 @code {
     private readonly CancellationTokenSource _requestCancellation = new();
-    private IReadOnlyList<Room> _rooms = [];
+    private IReadOnlyList<RoomDto> _rooms = [];
     private bool _isLoading = true;
     private string? _errorMessage;
 
@@ -58,13 +63,11 @@
         catch (OperationCanceledException) when (_requestCancellation.IsCancellationRequested)
         {
         }
-        catch (ApiException exception)
+        catch (Exception exception)
         {
-            _errorMessage = exception.Message;
-        }
-        catch (Exception)
-        {
-            _errorMessage = "Błąd pobierania listy sal";
+            _errorMessage = ApiErrorMessage.FromException(
+                exception,
+                "Błąd pobierania listy sal");
         }
         finally
         {
@@ -76,5 +79,10 @@
     {
         _requestCancellation.Cancel();
         _requestCancellation.Dispose();
+    }
+
+    private string GetMeasurementState()
+    {
+        return _isLoading ? "loading" : _errorMessage is null ? "ready" : "error";
     }
 }

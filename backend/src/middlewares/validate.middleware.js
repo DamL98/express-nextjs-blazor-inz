@@ -1,18 +1,14 @@
 import { ApiError } from "../errors/apiError.js";
+import { ProblemDefinitions } from "../errors/problemDefinitions.js";
 
-export function validate(schema, target = "query") {
+export function validateMiddleware(schema, target = "query") {
   return (req, res, next) => {
     const result = schema.safeParse(req[target]);
 
     if (!result.success) {
-      return next(
-        new ApiError(
-          400,
-          "VALIDATION_ERROR",
-          "Błędne dane wejściowe",
-          result.error.flatten(),
-        ),
-      );
+      return next(ApiError.from(ProblemDefinitions.VALIDATION_ERROR, {
+        extensions: { errors: result.error.flatten() },
+      }));
     }
 
     res.locals.validated = {

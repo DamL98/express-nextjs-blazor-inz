@@ -39,8 +39,7 @@ describe("Rooms API", () => {
     const response = await request(app).get("/api/v1/rooms?capacityMin=abc");
 
     expect(response.status).toBe(400);
-    expect(response.body.success).toBe(false);
-    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(response.body.code).toBe("VALIDATION_ERROR");
   });
 
   it("GET /api/v1/rooms/:id zwraca pojedynczą sale", async () => {
@@ -60,8 +59,7 @@ describe("Rooms API", () => {
     );
 
     expect(response.status).toBe(404);
-    expect(response.body.success).toBe(false);
-    expect(response.body.error.code).toBe("ROOM_NOT_FOUND");
+    expect(response.body.code).toBe("ROOM_NOT_FOUND");
   });
 
   it("GET /api/v1/rooms/:id/availability zwraca dostępne terminy dla sali", async () => {
@@ -90,7 +88,6 @@ describe("Rooms API", () => {
     //console.log("INVALID TIME RANGE RESPONSE:", response.status, response.body);
 
     expect(response.status).toBe(400);
-    expect(response.body.success).toBe(false);
-    expect(response.body.error.code).toBe("INVALID_TIME_RANGE");
+    expect(response.body.code).toBe("INVALID_TIME_RANGE");
   });
 });

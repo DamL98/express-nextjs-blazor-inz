@@ -8,12 +8,6 @@ export function getGoogleCalendarStatus(): Promise<GoogleCalendarConnectionStatu
   });
 }
 
-export function disconnectGoogleCalendarConnection(): Promise<{ disconnected: boolean }> {
-  return apiRequest<{ disconnected: boolean }>("/google-calendar/connection", {
-    method: "DELETE",
-  });
-}
-
 export function redirectToGoogleCalendarConnection(redirectTo: string) {
   const url = new URL(`${API_URL}/google-calendar/connect/start`);
   url.searchParams.set("redirectTo", redirectTo);

@@ -1,0 +1,35 @@
+{
+  "name": "measurements",
+  "version": "1.0.0",
+  "description": "",
+  "engines": {
+    "node": ">=24.19.0 <25"
+  },
+  "type": "module",
+  "scripts": {
+    "test": "playwright test --list",
+    "typecheck": "tsc --noEmit",
+    "test:auth": "playwright test tests/auth-check.spec.ts --project=next-small --project=blazor-small",
+    "test:render-modes": "playwright test tests/render-mode-check.spec.ts --project=blazor-small --project=blazor-small-warm",
+    "test:read:next": "playwright test tests/read-flow.spec.ts --project=next-small",
+    "test:read:blazor": "playwright test tests/read-flow.spec.ts --project=blazor-small",
+    "test:write:next": "playwright test tests/write-flow.spec.ts --project=next-small",
+    "test:write:blazor": "playwright test tests/write-flow.spec.ts --project=blazor-small",
+    "measure:read": "tsx scripts/run-measurements.ts --flow=read",
+    "measure:write": "tsx scripts/run-measurements.ts --flow=write",
+    "measure:all": "tsx scripts/run-all-measurements.ts",
+    "auth:save-state": "tsx scripts/save-auth-state.ts",
+    "results:clean": "tsx scripts/clean-results.ts",
+    "results:summarize": "tsx scripts/summarize-results.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@lhci/cli": "^0.15.1",
+    "@playwright/test": "^1.62.1",
+    "lighthouse": "^13.4.1",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2"
+  }
+}

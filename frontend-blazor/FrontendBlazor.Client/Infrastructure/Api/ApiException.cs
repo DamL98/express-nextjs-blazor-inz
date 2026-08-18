@@ -10,12 +10,16 @@ public sealed class ApiException : Exception
         string message,
         HttpStatusCode? statusCode = null,
         JsonElement? details = null,
+        string? type = null,
+        string? instance = null,
         Exception? innerException = null)
         : base(message, innerException)
     {
         Code = code;
         StatusCode = statusCode;
         Details = details;
+        Type = type;
+        Instance = instance;
     }
 
     public string Code { get; }
@@ -23,4 +27,8 @@ public sealed class ApiException : Exception
     public HttpStatusCode? StatusCode { get; }
 
     public JsonElement? Details { get; }
+
+    public string? Type { get; }
+
+    public string? Instance { get; }
 }
