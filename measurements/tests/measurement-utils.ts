@@ -131,6 +131,10 @@ export function expectedCount(testInfo: TestInfo, key: string) {
   return value;
 }
 
+/**
+ * Rozróżnia pierwszą i kolejną wizytę. Kolejna wizyta korzysta z warmed-up kontekstu,
+ * w Blazorze dodatkowo przechodzi z trybu renderowania Server na WebAssembly
+ */
 export async function prepareCacheState(page: Page, testInfo: TestInfo) {
   const cacheMode = metadataValue(testInfo, "cacheMode", "fresh-context");
 

@@ -2,7 +2,10 @@
   "name": "measurements",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "engines": {
+    "node": ">=24.19.0 <25"
+  },
+  "type": "module",
   "scripts": {
     "test": "playwright test --list",
     "typecheck": "tsc --noEmit",
@@ -12,10 +15,11 @@
     "test:read:blazor": "playwright test tests/read-flow.spec.ts --project=blazor-small",
     "test:write:next": "playwright test tests/write-flow.spec.ts --project=next-small",
     "test:write:blazor": "playwright test tests/write-flow.spec.ts --project=blazor-small",
-    "measure:read": "node scripts/run-measurements.mjs --flow=read",
-    "measure:write": "node scripts/run-measurements.mjs --flow=write",
-    "environment:capture": "node scripts/capture-environment.mjs",
-    "results:clean": "node scripts/clean-results.mjs",
+    "measure:read": "tsx scripts/run-measurements.ts --flow=read",
+    "measure:write": "tsx scripts/run-measurements.ts --flow=write",
+    "measure:all": "tsx scripts/run-all-measurements.ts",
+    "auth:save-state": "tsx scripts/save-auth-state.ts",
+    "results:clean": "tsx scripts/clean-results.ts",
     "results:summarize": "tsx scripts/summarize-results.ts"
   },
   "keywords": [],

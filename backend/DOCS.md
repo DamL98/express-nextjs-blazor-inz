@@ -2,7 +2,7 @@
 - Analiza porównawcza implementacji systemu rezerwacji jako aplikacji webowej z wykorzystaniem technologii Blazor (.NET) oraz Next.js (JavaScript)
 
 # Backend tech stack
-- Node.js v22
+- Node.js v24.19.0
 - Express 5
   - cors
   - dotenv

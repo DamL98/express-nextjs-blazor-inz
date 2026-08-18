@@ -1,5 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
+import {
+  getArgument,
+  measurementsDirectory,
+  toSafePathPart,
+} from "./script-utils";
 
 type Measurement = {
   runId: string;
@@ -31,22 +36,129 @@ type Summary = {
   standardDeviationMs: number;
 };
 
-function argument(name: string) {
-  const prefix = `--${name}=`;
-  const item = process.argv.slice(2).find((value) => value.startsWith(prefix));
+type SummaryOptions = {
+  runId?: string;
+  expectedSamples?: number;
+};
 
-  return item?.slice(prefix.length);
+const summaryColumns: (keyof Summary)[] = [
+  "runId",
+  "framework",
+  "dataset",
+  "cacheMode",
+  "runtime",
+  "test",
+  "step",
+  "count",
+  "medianMs",
+  "meanMs",
+  "minMs",
+  "maxMs",
+  "p95Ms",
+  "standardDeviationMs",
+];
+
+/** odczytuje opcjonalny runId i liczbę próbek dla pomiaru */
+function readSummaryOptions(): SummaryOptions {
+  const runId = getArgument("run-id");
+  const expectedSamplesArgument = getArgument("expected-samples");
+
+  if (!expectedSamplesArgument) {
+    return { runId };
+  }
+
+  const expectedSamples = Number(expectedSamplesArgument);
+
+  if (!Number.isInteger(expectedSamples) || expectedSamples < 1) {
+    throw new Error("Parametr --expected-samples musi być liczbą całkowitą");
+  }
+
+  return { runId, expectedSamples };
 }
 
-function walk(directory: string): string[] {
+/** wyszukuje pliki .jsonl zapisane przez testy Playwright */
+function findMeasurementFiles(directory: string): string[] {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const fullPath = path.join(directory, entry.name);
 
-    return entry.isDirectory() ? walk(fullPath) : [fullPath];
+    if (entry.isDirectory()) {
+      return findMeasurementFiles(fullPath);
+    }
+
+    return fullPath.endsWith(".jsonl") ? [fullPath] : [];
   });
 }
 
-function median(sortedValues: number[]): number {
+/** wczytuje plik JSONL do tablicy próbek pomiarowych */
+function readMeasurementFile(file: string): Measurement[] {
+  return fs
+    .readFileSync(file, "utf8")
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as Measurement);
+}
+
+/** wczytuje wszystkie próbki i opcjonalnie ogranicza je do jednego uruchomienia */
+function loadMeasurements(rawDirectory: string, runId?: string): Measurement[] {
+  const measurements = findMeasurementFiles(rawDirectory)
+    .flatMap(readMeasurementFile)
+    .filter((measurement) => !runId || measurement.runId === runId);
+
+  if (measurements.length === 0) {
+    throw new Error(`Brak pomiarów dla runId: ${runId ?? "wszystkie"}`);
+  }
+
+  return measurements;
+}
+
+/** Sprawdza, czy ten sam krok i indeks próbki nie zostały zapisane więcej niż raz */
+function validateUniqueSamples(measurements: Measurement[]): void {
+  const uniqueSamples = new Set<string>();
+
+  for (const measurement of measurements) {
+    const sampleKey = [
+      measurement.runId,
+      measurement.project,
+      measurement.test,
+      measurement.step,
+      measurement.sampleIndex,
+    ].join("|");
+
+    if (uniqueSamples.has(sampleKey)) {
+      throw new Error(`Powtórzona próbka w wynikach: ${sampleKey}`);
+    }
+
+    uniqueSamples.add(sampleKey);
+  }
+}
+
+/** grupuje próbki opisujące ten sam framework, dataset, test i krok */
+function groupMeasurements(
+  measurements: Measurement[],
+): Map<string, Measurement[]> {
+  const groups = new Map<string, Measurement[]>();
+
+  for (const measurement of measurements) {
+    const groupKey = JSON.stringify([
+      measurement.runId,
+      measurement.framework,
+      measurement.dataset,
+      measurement.cacheMode,
+      measurement.runtime,
+      measurement.test,
+      measurement.step,
+    ]);
+    const group = groups.get(groupKey) ?? [];
+
+    group.push(measurement);
+    groups.set(groupKey, group);
+  }
+
+  return groups;
+}
+
+/** obl medianę dla posortowanej listy czasów wykonania */
+function calculateMedian(sortedValues: number[]): number {
   const middle = Math.floor(sortedValues.length / 2);
 
   return sortedValues.length % 2 === 0
@@ -54,16 +166,24 @@ function median(sortedValues: number[]): number {
     : sortedValues[middle];
 }
 
-function percentile(sortedValues: number[], percentileValue: number) {
+/** obl wskazany percentyl - raport używa tej funkcji do wartości p95 */
+function calculatePercentile(
+  sortedValues: number[],
+  percentile: number,
+): number {
   const index = Math.max(
     0,
-    Math.ceil((percentileValue / 100) * sortedValues.length) - 1,
+    Math.ceil((percentile / 100) * sortedValues.length) - 1,
   );
 
   return sortedValues[index];
 }
 
-function sampleStandardDeviation(values: number[], mean: number) {
+/** obl odchylenie standardowe próby - używane w tabeli wynikowej */
+function calculateSampleStandardDeviation(
+  values: number[],
+  mean: number,
+): number {
   if (values.length < 2) {
     return 0;
   }
@@ -76,101 +196,17 @@ function sampleStandardDeviation(values: number[], mean: number) {
   return Math.sqrt(squaredDifferences / (values.length - 1));
 }
 
-function csvValue(value: string | number) {
-  const text = String(value);
-  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+/** zaokrągla wynik czasowy do dwóch 2msc. p.p. -  czytelny raport */
+function roundMilliseconds(value: number): number {
+  return Number(value.toFixed(2));
 }
 
-function toCsv(rows: Summary[]) {
-  const columns: (keyof Summary)[] = [
-    "runId",
-    "framework",
-    "dataset",
-    "cacheMode",
-    "runtime",
-    "test",
-    "step",
-    "count",
-    "medianMs",
-    "meanMs",
-    "minMs",
-    "maxMs",
-    "p95Ms",
-    "standardDeviationMs",
-  ];
-
-  return [
-    columns.join(","),
-    ...rows.map((row) => columns.map((column) => csvValue(row[column])).join(",")),
-  ].join("\n");
-}
-
-const runId = argument("run-id");
-const expectedSamplesValue = Number(argument("expected-samples"));
-const expectedSamples = Number.isInteger(expectedSamplesValue)
-  ? expectedSamplesValue
-  : null;
-const rawDirectory = path.resolve("results/raw");
-
-if (!fs.existsSync(rawDirectory)) {
-  throw new Error(`Brak katalogu wynikow: ${rawDirectory}`);
-}
-
-const measurements = walk(rawDirectory)
-  .filter((file) => file.endsWith(".jsonl"))
-  .flatMap((file) =>
-    fs
-      .readFileSync(file, "utf8")
-      .split(/\r?\n/)
-      .filter(Boolean)
-      .map((line) => JSON.parse(line) as Measurement),
-  )
-  .filter((measurement) => !runId || measurement.runId === runId);
-
-if (measurements.length === 0) {
-  throw new Error(`Brak pomiarow dla runId: ${runId ?? "wszystkie"}`);
-}
-
-const uniqueSamples = new Set<string>();
-
-for (const measurement of measurements) {
-  const sampleKey = [
-    measurement.runId,
-    measurement.project,
-    measurement.test,
-    measurement.step,
-    measurement.sampleIndex,
-  ].join("|");
-
-  if (uniqueSamples.has(sampleKey)) {
-    throw new Error(`Powtorzona probka w wynikach: ${sampleKey}`);
-  }
-
-  uniqueSamples.add(sampleKey);
-}
-
-const groups = new Map<string, Measurement[]>();
-
-for (const measurement of measurements) {
-  const key = JSON.stringify([
-    measurement.runId,
-    measurement.framework,
-    measurement.dataset,
-    measurement.cacheMode,
-    measurement.runtime,
-    measurement.test,
-    measurement.step,
-  ]);
-  const group = groups.get(key) ?? [];
-  group.push(measurement);
-  groups.set(key, group);
-}
-
-const summary: Summary[] = Array.from(groups.values()).map((entries) => {
-  const values = entries
+/** zamienia jedną grupę próbek na zestaw statystyk prezentowany w raporcie */
+function summarizeGroup(entries: Measurement[]): Summary {
+  const durations = entries
     .map((entry) => entry.durationMs)
-    .sort((a, b) => a - b);
-  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+    .sort((left, right) => left - right);
+  const mean = durations.reduce((sum, value) => sum + value, 0) / durations.length;
   const first = entries[0];
 
   return {
@@ -181,61 +217,121 @@ const summary: Summary[] = Array.from(groups.values()).map((entries) => {
     runtime: first.runtime,
     test: first.test,
     step: first.step,
-    count: values.length,
-    medianMs: Number(median(values).toFixed(2)),
-    meanMs: Number(mean.toFixed(2)),
-    minMs: Number(values[0].toFixed(2)),
-    maxMs: Number(values.at(-1)!.toFixed(2)),
-    p95Ms: Number(percentile(values, 95).toFixed(2)),
-    standardDeviationMs: Number(
-      sampleStandardDeviation(values, mean).toFixed(2),
+    count: durations.length,
+    medianMs: roundMilliseconds(calculateMedian(durations)),
+    meanMs: roundMilliseconds(mean),
+    minMs: roundMilliseconds(durations[0]),
+    maxMs: roundMilliseconds(durations.at(-1)!),
+    p95Ms: roundMilliseconds(calculatePercentile(durations, 95)),
+    standardDeviationMs: roundMilliseconds(
+      calculateSampleStandardDeviation(durations, mean),
     ),
   };
-});
+}
 
-if (expectedSamples !== null) {
+/** Tworzy posortowaną listę podsumowań ze wszystkich grup pomiarowych */
+function createSummary(measurements: Measurement[]): Summary[] {
+  const groups = groupMeasurements(measurements);
+  const summary = Array.from(groups.values(), summarizeGroup);
+
+  return summary.sort((left, right) =>
+    [left.dataset, left.cacheMode, left.framework, left.step]
+      .join("|")
+      .localeCompare(
+        [right.dataset, right.cacheMode, right.framework, right.step].join("|"),
+      ),
+  );
+}
+
+/** Sprawdza kompletność danych, gdy podano oczekiwaną liczbę próbek */
+function validateSampleCounts(
+  summary: Summary[],
+  expectedSamples?: number,
+): void {
+  if (expectedSamples === undefined) {
+    return;
+  }
+
   const invalidGroup = summary.find((group) => group.count !== expectedSamples);
 
   if (invalidGroup) {
     throw new Error(
-      `Nieprawidlowa liczba probek dla ${invalidGroup.framework}/${invalidGroup.step}: ` +
+      `Nieprawidłowa liczba próbek dla ${invalidGroup.framework}/${invalidGroup.step}: ` +
         `${invalidGroup.count}, oczekiwano ${expectedSamples}.`,
     );
   }
 }
 
-summary.sort((left, right) =>
-  [left.dataset, left.cacheMode, left.framework, left.step]
-    .join("|")
-    .localeCompare(
-      [right.dataset, right.cacheMode, right.framework, right.step].join("|"),
+/** Zabezpiecza tekst CSV przed przecinkami, cudzysłowami i znakami nowej linii */
+function escapeCsvValue(value: string | number): string {
+  const text = String(value);
+  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+/** Zamienia tabelę statystyk na treść pliku CSV używanego w dalszej analizie */
+function convertSummaryToCsv(rows: Summary[]): string {
+  return [
+    summaryColumns.join(","),
+    ...rows.map((row) =>
+      summaryColumns.map((column) => escapeCsvValue(row[column])).join(","),
     ),
-);
+  ].join("\n");
+}
 
-console.table(summary);
+/** Zapisuje wersję JSON i CSV raportu w katalogu results/playwright */
+function saveSummaryReports(
+  summary: Summary[],
+  measurementCount: number,
+  runId?: string,
+): void {
+  const outputDirectory = path.join(
+    measurementsDirectory,
+    "results",
+    "playwright",
+  );
+  const safeRunId = toSafePathPart(runId ?? "all-runs");
+  const report = {
+    generatedAt: new Date().toISOString(),
+    runId: runId ?? null,
+    measurementCount,
+    groups: summary,
+  };
+  const jsonReport = JSON.stringify(report, null, 2);
 
-const outputDirectory = path.resolve("results/playwright");
-const safeRunId = (runId ?? "all-runs").replace(/[^a-z0-9-_]+/gi, "-");
-const report = {
-  generatedAt: new Date().toISOString(),
-  runId: runId ?? null,
-  measurementCount: measurements.length,
-  groups: summary,
-};
+  fs.mkdirSync(outputDirectory, { recursive: true });
+  fs.writeFileSync(
+    path.join(outputDirectory, `summary-${safeRunId}.json`),
+    jsonReport,
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(outputDirectory, `summary-${safeRunId}.csv`),
+    `${convertSummaryToCsv(summary)}\n`,
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(outputDirectory, "summary.json"),
+    jsonReport,
+    "utf8",
+  );
+}
 
-fs.mkdirSync(outputDirectory, { recursive: true });
-fs.writeFileSync(
-  path.join(outputDirectory, `summary-${safeRunId}.json`),
-  JSON.stringify(report, null, 2),
-  "utf8",
-);
-fs.writeFileSync(
-  path.join(outputDirectory, `summary-${safeRunId}.csv`),
-  `${toCsv(summary)}\n`,
-  "utf8",
-);
-fs.writeFileSync(
-  path.join(outputDirectory, "summary.json"),
-  JSON.stringify(report, null, 2),
-  "utf8",
-);
+/** Wczytuje próbki, waliduje je, oblicza statystyki i zapisuje raport końcowy */
+function main(): void {
+  const options = readSummaryOptions();
+  const rawDirectory = path.join(measurementsDirectory, "results", "raw");
+
+  if (!fs.existsSync(rawDirectory)) {
+    throw new Error(`Brak katalogu wyników: ${rawDirectory}`);
+  }
+
+  const measurements = loadMeasurements(rawDirectory, options.runId);
+  validateUniqueSamples(measurements);
+
+  const summary = createSummary(measurements);
+  validateSampleCounts(summary, options.expectedSamples);
+  console.table(summary);
+  saveSummaryReports(summary, measurements.length, options.runId);
+}
+
+main();
