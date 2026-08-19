@@ -1,61 +1,59 @@
 @page "/"
-@using FrontendBlazor.Client.Features.Reservations
+@implements IDisposable
+@using FrontendBlazor.Client.Features.Dashboard
 @using FrontendBlazor.Client.Features.Reservations.DTOs
-@using FrontendBlazor.Client.Features.Rooms
-@using FrontendBlazor.Client.Features.Rooms.DTOs
 @using FrontendBlazor.Client.Infrastructure.Api
-@inject RoomsApi RoomsApi
-@inject ReservationsApi ReservationsApi
+@inject DashboardApi DashboardApi
 
 <PageTitle>Dashboard</PageTitle>
 
 <section
-    class="dashboard-page"
+    class="mx-auto max-w-6xl px-4 py-8 md:px-8"
     data-measurement-page="dashboard"
     data-measurement-state="@GetMeasurementState()">
-    <header class="page-header">
-        <h1>Dashboard</h1>
-        <p>Aktywne sale: @_activeRoomsCount</p>
+    <header>
+        <h1 class="mt-2 text-3xl font-bold tracking-tight text-gray-900">Dashboard</h1>
+        <p class="mt-3 max-w-2xl text-gray-600">Aktywne sale: @_activeRoomsCount</p>
     </header>
 
     @if (_errorMessage is not null)
     {
-        <div class="error-alert" role="alert">@_errorMessage</div>
+        <div class="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">@_errorMessage</div>
     }
 
-    <section class="dashboard-section">
-        <div class="dashboard-card">
-            <div class="card-heading">
-                <h2>Najblizsze rezerwacje</h2>
-                <a href="/reservations">Zobacz wszystkie</a>
+    <section class="mt-8">
+        <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div class="flex items-center justify-between gap-4">
+                <h2 class="text-lg font-semibold text-gray-900">Najblizsze rezerwacje</h2>
+                <a class="text-sm font-medium text-blue-700 hover:text-blue-800" href="/reservations">Zobacz wszystkie</a>
             </div>
 
-            <div class="reservation-preview-list">
+            <div class="mt-5 space-y-3">
                 @if (_isLoading)
                 {
-                    <div class="state-card">Ladowanie rezerwacji...</div>
+                    <div class="rounded-lg border border-dashed border-gray-300 p-5 text-sm text-gray-600">Ladowanie rezerwacji...</div>
                 }
                 else if (_nextReservations.Count == 0)
                 {
-                    <div class="state-card">Brak aktywnych rezerwacji</div>
+                    <div class="rounded-lg border border-dashed border-gray-300 p-5 text-sm text-gray-600">Brak aktywnych rezerwacji</div>
                 }
                 else
                 {
                     @foreach (var reservation in _nextReservations)
                     {
-                        <article class="reservation-preview">
-                            <div class="preview-heading">
+                        <article class="rounded-lg border border-gray-200 p-4">
+                            <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                 <div>
-                                    <p class="reservation-title">@reservation.Title</p>
-                                    <p class="reservation-room">
+                                    <p class="font-medium text-gray-900">@reservation.Title</p>
+                                    <p class="mt-1 text-sm text-gray-600">
                                         @(reservation.Room?.Name ?? $"Sala: {reservation.RoomId}")
                                     </p>
                                 </div>
 
-                                <span class="status-badge active">Aktywna</span>
+                                <span class="w-fit rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-medium text-green-700">Aktywna</span>
                             </div>
 
-                            <p class="reservation-time">
+                            <p class="mt-3 text-sm text-gray-600">
                                 @FormatDateTime(reservation.StartTime) - @FormatDateTime(reservation.EndTime)
                             </p>
                         </article>
@@ -67,8 +65,7 @@
 </section>
 
 @code {
-    private IReadOnlyList<RoomDto> _rooms = [];
-    private IReadOnlyList<ReservationDto> _reservations = [];
+    private readonly CancellationTokenSource _requestCancellation = new();
     private IReadOnlyList<ReservationDto> _nextReservations = [];
     private bool _isLoading = true;
     private string? _errorMessage;
@@ -82,26 +79,24 @@
         }
 
         await LoadDashboardAsync();
-        StateHasChanged();
+
+        if (!_requestCancellation.IsCancellationRequested)
+        {
+            StateHasChanged();
+        }
     }
 
     private async Task LoadDashboardAsync()
     {
         try
         {
-            var roomsTask = RoomsApi.GetRoomsAsync();
-            var reservationsTask = ReservationsApi.GetMyReservationsAsync();
-
-            await Task.WhenAll(roomsTask, reservationsTask);
-
-            _rooms = await roomsTask;
-            _reservations = await reservationsTask;
-            _activeRoomsCount = _rooms.Count(room => room.IsActive);
-            _nextReservations = _reservations
-                .Where(reservation => reservation.Status == ReservationStatus.ACTIVE)
-                .OrderBy(reservation => reservation.StartTime)
-                .Take(3)
-                .ToList();
+            var dashboard = await DashboardApi.GetDashboardAsync(
+                _requestCancellation.Token);
+            _activeRoomsCount = dashboard.ActiveRoomsCount;
+            _nextReservations = dashboard.NextReservations;
+        }
+        catch (OperationCanceledException) when (_requestCancellation.IsCancellationRequested)
+        {
         }
         catch (Exception exception)
         {
@@ -113,6 +108,12 @@
         {
             _isLoading = false;
         }
+    }
+
+    public void Dispose()
+    {
+        _requestCancellation.Cancel();
+        _requestCancellation.Dispose();
     }
 
     private static string FormatDateTime(DateTimeOffset value)

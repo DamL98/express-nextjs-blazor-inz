@@ -85,6 +85,18 @@ afterAll(async () => {
 });
 
 describe("Reservations API", () => {
+  it("GET /api/v1/dashboard zwraca gotowy model dashboardu", async () => {
+    const response = await asUser(request(app).get("/api/v1/dashboard"), testUserToken);
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.activeRoomsCount).toBeTypeOf("number");
+    expect(response.body.data.nextReservations.length).toBeLessThanOrEqual(3);
+    expect(response.body.data.nextReservations.every(
+      (reservation) => reservation.status === "ACTIVE",
+    )).toBe(true);
+  });
+
   it("GET /api/v1/reservations/my zwraca liste rezerwacji mock usera", async () => {
     const response = await asUser(request(app).get(`${API}/my`), testUserToken);
 

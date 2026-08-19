@@ -16,15 +16,20 @@ export default function RoomDetailsPage() {
 
   useEffect(() => {
     let isActive = true;
+    const controller = new AbortController();
 
     async function loadRoom() {
       try {
-        const data = await getRoomById(id);
+        const data = await getRoomById(id, controller.signal);
 
         if (isActive) {
           setRoom(data);
         }
       } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
         if (isActive) {
           setErrorMessage(
             error instanceof Error
@@ -43,6 +48,7 @@ export default function RoomDetailsPage() {
 
     return () => {
       isActive = false;
+      controller.abort();
     };
   }, [id]);
 

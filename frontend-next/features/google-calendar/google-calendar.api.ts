@@ -2,9 +2,12 @@ import { apiRequest } from "@/lib/api/http-client";
 import { API_URL } from "@/lib/config/env";
 import type { GoogleCalendarConnectionStatus } from "./google-calendar.types";
 
-export function getGoogleCalendarStatus(): Promise<GoogleCalendarConnectionStatus> {
+export function getGoogleCalendarStatus(
+  signal?: AbortSignal,
+): Promise<GoogleCalendarConnectionStatus> {
   return apiRequest<GoogleCalendarConnectionStatus>("/google-calendar/status", {
     cache: "no-store",
+    signal,
   });
 }
 

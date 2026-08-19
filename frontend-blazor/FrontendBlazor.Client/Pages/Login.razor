@@ -1,159 +1,36 @@
 @page "/login"
 @using FrontendBlazor.Client.Features.Auth
 @inject AuthContext Auth
-@inject NavigationManager Navigation
 
-<PageTitle>@(_mode == AuthFormMode.Login ? "Logowanie" : "Rejestracja")</PageTitle>
+<PageTitle>Logowanie</PageTitle>
 
-<main class="auth-shell">
-    <section class="auth-card">
-        <p class="eyebrow">System rezerwacji</p>
-        <h1>@(_mode == AuthFormMode.Login ? "Zaloguj sie" : "Utworz konto")</h1>
-        <p class="muted">
-            @(_mode == AuthFormMode.Login
-                ? "Zaloguj sie przez konto Google"
-                : "e-mail/haslo jest off")
-        </p>
+<main class="grid min-h-screen place-items-center bg-gray-50 px-4 py-8">
+    <section class="w-full max-w-[430px] rounded-[22px] border border-blue-900/20 bg-white/[.97] p-[38px] shadow-[0_24px_70px_rgba(23,32,51,0.14)] max-[480px]:px-[22px] max-[480px]:py-7">
+        <p class="mb-2 text-xs font-extrabold tracking-[0.14em] text-[var(--app-accent)] uppercase">System rezerwacji</p>
+        <h1 class="text-[32px] font-bold tracking-[-0.04em] text-[var(--app-ink)]">Zaloguj sie</h1>
+        <p class="mt-[10px] mb-[26px] leading-[1.55] text-[var(--app-muted)]">Zaloguj sie przez konto Google</p>
 
         <button
             type="button"
-            class="google-button"
+            class="flex min-h-[46px] w-full items-center justify-center gap-[10px] rounded-[11px] border border-[var(--app-line)] bg-white font-[750] text-[var(--app-ink)] hover:border-[#aebbd0] hover:bg-[#f6f8fc] disabled:cursor-wait disabled:opacity-65"
             disabled="@_isSubmitting"
             @onclick="GoogleLoginAsync">
-            <span class="google-mark">G</span>
-            Kontynuuj z Google
+            <span class="text-lg font-extrabold text-[#4285f4]">G</span>
+            @(_isSubmitting ? "Przekierowanie..." : "Kontynuuj z Google")
         </button>
 
-        <div class="separator"><span>lub</span></div>
-
-        <form @onsubmit="SubmitAsync" @onsubmit:preventDefault>
-            @if (_mode == AuthFormMode.Register)
-            {
-                <label for="full-name">
-                    Imie i nazwisko
-                    <input
-                        id="full-name"
-                        type="text"
-                        autocomplete="name"
-                        required
-                        @bind="_fullName"
-                        @bind:event="oninput" />
-                </label>
-            }
-
-            <label for="email">
-                E-mail
-                <input
-                    id="email"
-                    type="email"
-                    autocomplete="email"
-                    required
-                    @bind="_email"
-                    @bind:event="oninput" />
-            </label>
-
-            <label for="password">
-                Haslo
-                <input
-                    id="password"
-                    type="password"
-                    autocomplete="@(_mode == AuthFormMode.Login ? "current-password" : "new-password")"
-                    minlength="6"
-                    required
-                    @bind="_password"
-                    @bind:event="oninput" />
-            </label>
-
-            @if (_mode == AuthFormMode.Register)
-            {
-                <label for="confirm-password">
-                    Powtorz haslo
-                    <input
-                        id="confirm-password"
-                        type="password"
-                        autocomplete="new-password"
-                        minlength="6"
-                        required
-                        @bind="_confirmPassword"
-                        @bind:event="oninput" />
-                </label>
-            }
-
-            @if (CurrentError is not null)
-            {
-                <p class="error-message" role="alert">@CurrentError</p>
-            }
-
-            <button
-                type="submit"
-                class="primary-button"
-                disabled="@_isSubmitting">
-                @SubmitLabel
-            </button>
-        </form>
-
-        <button
-            type="button"
-            class="mode-button"
-            disabled="@_isSubmitting"
-            @onclick="ToggleMode">
-            @(_mode == AuthFormMode.Login
-                ? "Nie masz konta? Zarejestruj sie"
-                : "Masz juz konto? Zaloguj sie")
-        </button>
+        @if (CurrentError is not null)
+        {
+            <p class="mt-4 rounded-[9px] bg-[#fff0f0] px-3 py-[11px] text-[13px] leading-[1.4] text-[#9d2424]" role="alert">@CurrentError</p>
+        }
     </section>
 </main>
 
 @code {
-    private AuthFormMode _mode = AuthFormMode.Login;
-    private string _fullName = string.Empty;
-    private string _email = string.Empty;
-    private string _password = string.Empty;
-    private string _confirmPassword = string.Empty;
     private string? _errorMessage;
     private bool _isSubmitting;
 
-    private string? CurrentError => _errorMessage ?? Auth.InitializationError;
-
-    private string SubmitLabel => _isSubmitting
-        ? "Prosze czekac..."
-        : (_mode == AuthFormMode.Login ? "Zaloguj sie" : "Zarejestruj sie");
-
-    private async Task SubmitAsync()
-    {
-        _errorMessage = null;
-
-        if (_mode == AuthFormMode.Register &&
-            !string.Equals(_password, _confirmPassword, StringComparison.Ordinal))
-        {
-            _errorMessage = "Hasla nie sa takie same";
-            return;
-        }
-
-        _isSubmitting = true;
-
-        try
-        {
-            if (_mode == AuthFormMode.Register)
-            {
-                await Auth.RegisterAsync(_fullName, _email, _password);
-            }
-            else
-            {
-                await Auth.LoginAsync(_email, _password);
-            }
-
-            Navigation.NavigateTo("/", replace: true);
-        }
-        catch (Exception error)
-        {
-            _errorMessage = error.Message;
-        }
-        finally
-        {
-            _isSubmitting = false;
-        }
-    }
+    private string? CurrentError => _errorMessage;
 
     private async Task GoogleLoginAsync()
     {
@@ -164,30 +41,10 @@
         {
             await Auth.LoginWithGoogleAsync();
         }
-        catch (Exception error)
+        catch (Exception exception)
         {
-            _errorMessage = error.Message;
-        }
-        finally
-        {
+            _errorMessage = exception.Message;
             _isSubmitting = false;
         }
-    }
-
-    private void ToggleMode()
-    {
-        _mode = _mode == AuthFormMode.Login
-            ? AuthFormMode.Register
-            : AuthFormMode.Login;
-
-        _errorMessage = null;
-        _password = string.Empty;
-        _confirmPassword = string.Empty;
-    }
-
-    private enum AuthFormMode
-    {
-        Login,
-        Register,
     }
 }

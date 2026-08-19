@@ -3,29 +3,31 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { useAuth } from "@/components/auth-provider";
 import { GoogleCalendarIntegrationCard } from "@/components/google-calendar/GoogleCalendarIntegrationCard";
 import { ReservationsList } from "@/components/reservations/ReservationList";
 import { getMyReservations } from "@/features/reservations/reservations.api";
 import type { Reservation } from "@/features/reservations/reservations.types";
 
 export default function ReservationsPage() {
-  const { getIdToken } = useAuth();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
 
     async function loadReservations() {
       try {
-        const token = await getIdToken();
-        const data = await getMyReservations({}, token);
+        const data = await getMyReservations({}, controller.signal);
         if (active) {
           setReservations(data);
         }
       } catch (loadError) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
         if (active) {
           setError(
             loadError instanceof Error
@@ -44,8 +46,9 @@ export default function ReservationsPage() {
 
     return () => {
       active = false;
+      controller.abort();
     };
-  }, [getIdToken]);
+  }, []);
 
   return (
     <main

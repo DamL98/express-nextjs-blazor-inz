@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Components.WebAssembly.Http;
@@ -36,13 +35,11 @@ public sealed class ApiClient(
             ? await SendWithBrowserAsync(
                 options.Method,
                 path,
-                options.Token,
                 options.Body,
                 cancellationToken)
             : await SendWithHttpClientAsync(
                 options.Method,
                 path,
-                options.Token,
                 options.Body,
                 cancellationToken);
 
@@ -61,7 +58,6 @@ public sealed class ApiClient(
     private async Task<RawApiResponse> SendWithHttpClientAsync(
         HttpMethod method,
         string path,
-        string? token,
         object? requestBody,
         CancellationToken cancellationToken)
     {
@@ -73,13 +69,6 @@ public sealed class ApiClient(
         {
             request.SetBrowserRequestCredentials(
                 BrowserRequestCredentials.Include);
-        }
-
-        if (!string.IsNullOrWhiteSpace(token))
-        {
-            request.Headers.Authorization = new AuthenticationHeaderValue(
-                "Bearer",
-                token);
         }
 
         if (requestBody is not null)
@@ -116,23 +105,25 @@ public sealed class ApiClient(
     private async Task<RawApiResponse> SendWithBrowserAsync(
         HttpMethod method,
         string path,
-        string? token,
         object? requestBody,
         CancellationToken cancellationToken)
     {
+        IJSObjectReference? module = null;
+        var requestId = Guid.NewGuid().ToString("N");
+
         try
         {
-            var module = await _browserApiModule.Value;
+            module = await _browserApiModule.Value;
             var body = requestBody is null
                 ? null
                 : JsonSerializer.Serialize(requestBody, SerializerOptions);
             var response = await module.InvokeAsync<BrowserApiResponse>(
                 "startApiRequest",
                 cancellationToken,
+                requestId,
                 BaseAddress.ToString(),
                 path,
                 method.Method,
-                token,
                 body);
 
             try
@@ -163,6 +154,28 @@ public sealed class ApiClient(
                     "releaseApiResponse",
                     response.ResponseId);
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            if (module is not null)
+            {
+                await module.InvokeVoidAsync("cancelApiRequest", requestId);
+            }
+
+            throw;
+        }
+        catch (JSException exception) when (
+            exception.Message.Contains("API_CANCELLED", StringComparison.Ordinal))
+        {
+            throw new OperationCanceledException(
+                "Anulowano zapytanie API",
+                exception,
+                cancellationToken);
+        }
+        catch (JSException exception) when (
+            exception.Message.Contains("API_TIMEOUT", StringComparison.Ordinal))
+        {
+            throw CreateTimeoutException(exception);
         }
         catch (JSException exception)
         {
@@ -272,7 +285,7 @@ public sealed class ApiClient(
     {
         return new ApiException(
             "API_TIMEOUT",
-            "Przekroczono czas oczekiwania API response",
+            "API nie odpowiedzialo w ciagu 15 sekund",
             innerException: exception);
     }
 
@@ -305,6 +318,5 @@ public sealed class ApiClient(
 
         public string? ContentType { get; init; }
 
-        public int BodyLength { get; init; }
     }
 }

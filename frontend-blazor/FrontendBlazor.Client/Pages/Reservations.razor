@@ -1,4 +1,5 @@
 @page "/reservations"
+@implements IDisposable
 @using FrontendBlazor.Client.Features.GoogleCalendar
 @using FrontendBlazor.Client.Features.Reservations
 @using FrontendBlazor.Client.Features.Reservations.DTOs
@@ -10,75 +11,75 @@
 <PageTitle>Moje rezerwacje</PageTitle>
 
 <section
-    class="reservations-page"
+    class="mx-auto max-w-5xl px-6 py-8"
     data-measurement-page="reservations"
     data-measurement-state="@GetMeasurementState()"
     data-measurement-count="@_reservations.Count">
-    <div class="page-heading">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-            <h1>Moje rezerwacje</h1>
-            <p>Lista Twoich rezerwacji.</p>
+            <h1 class="text-2xl font-bold text-gray-900">Moje rezerwacje</h1>
+            <p class="mt-2 text-gray-600">Lista Twoich rezerwacji.</p>
         </div>
 
-        <a class="primary-link" href="/rooms">Zarezerwuj sale</a>
+        <a class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700" href="/rooms">Zarezerwuj sale</a>
     </div>
 
-    <div class="calendar-section">
+    <div class="mt-6">
         <GoogleCalendarCard />
     </div>
 
-    <div class="reservations-section">
+    <div class="mt-6">
         @if (_isLoading)
         {
-            <div class="state-card">Ladowanie rezerwacji...</div>
+            <div class="rounded-xl border border-gray-200 bg-white p-6 text-gray-600 shadow-sm">Ladowanie rezerwacji...</div>
         }
         else if (_loadError is not null)
         {
-            <div class="error-alert" role="alert">@_loadError</div>
+            <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">@_loadError</div>
         }
         else if (_reservations.Count == 0)
         {
-            <div class="empty-card">
-                <a href="/rooms">← back /rooms</a>
-                <p>Nie masz jeszcze zadnych rezerwacji</p>
+            <div class="rounded-xl border border-gray-200 bg-white p-6 text-gray-600 shadow-sm">
+                <a class="text-sm font-medium text-blue-600 hover:text-blue-700" href="/rooms">← back /rooms</a>
+                Nie masz jeszcze zadnych rezerwacji
             </div>
         }
         else
         {
-            <section class="reservation-list">
+            <section class="space-y-4">
                 @if (_actionError is not null)
                 {
-                    <div class="error-alert" role="alert">@_actionError</div>
+                    <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">@_actionError</div>
                 }
 
                 @foreach (var reservation in _reservations)
                 {
-                    <article class="reservation-card">
-                        <div class="reservation-heading">
+                    <article class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div>
-                                <h2>@reservation.Title</h2>
-                                <p>@(reservation.Room?.Name ?? $"Sala: {reservation.RoomId}")</p>
+                                <h2 class="text-lg font-semibold text-gray-900">@reservation.Title</h2>
+                                <p class="mt-1 text-sm text-gray-600">@(reservation.Room?.Name ?? $"Sala: {reservation.RoomId}")</p>
                             </div>
 
-                            <span class="@($"status-badge {GetStatusClass(reservation.Status)}")">
+                            <span class="@($"inline-flex w-fit rounded-full border px-3 py-1 text-xs font-medium {GetStatusClass(reservation.Status)}")">
                                 @GetStatusLabel(reservation.Status)
                             </span>
                         </div>
 
                         @if (!string.IsNullOrWhiteSpace(reservation.Description))
                         {
-                            <p class="reservation-description">@reservation.Description</p>
+                            <p class="mt-4 text-sm text-gray-700">@reservation.Description</p>
                         }
 
-                        <dl class="reservation-dates">
+                        <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                             <div>
-                                <dt>Poczatek</dt>
-                                <dd>@FormatDateTime(reservation.StartTime)</dd>
+                                <dt class="text-gray-500">Poczatek</dt>
+                                <dd class="font-medium text-gray-900">@FormatDateTime(reservation.StartTime)</dd>
                             </div>
 
                             <div>
-                                <dt>Koniec</dt>
-                                <dd>@FormatDateTime(reservation.EndTime)</dd>
+                                <dt class="text-gray-500">Koniec</dt>
+                                <dd class="font-medium text-gray-900">@FormatDateTime(reservation.EndTime)</dd>
                             </div>
                         </dl>
 
@@ -86,7 +87,7 @@
                         {
                             <button
                                 type="button"
-                                class="cancel-button"
+                                class="mt-5 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                                 disabled="@(_pendingReservationId == reservation.Id)"
                                 @onclick="() => CancelReservationAsync(reservation.Id)">
                                 @(_pendingReservationId == reservation.Id
@@ -102,6 +103,7 @@
 </section>
 
 @code {
+    private readonly CancellationTokenSource _requestCancellation = new();
     private IReadOnlyList<ReservationDto> _reservations = [];
     private bool _isLoading = true;
     private string? _loadError;
@@ -116,14 +118,22 @@
         }
 
         await LoadReservationsAsync();
-        StateHasChanged();
+
+        if (!_requestCancellation.IsCancellationRequested)
+        {
+            StateHasChanged();
+        }
     }
 
     private async Task LoadReservationsAsync()
     {
         try
         {
-            _reservations = await ReservationsApi.GetMyReservationsAsync();
+            _reservations = await ReservationsApi.GetMyReservationsAsync(
+                cancellationToken: _requestCancellation.Token);
+        }
+        catch (OperationCanceledException) when (_requestCancellation.IsCancellationRequested)
+        {
         }
         catch (Exception exception)
         {
@@ -135,6 +145,12 @@
         {
             _isLoading = false;
         }
+    }
+
+    public void Dispose()
+    {
+        _requestCancellation.Cancel();
+        _requestCancellation.Dispose();
     }
 
     private async Task CancelReservationAsync(string reservationId)
@@ -190,9 +206,9 @@
     {
         return status switch
         {
-            ReservationStatus.ACTIVE => "active",
-            ReservationStatus.CANCELLED => "cancelled",
-            _ => "cancelled",
+            ReservationStatus.ACTIVE => "border-green-200 bg-green-50 text-green-700",
+            ReservationStatus.CANCELLED => "border-gray-200 bg-gray-50 text-gray-600",
+            _ => "border-gray-200 bg-gray-50 text-gray-600",
         };
     }
 

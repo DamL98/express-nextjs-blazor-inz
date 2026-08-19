@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAuth } from "@/components/auth-provider";
 
 type NavigationItem = {
   label: string;
@@ -22,10 +21,6 @@ const navigationItems: NavigationItem[] = [
     label: "Moje rezerwacje",
     href: "/reservations",
   },
-  {
-    label: "Admin",
-    href: "/admin",
-  },
 ];
 
 function isActivePath(pathname: string, href: string) {
@@ -38,10 +33,6 @@ function isActivePath(pathname: string, href: string) {
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user } = useAuth();
-  const visibleNavigationItems = navigationItems.filter(
-    (item) => item.href !== "/admin" || user?.role.name === "admin",
-  );
 
   return (
     <aside className="hidden min-h-screen w-64 shrink-0 border-r border-gray-200 bg-white px-4 py-6 md:block">
@@ -56,7 +47,7 @@ export function Sidebar() {
       </div>
 
       <nav className="mt-8 space-y-1">
-        {visibleNavigationItems.map((item) => {
+        {navigationItems.map((item) => {
           const active = isActivePath(pathname, item.href);
 
           return (

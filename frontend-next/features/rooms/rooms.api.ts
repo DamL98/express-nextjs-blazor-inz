@@ -5,7 +5,10 @@ import type {
   RoomAvailability,
 } from "./rooms.types";
 
-export function getRooms(filters: GetRoomsFilters = {}): Promise<Room[]> {
+export function getRooms(
+  filters: GetRoomsFilters = {},
+  signal?: AbortSignal,
+): Promise<Room[]> {
   const params = new URLSearchParams();
 
   if (filters.active !== undefined && filters.active !== "") {
@@ -18,11 +21,11 @@ export function getRooms(filters: GetRoomsFilters = {}): Promise<Room[]> {
 
   const query = params.toString();
 
-  return apiRequest<Room[]>(`/rooms${query ? `?${query}` : ""}`);
+  return apiRequest<Room[]>(`/rooms${query ? `?${query}` : ""}`, { signal });
 }
 
-export function getRoomById(id: string): Promise<Room> {
-  return apiRequest<Room>(`/rooms/${id}`);
+export function getRoomById(id: string, signal?: AbortSignal): Promise<Room> {
+  return apiRequest<Room>(`/rooms/${id}`, { signal });
 }
 
 export function getRoomAvailability(

@@ -7,18 +7,16 @@ import type {
 
 export function createReservation(
   payload: CreateReservationPayload,
-  token: string,
 ): Promise<Reservation> {
   return apiRequest<Reservation>("/reservations", {
     method: "POST",
     body: JSON.stringify(payload),
-    token,
   });
 }
 
 export function getMyReservations(
   filters: ReservationFilters = {},
-  token: string,
+  signal?: AbortSignal,
 ): Promise<Reservation[]> {
   const params = new URLSearchParams();
 
@@ -36,17 +34,15 @@ export function getMyReservations(
     `/reservations/my${query ? `?${query}` : ""}`,
     {
       cache: "no-store",
-      token,
+      signal,
     },
   );
 }
 
 export function cancelReservation(
   id: string,
-  token: string,
 ): Promise<Reservation> {
   return apiRequest<Reservation>(`/reservations/${id}/cancel`, {
     method: "PATCH",
-    token,
   });
 }

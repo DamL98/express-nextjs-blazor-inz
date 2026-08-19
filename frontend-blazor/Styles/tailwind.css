@@ -27,3 +27,26 @@ button:disabled {
   cursor: wait;
   opacity: 0.65;
 }
+
+h1:focus {
+  outline: none;
+}
+
+.invalid {
+  outline: 1px solid #dc2626;
+}
+
+.validation-message {
+  color: #dc2626;
+}
+
+.blazor-error-boundary {
+  border-radius: 0.5rem;
+  background: #991b1b;
+  padding: 1rem;
+  color: #ffffff;
+}
+
+.blazor-error-boundary::after {
+  content: "Wystąpił nieoczekiwany błąd";
+}

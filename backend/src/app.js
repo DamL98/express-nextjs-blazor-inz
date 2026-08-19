@@ -8,6 +8,7 @@ import roomsRoutes from "./modules/rooms/rooms.routes.js";
 import reservationsRoutes from "./modules/reservations/reservations.routes.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import googleCalendarRoutes from "./modules/google-calendar/google-calendar.routes.js";
+import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 
 // middlewares
 import { errorMiddleware } from "./middlewares/error.middleware.js";
@@ -74,6 +75,7 @@ app.get("/problems/:slug", (req, res, next) => {
 app.use("/api/v1/rooms", roomsRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/google-calendar", googleCalendarRoutes);
+app.use("/api/v1/dashboard", dashboardRoutes);
 app.use("/api/v1/reservations", reservationsRoutes)
 app.use("/api/v1/admin", adminRoutes)
 

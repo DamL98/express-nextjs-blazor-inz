@@ -1,13 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { useAuth } from "@/components/auth-provider";
-import { getMyReservations } from "@/features/reservations/reservations.api";
-import type { Reservation } from "@/features/reservations/reservations.types";
-import { getRooms } from "@/features/rooms/rooms.api";
-import type { Room } from "@/features/rooms/rooms.types";
+import { getDashboard } from "@/features/dashboard/dashboard.api";
+import type { Dashboard } from "@/features/dashboard/dashboard.types";
 
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("pl-PL", {
@@ -17,28 +14,26 @@ function formatDateTime(value: string) {
 }
 
 export default function DashboardPage() {
-  const { getIdToken } = useAuth();
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
 
     async function loadDashboard() {
       try {
-        const token = await getIdToken();
-        const [roomsData, reservationsData] = await Promise.all([
-          getRooms(),
-          getMyReservations({}, token),
-        ]);
+        const data = await getDashboard(controller.signal);
 
         if (active) {
-          setRooms(roomsData);
-          setReservations(reservationsData);
+          setDashboard(data);
         }
       } catch (loadError) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
         if (active) {
           setError(
             loadError instanceof Error
@@ -57,22 +52,12 @@ export default function DashboardPage() {
 
     return () => {
       active = false;
+      controller.abort();
     };
-  }, [getIdToken]);
+  }, []);
 
-  const activeRoomsCount = rooms.filter((room) => room.isActive).length;
-  const nextReservations = useMemo(
-    () =>
-      reservations
-        .filter((reservation) => reservation.status === "ACTIVE")
-        .slice()
-        .sort(
-          (a, b) =>
-            new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
-        )
-        .slice(0, 3),
-    [reservations],
-  );
+  const activeRoomsCount = dashboard?.activeRoomsCount ?? 0;
+  const nextReservations = dashboard?.nextReservations ?? [];
 
   return (
     <div

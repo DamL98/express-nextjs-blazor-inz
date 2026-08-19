@@ -33,6 +33,19 @@ export const reservationRepository = {
     })
   },
 
+  async findNextActiveForUser(userId, limit = 3) {
+    return prisma.reservation.findMany({
+      where: {
+        userId,
+        status: ReservationStatus.ACTIVE,
+      },
+      orderBy: {
+        startTime: "asc",
+      },
+      take: limit,
+    })
+  },
+
   async create(data) {
     return prisma.reservation.create({
       data,

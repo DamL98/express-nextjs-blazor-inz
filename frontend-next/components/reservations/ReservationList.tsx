@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { cancelReservation } from "@/features/reservations/reservations.api";
-import { useAuth } from "@/components/auth-provider";
 
 import type { Reservation } from "@/features/reservations/reservations.types";
 
@@ -45,7 +44,6 @@ function getStatusClassName(status: Reservation["status"]) {
 export function ReservationsList({
   initialReservations,
 }: ReservationsListProps) {
-  const { getIdToken } = useAuth();
   const [reservations, setReservations] = useState(initialReservations);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -63,8 +61,7 @@ export function ReservationsList({
     setErrorMessage(null);
 
     try {
-      const token = await getIdToken();
-      const cancelledReservation = await cancelReservation(id, token);
+      const cancelledReservation = await cancelReservation(id);
 
       setReservations((current) =>
         current.map((reservation) =>

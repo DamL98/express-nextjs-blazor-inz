@@ -1,16 +1,14 @@
-using FrontendBlazor.Client.Infrastructure.Auth;
 using FrontendBlazor.Client.Features.Auth.DTOs;
+using FrontendBlazor.Client.Infrastructure.Api;
 using Microsoft.AspNetCore.Components;
 
 namespace FrontendBlazor.Client.Features.Auth;
 
 public sealed class AuthContext(
-    BackendAuthClient backendAuthClient,
+    ApiClient apiClient,
     NavigationManager navigation) : IDisposable
 {
     private readonly SemaphoreSlim _initializationLock = new(1, 1);
-    private const string EmailPasswordDisabledMessage =
-        "Logowanie e-mail/haslo jest off";
     private bool _isInitialized;
 
     public event Action? Changed;
@@ -20,8 +18,6 @@ public sealed class AuthContext(
     public bool IsLoading { get; private set; } = true;
 
     public bool IsAuthenticated => User is not null;
-
-    public string? InitializationError { get; private set; }
 
     public async Task InitializeAsync()
     {
@@ -39,13 +35,13 @@ public sealed class AuthContext(
                 return;
             }
 
-            InitializationError = null;
-            User = await backendAuthClient.GetCurrentUserAsync();
+            User = await apiClient.ApiRequestAsync<LocalUserDto>(
+                "/auth/me",
+                BrowserCredentialRequest);
         }
-        catch (Exception exception)
+        catch (Exception)
         {
             User = null;
-            InitializationError = exception.Message;
         }
         finally
         {
@@ -56,50 +52,35 @@ public sealed class AuthContext(
         }
     }
 
-    public Task LoginAsync(string email, string password)
+    public Task LoginWithGoogleAsync()
     {
-        _ = email;
-        _ = password;
-
-        throw new InvalidOperationException(EmailPasswordDisabledMessage);
-    }
-
-    public Task RegisterAsync(
-        string fullName,
-        string email,
-        string password)
-    {
-        _ = fullName;
-        _ = email;
-        _ = password;
-
-        throw new InvalidOperationException(EmailPasswordDisabledMessage);
-    }
-
-    public async Task LoginWithGoogleAsync()
-    {
-        InitializationError = null;
         NotifyChanged();
 
         var redirectTo = new Uri(
             new Uri(navigation.BaseUri),
             "login").ToString();
 
-        await backendAuthClient.RedirectToGoogleLoginAsync(redirectTo);
+        var loginUrl = new Uri(apiClient.BaseAddress, "auth/google/start");
+        var builder = new UriBuilder(loginUrl)
+        {
+            Query = $"redirectTo={Uri.EscapeDataString(redirectTo)}",
+        };
+
+        navigation.NavigateTo(builder.Uri.ToString(), forceLoad: true);
+        return Task.CompletedTask;
     }
 
     public async Task LogoutAsync()
     {
-        await backendAuthClient.LogoutAsync();
+        await apiClient.ApiRequestAsync<LogoutResult>(
+            "/auth/logout",
+            new ApiRequestOptions
+            {
+                Method = HttpMethod.Post,
+                IsBrowserCredentialRequired = true,
+            });
         User = null;
-        InitializationError = null;
         NotifyChanged();
-    }
-
-    public Task<string> GetIdTokenAsync(bool isForceRefresh = false)
-    {
-        _ = isForceRefresh;
-        return Task.FromResult(string.Empty);
     }
 
     public void Dispose()
@@ -111,4 +92,11 @@ public sealed class AuthContext(
     {
         Changed?.Invoke();
     }
+
+    private static ApiRequestOptions BrowserCredentialRequest { get; } = new()
+    {
+        IsBrowserCredentialRequired = true,
+    };
+
+    private sealed record LogoutResult(bool LoggedOut);
 }

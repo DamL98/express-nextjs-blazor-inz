@@ -1,9 +1,8 @@
 import { API_URL } from "@/lib/config/env";
 import type { ApiSuccess, ProblemDetails } from "./api-response.types";
 
-type ApiRequestOptions = RequestInit & {
-  token?: string;
-};
+type ApiRequestOptions = RequestInit;
+const API_REQUEST_TIMEOUT_MS = 15_000;
 
 export class ApiClientError extends Error {
   readonly type: string;
@@ -51,19 +50,62 @@ export async function apiRequest<T>(
   path: string,
   options: ApiRequestOptions = {},
 ): Promise<T> {
-  const { token, headers, ...requestOptions } = options;
-  const response = await fetch(`${API_URL}${path}`, {
-    ...requestOptions,
-    credentials: "include",
-    headers: {
-      Accept: "application/json, application/problem+json",
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(headers || {}),
-    },
-  });
+  const { headers, signal: externalSignal, ...requestOptions } = options;
+  const requestController = new AbortController();
+  let timedOut = false;
+  const timeoutId = window.setTimeout(() => {
+    timedOut = true;
+    requestController.abort();
+  }, API_REQUEST_TIMEOUT_MS);
+  const abortRequest = () => requestController.abort(externalSignal?.reason);
 
-  const body = await readJson(response);
+  if (externalSignal?.aborted) {
+    abortRequest();
+  } else {
+    externalSignal?.addEventListener("abort", abortRequest, { once: true });
+  }
+
+  let response: Response;
+  let body: unknown;
+
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...requestOptions,
+      signal: requestController.signal,
+      credentials: "include",
+      headers: {
+        Accept: "application/json, application/problem+json",
+        "Content-Type": "application/json",
+        ...(headers || {}),
+      },
+    });
+    body = await readJson(response);
+  } catch (error) {
+    if (timedOut) {
+      throw new ApiClientError({
+        type: "/problems/api-timeout",
+        title: "Przekroczono czas oczekiwania na API",
+        status: 408,
+        detail: "API nie odpowiedzialo w ciagu 15 sekund",
+        code: "API_TIMEOUT",
+      });
+    }
+
+    if (externalSignal?.aborted) {
+      throw error;
+    }
+
+    throw new ApiClientError({
+      type: "/problems/api-connection-error",
+      title: "Blad laczenia z API",
+      status: 0,
+      detail: "Blad laczenia z API",
+      code: "API_CONNECTION_ERROR",
+    });
+  } finally {
+    window.clearTimeout(timeoutId);
+    externalSignal?.removeEventListener("abort", abortRequest);
+  }
 
   if (!response.ok) {
     if (isProblemDetails(body)) {

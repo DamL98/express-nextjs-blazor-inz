@@ -60,15 +60,20 @@ export function GoogleCalendarIntegrationCard() {
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
 
     async function loadStatus() {
       try {
-        const data = await getGoogleCalendarStatus();
+        const data = await getGoogleCalendarStatus(controller.signal);
 
         if (active) {
           setStatus(data);
         }
       } catch (loadError) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
         if (active) {
           setError(
             loadError instanceof Error
@@ -87,6 +92,7 @@ export function GoogleCalendarIntegrationCard() {
 
     return () => {
       active = false;
+      controller.abort();
     };
   }, []);
 

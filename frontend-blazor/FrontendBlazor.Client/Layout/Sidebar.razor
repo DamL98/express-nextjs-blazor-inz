@@ -1,29 +1,22 @@
-@using FrontendBlazor.Client.Features.Auth
-@inject AuthContext Auth
-
-<aside class="sidebar">
+<aside class="hidden min-h-screen w-64 shrink-0 border-r border-gray-200 bg-white px-4 py-6 md:block">
     <div>
-        <p class="sidebar-label">System rezerwacji</p>
-        <h1>Sale konferencyjne</h1>
+        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">System rezerwacji</p>
+        <h1 class="mt-2 text-lg font-bold text-gray-900">Sale konferencyjne</h1>
     </div>
 
-    <nav class="navigation" aria-label="Główna nawigacja">
-        <NavLink class="navigation-link" href="" Match="NavLinkMatch.All">
+    <nav class="mt-8 space-y-1" aria-label="Główna nawigacja">
+        <NavLink class="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 hover:text-gray-900 [&.active]:bg-blue-50 [&.active]:text-blue-700" href="" Match="NavLinkMatch.All">
             Dashboard
         </NavLink>
-        <NavLink class="navigation-link" href="rooms">
+        <NavLink class="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 hover:text-gray-900 [&.active]:bg-blue-50 [&.active]:text-blue-700" href="rooms">
             Sale
         </NavLink>
-        <NavLink class="navigation-link" href="reservations">
+        <NavLink class="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 hover:text-gray-900 [&.active]:bg-blue-50 [&.active]:text-blue-700" href="reservations">
             Moje rezerwacje
         </NavLink>
-        @if (Auth.User?.Role.Name == "admin")
-        {
-            <NavLink class="navigation-link" href="admin">
-                Admin
-            </NavLink>
-        }
     </nav>
 
-    <div class="version-card">ver. demo</div>
+    <div class="mt-8 rounded-xl border border-gray-200 bg-gray-50 p-4">
+        <p class="mt-1 text-xs text-gray-600">ver. demo</p>
+    </div>
 </aside>

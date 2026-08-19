@@ -1,0 +1,17 @@
+{
+  "name": "frontend-blazor-styles",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=24.19.0 <25"
+  },
+  "scripts": {
+    "build": "npm run css:build && dotnet build FrontendBlazor.sln --no-restore",
+    "css:build": "tailwindcss -i ./Styles/tailwind.css -o ./FrontendBlazor/wwwroot/app.css --minify",
+    "css:watch": "tailwindcss -i ./Styles/tailwind.css -o ./FrontendBlazor/wwwroot/app.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.1",
+    "tailwindcss": "4.3.1"
+  }
+}

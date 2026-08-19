@@ -2,19 +2,25 @@
 @inject AuthContext Auth
 @inject NavigationManager Navigation
 
-<header class="topbar">
-    <p class="mobile-title">Sale konferencyjne</p>
-    <p class="desktop-title">Panel użytkownika</p>
+<header class="border-b border-gray-200 bg-white px-4 py-4 md:px-8">
+    <div class="flex items-center justify-between">
+        <div class="md:hidden">
+            <p class="text-sm font-semibold text-gray-900">Sale konferencyjne</p>
+        </div>
+        <div class="hidden md:block">
+            <p class="text-sm text-gray-500">Panel użytkownika</p>
+        </div>
 
-    <div class="user-actions">
-        <div class="user-email">@Auth.User?.Email</div>
-        <button
-            type="button"
-            class="logout-button"
-            disabled="@_isLoggingOut"
-            @onclick="LogoutAsync">
-            @(_isLoggingOut ? "Wylogowywanie..." : "Wyloguj")
-        </button>
+        <div class="flex items-center gap-3">
+            <div class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-sm text-gray-700">@Auth.User?.Email</div>
+            <button
+                type="button"
+                class="rounded-lg border bg-black px-3 py-1 text-sm font-medium text-white hover:bg-gray-700"
+                disabled="@_isLoggingOut"
+                @onclick="LogoutAsync">
+                @(_isLoggingOut ? "Wylogowywanie..." : "Wyloguj")
+            </button>
+        </div>
     </div>
 </header>
 

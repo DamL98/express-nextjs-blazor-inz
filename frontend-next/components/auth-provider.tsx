@@ -29,26 +29,17 @@ export type LocalUser = {
 type AuthContext = {
   user: LocalUser | null;
   loading: boolean;
-  // lokalny formularz logowania zostaje w UI, ale aktualna architektura
-  // obsluguje tylko Google OAuth po stronie backendu
-  login: (_email: string, _password: string) => Promise<void>;
-  register: (_fullName: string, _email: string, _password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
-  // zwraca token uzywany w headerze Authorization potrzebne do api
-  // przy sesji cookie backendu nie jest juz potrzebny, ale interfejs zostaje
-  getIdToken: () => Promise<string>;
 };
 
 // null context na start przed zalogowaniem
 const AuthContext = createContext<AuthContext | null>(null);
 
-const GOOGLE_LOGIN_UNAVAILABLE_MESSAGE =
-  "Customowe logowanie jest off, zaloguj przez google";
-
-async function getCurrentSessionUser() {
+async function getCurrentSessionUser(signal?: AbortSignal) {
   return apiRequest<LocalUser>("/auth/me", {
     cache: "no-store",
+    signal,
   });
 }
 
@@ -58,16 +49,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
 
     async function loadSession() {
       try {
         // pobranie rekordu z localdb dla aktywnej sesji przegladarki
-        const currentUser = await getCurrentSessionUser();
+        const currentUser = await getCurrentSessionUser(controller.signal);
 
         if (active) {
           setUser(currentUser);
         }
       } catch {
+        if (controller.signal.aborted) {
+          return;
+        }
+
         if (active) {
           setUser(null);
         }
@@ -82,17 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       active = false;
+      controller.abort();
     };
-  }, []);
-
-  // USER LOGIN
-  const login = useCallback(async () => {
-    throw new Error(GOOGLE_LOGIN_UNAVAILABLE_MESSAGE);
-  }, []);
-
-  // USER REGISTER
-  const register = useCallback(async () => {
-    throw new Error(GOOGLE_LOGIN_UNAVAILABLE_MESSAGE);
   }, []);
 
   // GOOGLE LOGIN
@@ -112,13 +99,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  const getIdToken = useCallback(async () => "", []);
-
   // ograniczenia re-renderowania komponentow korzystajacych z useAuth
   // dopoki zadna wartosc sie nie zmieni
   const value = useMemo(
-    () => ({ user, loading, login, register, loginWithGoogle, logout, getIdToken }),
-    [user, loading, login, register, loginWithGoogle, logout, getIdToken],
+    () => ({ user, loading, loginWithGoogle, logout }),
+    [user, loading, loginWithGoogle, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -13,15 +13,20 @@ export default function RoomsPage() {
 
   useEffect(() => {
     let isActive = true;
+    const controller = new AbortController();
 
     async function loadRooms() {
       try {
-        const data = await getRooms();
+        const data = await getRooms({}, controller.signal);
 
         if (isActive) {
           setRooms(data);
         }
       } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
         if (isActive) {
           setErrorMessage(
             error instanceof Error
@@ -40,6 +45,7 @@ export default function RoomsPage() {
 
     return () => {
       isActive = false;
+      controller.abort();
     };
   }, []);
 
