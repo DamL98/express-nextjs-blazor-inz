@@ -1,19 +1,18 @@
 @page "/reservations"
 @implements IDisposable
-@using FrontendBlazor.Client.Features.GoogleCalendar
-@using FrontendBlazor.Client.Features.Reservations.DTOs
-@using FrontendBlazor.Client.Features.Reservations
+@using FrontendBlazor.Client.Components
+@using FrontendBlazor.Client.Formatting
 @using FrontendBlazor.Client.Infrastructure.Api
-@using FrontendBlazor.Client.Infrastructure.Browser
+@using FrontendBlazor.Client.Models
 @inject ApiClient Api
-@inject BrowserDialogService BrowserDialog
+@inject IJSRuntime JS
 
 <PageTitle>Moje rezerwacje</PageTitle>
 
 <section
     class="mx-auto max-w-5xl px-6 py-8"
     data-measurement-page="reservations"
-    data-measurement-state="@GetMeasurementState()"
+    data-measurement-state="@(_isLoading ? "loading" : _loadError is null ? "ready" : "error")"
     data-measurement-count="@_reservations.Count">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -25,7 +24,9 @@
     </div>
 
     <div class="mt-6">
-        <GoogleCalendarCard />
+        <GoogleCalendarIntegrationCard
+            CallbackStatus="GoogleCalendarCallbackStatus"
+            CallbackReason="GoogleCalendarCallbackReason" />
     </div>
 
     <div class="mt-6">
@@ -61,8 +62,17 @@
                                 <p class="mt-1 text-sm text-gray-600">@(reservation.Room?.Name ?? $"Sala: {reservation.RoomId}")</p>
                             </div>
 
-                            <span class="@($"inline-flex w-fit rounded-full border px-3 py-1 text-xs font-medium {GetStatusClass(reservation.Status)}")">
-                                @GetStatusLabel(reservation.Status)
+                            <span class="@($"inline-flex w-fit rounded-full border px-3 py-1 text-xs font-medium {reservation.Status switch
+                                {
+                                    ReservationStatus.ACTIVE => "border-green-200 bg-green-50 text-green-700",
+                                    _ => "border-gray-200 bg-gray-50 text-gray-600",
+                                }}")">
+                                @(reservation.Status switch
+                                {
+                                    ReservationStatus.ACTIVE => "Aktywna",
+                                    ReservationStatus.CANCELLED => "Anulowana",
+                                    _ => reservation.Status.ToString(),
+                                })
                             </span>
                         </div>
 
@@ -74,12 +84,12 @@
                         <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                             <div>
                                 <dt class="text-gray-500">Poczatek</dt>
-                                <dd class="font-medium text-gray-900">@FormatDateTime(reservation.StartTime)</dd>
+                                <dd class="font-medium text-gray-900">@DateTimeFormatter.Format(reservation.StartTime)</dd>
                             </div>
 
                             <div>
                                 <dt class="text-gray-500">Koniec</dt>
-                                <dd class="font-medium text-gray-900">@FormatDateTime(reservation.EndTime)</dd>
+                                <dd class="font-medium text-gray-900">@DateTimeFormatter.Format(reservation.EndTime)</dd>
                             </div>
                         </dl>
 
@@ -110,6 +120,12 @@
     private string? _actionError;
     private string? _pendingReservationId;
 
+    [SupplyParameterFromQuery(Name = "googleCalendar")]
+    private string? GoogleCalendarCallbackStatus { get; set; }
+
+    [SupplyParameterFromQuery(Name = "reason")]
+    private string? GoogleCalendarCallbackReason { get; set; }
+
     protected override async Task OnAfterRenderAsync(bool isFirstRender)
     {
         if (!isFirstRender || !RendererInfo.IsInteractive)
@@ -117,16 +133,6 @@
             return;
         }
 
-        await LoadReservationsAsync();
-
-        if (!_requestCancellation.IsCancellationRequested)
-        {
-            StateHasChanged();
-        }
-    }
-
-    private async Task LoadReservationsAsync()
-    {
         try
         {
             _reservations = await Api.ApiRequestAsync<IReadOnlyList<ReservationDto>>(
@@ -150,17 +156,17 @@
         {
             _isLoading = false;
         }
-    }
 
-    public void Dispose()
-    {
-        _requestCancellation.Cancel();
-        _requestCancellation.Dispose();
+        if (!_requestCancellation.IsCancellationRequested)
+        {
+            StateHasChanged();
+        }
     }
 
     private async Task CancelReservationAsync(string reservationId)
     {
-        var isConfirmed = await BrowserDialog.ConfirmAsync(
+        var isConfirmed = await JS.InvokeAsync<bool>(
+            "confirm",
             "Czy na pewno chcesz anulowac te rezerwacje?");
 
         if (!isConfirmed)
@@ -198,33 +204,9 @@
         }
     }
 
-    private static string FormatDateTime(DateTimeOffset value)
+    public void Dispose()
     {
-        return value.ToLocalTime().ToString("d MMM yyyy, HH:mm");
-    }
-
-    private static string GetStatusLabel(ReservationStatus status)
-    {
-        return status switch
-        {
-            ReservationStatus.ACTIVE => "Aktywna",
-            ReservationStatus.CANCELLED => "Anulowana",
-            _ => status.ToString(),
-        };
-    }
-
-    private static string GetStatusClass(ReservationStatus status)
-    {
-        return status switch
-        {
-            ReservationStatus.ACTIVE => "border-green-200 bg-green-50 text-green-700",
-            ReservationStatus.CANCELLED => "border-gray-200 bg-gray-50 text-gray-600",
-            _ => "border-gray-200 bg-gray-50 text-gray-600",
-        };
-    }
-
-    private string GetMeasurementState()
-    {
-        return _isLoading ? "loading" : _loadError is null ? "ready" : "error";
+        _requestCancellation.Cancel();
+        _requestCancellation.Dispose();
     }
 }

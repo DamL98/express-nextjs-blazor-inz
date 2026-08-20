@@ -1,6 +1,4 @@
-using FrontendBlazor.Client.Features.Reservations.DTOs;
-
-namespace FrontendBlazor.Client.Features.Dashboard.DTOs;
+namespace FrontendBlazor.Client.Models.DTOs;
 
 public sealed record DashboardDto(
     int ActiveRoomsCount,

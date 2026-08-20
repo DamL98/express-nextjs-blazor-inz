@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace FrontendBlazor.Client.Features.Auth.DTOs;
+namespace FrontendBlazor.Client.Models.DTOs;
 
 public sealed class LocalUserDto
 {
@@ -18,9 +18,4 @@ public sealed class LocalUserDto
     public bool IsEmailVerified { get; init; }
 
     public UserRoleDto Role { get; init; } = new();
-}
-
-public sealed class UserRoleDto
-{
-    public string Name { get; init; } = string.Empty;
 }

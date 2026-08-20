@@ -1,7 +1,7 @@
 @page "/rooms"
 @implements IDisposable
-@using FrontendBlazor.Client.Features.Rooms.DTOs
 @using FrontendBlazor.Client.Infrastructure.Api
+@using FrontendBlazor.Client.Models
 @inject ApiClient Api
 
 <PageTitle>Sale</PageTitle>
@@ -9,7 +9,7 @@
 <section
     class="mx-auto max-w-6xl px-6 py-8"
     data-measurement-page="rooms"
-    data-measurement-state="@GetMeasurementState()"
+    data-measurement-state="@(_isLoading ? "loading" : _errorMessage is null ? "ready" : "error")"
     data-measurement-count="@_rooms.Count">
     <header>
         <h1 class="text-2xl font-bold text-gray-900">Lista sal</h1>
@@ -82,8 +82,4 @@
         _requestCancellation.Dispose();
     }
 
-    private string GetMeasurementState()
-    {
-        return _isLoading ? "loading" : _errorMessage is null ? "ready" : "error";
-    }
 }

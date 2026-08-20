@@ -1,6 +1,6 @@
-using FrontendBlazor.Client.Features.Reservations;
+using FrontendBlazor.Client.Models;
 
-namespace FrontendBlazor.Client.Features.Reservations.DTOs;
+namespace FrontendBlazor.Client.Models.DTOs;
 
 public sealed record ReservationDto(
     string Id,

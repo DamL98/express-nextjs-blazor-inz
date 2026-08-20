@@ -1,6 +1,7 @@
 @implements IDisposable
-@using FrontendBlazor.Client.Features.GoogleCalendar.DTOs
+@using FrontendBlazor.Client.Formatting
 @using FrontendBlazor.Client.Infrastructure.Api
+@using FrontendBlazor.Client.Models
 @inject ApiClient Api
 @inject NavigationManager Navigation
 
@@ -16,16 +17,31 @@
             <button
                 type="button"
                 class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                @onclick="ConnectAsync">
+                @onclick="Connect">
                 Polacz z Google
             </button>
         }
     </div>
 
-    @if (_callbackMessage is not null)
+    @if (CallbackStatus == "connected")
     {
-        <div class="@($"mt-4 rounded-lg px-4 py-3 text-sm {_callbackMessage.Value.CssClass}")">
-            @_callbackMessage.Value.Text
+        <div class="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            Konto Google Calendar zostalo polaczone
+        </div>
+    }
+    else if (CallbackStatus == "error")
+    {
+        var callbackText = CallbackReason switch
+        {
+            "access_denied" => "Polaczenie Google Calendar zostalo anulowane przez uzytkownika",
+            "google_account_mismatch" => "Wybrane konto Google nie zgadza sie z kontem uzytym do logowania",
+            "google_refresh_token_missing" => "Google nie zwrocil refresh tokena. Ponownie polacz konto",
+            "missing_code" => "Google nie zwrocil kodu autoryzacyjnego",
+            _ => "Blad laczenia z Google Calendar",
+        };
+
+        <div class="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            @callbackText
         </div>
     }
 
@@ -44,7 +60,7 @@
             <div class="space-y-2 text-sm text-gray-700">
                 <p><span class="font-medium text-gray-900">Status:</span> polaczono</p>
                 <p><span class="font-medium text-gray-900">Konto:</span> @(_status.CalendarEmail ?? "brak danych")</p>
-                <p><span class="font-medium text-gray-900">Polaczono:</span> @(FormatDateTime(_status.ConnectedAt) ?? "brak danych")</p>
+                <p><span class="font-medium text-gray-900">Polaczono:</span> @(DateTimeFormatter.Format(_status.ConnectedAt) ?? "brak danych")</p>
             </div>
         }
         else
@@ -59,7 +75,12 @@
     private GoogleCalendarConnectionStatusDto? _status;
     private bool _isLoading = true;
     private string? _errorMessage;
-    private (string Text, string CssClass)? _callbackMessage;
+
+    [Parameter]
+    public string? CallbackStatus { get; set; }
+
+    [Parameter]
+    public string? CallbackReason { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool isFirstRender)
     {
@@ -68,17 +89,6 @@
             return;
         }
 
-        _callbackMessage = GetCallbackMessage();
-        await LoadStatusAsync();
-
-        if (!_requestCancellation.IsCancellationRequested)
-        {
-            StateHasChanged();
-        }
-    }
-
-    private async Task LoadStatusAsync()
-    {
         try
         {
             _status = await Api.ApiRequestAsync<GoogleCalendarConnectionStatusDto>(
@@ -102,15 +112,14 @@
         {
             _isLoading = false;
         }
+
+        if (!_requestCancellation.IsCancellationRequested)
+        {
+            StateHasChanged();
+        }
     }
 
-    public void Dispose()
-    {
-        _requestCancellation.Cancel();
-        _requestCancellation.Dispose();
-    }
-
-    private Task ConnectAsync()
+    private void Connect()
     {
         var url = new Uri(Api.BaseAddress, "google-calendar/connect/start");
         var builder = new UriBuilder(url)
@@ -118,59 +127,12 @@
             Query = $"redirectTo={Uri.EscapeDataString(Navigation.Uri)}",
         };
 
-        Navigation.NavigateTo(
-            builder.Uri.ToString(),
-            forceLoad: true);
-
-        return Task.CompletedTask;
+        Navigation.NavigateTo(builder.Uri.ToString(), forceLoad: true);
     }
 
-    private (string Text, string CssClass)? GetCallbackMessage()
+    public void Dispose()
     {
-        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
-        var query = ParseQuery(uri.Query);
-        query.TryGetValue("googleCalendar", out var status);
-        query.TryGetValue("reason", out var reason);
-
-        if (status == "connected")
-        {
-            return ("Konto Google Calendar zostalo polaczone", "border border-green-200 bg-green-50 text-green-700");
-        }
-
-        if (status != "error")
-        {
-            return null;
-        }
-
-        var text = reason switch
-        {
-            "access_denied" => "Polaczenie Google Calendar zostalo anulowane przez uzytkownika",
-            "google_account_mismatch" => "Wybrane konto Google nie zgadza sie z kontem uzytym do logowania",
-            "google_refresh_token_missing" => "Google nie zwrocil refresh tokena. Ponownie polacz konto",
-            "missing_code" => "Google nie zwrocil kodu autoryzacyjnego",
-            _ => "Blad laczenia z Google Calendar",
-        };
-
-        return (text, "border border-red-200 bg-red-50 text-red-700");
-    }
-
-    // odczytuje i zamienia query stringa z URL na dictionary
-    // potrzebne do odczytania url param z callback'a od Google OAuth i Calendar
-    private static Dictionary<string, string> ParseQuery(string query)
-    {
-        return query
-            .TrimStart('?')
-            .Split('&', StringSplitOptions.RemoveEmptyEntries)
-            .Select(part => part.Split('=', 2))
-            .Where(parts => parts.Length == 2)
-            .ToDictionary(
-                parts => Uri.UnescapeDataString(parts[0]),
-                parts => Uri.UnescapeDataString(parts[1].Replace("+", " ")),
-                StringComparer.OrdinalIgnoreCase);
-    }
-
-    private static string? FormatDateTime(DateTimeOffset? value)
-    {
-        return value?.ToLocalTime().ToString("d MMM yyyy, HH:mm");
+        _requestCancellation.Cancel();
+        _requestCancellation.Dispose();
     }
 }

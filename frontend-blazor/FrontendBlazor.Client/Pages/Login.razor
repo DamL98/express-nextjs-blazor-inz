@@ -1,5 +1,5 @@
 @page "/login"
-@using FrontendBlazor.Client.Features.Auth
+@using FrontendBlazor.Client.Infrastructure.Auth
 @inject AuthContext Auth
 
 <PageTitle>Logowanie</PageTitle>
@@ -19,9 +19,9 @@
             @(_isSubmitting ? "Przekierowanie..." : "Kontynuuj z Google")
         </button>
 
-        @if (CurrentError is not null)
+        @if (_errorMessage is not null)
         {
-            <p class="mt-4 rounded-[9px] bg-[#fff0f0] px-3 py-[11px] text-[13px] leading-[1.4] text-[#9d2424]" role="alert">@CurrentError</p>
+            <p class="mt-4 rounded-[9px] bg-[#fff0f0] px-3 py-[11px] text-[13px] leading-[1.4] text-[#9d2424]" role="alert">@_errorMessage</p>
         }
     </section>
 </main>
@@ -29,8 +29,6 @@
 @code {
     private string? _errorMessage;
     private bool _isSubmitting;
-
-    private string? CurrentError => _errorMessage;
 
     private async Task GoogleLoginAsync()
     {

@@ -1,8 +1,8 @@
 @page "/"
 @implements IDisposable
-@using FrontendBlazor.Client.Features.Dashboard.DTOs
-@using FrontendBlazor.Client.Features.Reservations.DTOs
+@using FrontendBlazor.Client.Formatting
 @using FrontendBlazor.Client.Infrastructure.Api
+@using FrontendBlazor.Client.Models
 @inject ApiClient Api
 
 <PageTitle>Dashboard</PageTitle>
@@ -10,7 +10,7 @@
 <section
     class="mx-auto max-w-6xl px-4 py-8 md:px-8"
     data-measurement-page="dashboard"
-    data-measurement-state="@GetMeasurementState()">
+    data-measurement-state="@(_isLoading ? "loading" : _errorMessage is null ? "ready" : "error")">
     <header>
         <h1 class="mt-2 text-3xl font-bold tracking-tight text-gray-900">Dashboard</h1>
         <p class="mt-3 max-w-2xl text-gray-600">Aktywne sale: @_activeRoomsCount</p>
@@ -54,7 +54,7 @@
                             </div>
 
                             <p class="mt-3 text-sm text-gray-600">
-                                @FormatDateTime(reservation.StartTime) - @FormatDateTime(reservation.EndTime)
+                                @DateTimeFormatter.Format(reservation.StartTime) - @DateTimeFormatter.Format(reservation.EndTime)
                             </p>
                         </article>
                     }
@@ -78,16 +78,6 @@
             return;
         }
 
-        await LoadDashboardAsync();
-
-        if (!_requestCancellation.IsCancellationRequested)
-        {
-            StateHasChanged();
-        }
-    }
-
-    private async Task LoadDashboardAsync()
-    {
         try
         {
             var dashboard = await Api.ApiRequestAsync<DashboardDto>(
@@ -113,21 +103,16 @@
         {
             _isLoading = false;
         }
+
+        if (!_requestCancellation.IsCancellationRequested)
+        {
+            StateHasChanged();
+        }
     }
 
     public void Dispose()
     {
         _requestCancellation.Cancel();
         _requestCancellation.Dispose();
-    }
-
-    private static string FormatDateTime(DateTimeOffset value)
-    {
-        return value.ToLocalTime().ToString("d MMM yyyy, HH:mm");
-    }
-
-    private string GetMeasurementState()
-    {
-        return _isLoading ? "loading" : _errorMessage is null ? "ready" : "error";
     }
 }

@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace FrontendBlazor.Client.Features.GoogleCalendar.DTOs;
+namespace FrontendBlazor.Client.Models.DTOs;
 
 public sealed record GoogleCalendarConnectionStatusDto(
     [property: JsonPropertyName("connected")] bool IsConnected,

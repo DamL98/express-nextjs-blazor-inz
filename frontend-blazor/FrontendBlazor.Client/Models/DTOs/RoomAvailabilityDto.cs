@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace FrontendBlazor.Client.Features.Rooms.DTOs;
+namespace FrontendBlazor.Client.Models.DTOs;
 
 public sealed record RoomAvailabilityDto(
     string RoomId,
@@ -8,9 +8,3 @@ public sealed record RoomAvailabilityDto(
     DateTimeOffset Start,
     DateTimeOffset End,
     List<RoomAvailabilityConflictDto> Conflicts);
-
-public sealed record RoomAvailabilityConflictDto(
-    string Id,
-    string Title,
-    DateTimeOffset StartTime,
-    DateTimeOffset EndTime);

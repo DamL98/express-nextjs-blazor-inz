@@ -1,14 +1,13 @@
-using FrontendBlazor.Client.Features.Auth.DTOs;
 using FrontendBlazor.Client.Infrastructure.Api;
+using FrontendBlazor.Client.Models.DTOs;
 using Microsoft.AspNetCore.Components;
 
-namespace FrontendBlazor.Client.Features.Auth;
+namespace FrontendBlazor.Client.Infrastructure.Auth;
 
 public sealed class AuthContext(
     ApiClient apiClient,
-    NavigationManager navigation) : IDisposable
+    NavigationManager navigation)
 {
-    private readonly SemaphoreSlim _initializationLock = new(1, 1);
     private bool _isInitialized;
 
     public event Action? Changed;
@@ -26,40 +25,33 @@ public sealed class AuthContext(
             return;
         }
 
-        await _initializationLock.WaitAsync();
+        _isInitialized = true;
 
         try
         {
-            if (_isInitialized)
-            {
-                return;
-            }
-
             User = await apiClient.ApiRequestAsync<LocalUserDto>(
                 "/auth/me",
-                BrowserCredentialRequest);
+                new ApiRequestOptions
+                {
+                    IsBrowserCredentialRequired = true,
+                });
         }
-        catch (Exception)
+        catch
         {
             User = null;
         }
         finally
         {
-            _isInitialized = true;
             IsLoading = false;
-            _initializationLock.Release();
-            NotifyChanged();
+            Changed?.Invoke();
         }
     }
 
     public Task LoginWithGoogleAsync()
     {
-        NotifyChanged();
-
         var redirectTo = new Uri(
             new Uri(navigation.BaseUri),
             "login").ToString();
-
         var loginUrl = new Uri(apiClient.BaseAddress, "auth/google/start");
         var builder = new UriBuilder(loginUrl)
         {
@@ -72,7 +64,7 @@ public sealed class AuthContext(
 
     public async Task LogoutAsync()
     {
-        await apiClient.ApiRequestAsync<LogoutResult>(
+        await apiClient.ApiRequestAsync<LogoutResultDto>(
             "/auth/logout",
             new ApiRequestOptions
             {
@@ -80,23 +72,6 @@ public sealed class AuthContext(
                 IsBrowserCredentialRequired = true,
             });
         User = null;
-        NotifyChanged();
-    }
-
-    public void Dispose()
-    {
-        _initializationLock.Dispose();
-    }
-
-    private void NotifyChanged()
-    {
         Changed?.Invoke();
     }
-
-    private static ApiRequestOptions BrowserCredentialRequest { get; } = new()
-    {
-        IsBrowserCredentialRequired = true,
-    };
-
-    private sealed record LogoutResult(bool LoggedOut);
 }

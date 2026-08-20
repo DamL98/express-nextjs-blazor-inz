@@ -1,4 +1,4 @@
-namespace FrontendBlazor.Client.Features.Reservations.DTOs;
+namespace FrontendBlazor.Client.Models.DTOs;
 
 public sealed record CreateReservationRequestDto(
     string RoomId,

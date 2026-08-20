@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace FrontendBlazor.Client.Features.Reservations;
+namespace FrontendBlazor.Client.Models;
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ReservationStatus
