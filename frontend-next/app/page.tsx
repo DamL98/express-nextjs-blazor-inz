@@ -3,15 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { getDashboard } from "@/features/dashboard/dashboard.api";
-import type { Dashboard } from "@/features/dashboard/dashboard.types";
-
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("pl-PL", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
+import { apiRequest, type Dashboard } from "@/lib/api";
+import { formatDateTime } from "@/lib/formatters";
 
 export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
@@ -19,41 +12,35 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let active = true;
     const controller = new AbortController();
 
-    async function loadDashboard() {
-      try {
-        const data = await getDashboard(controller.signal);
-
-        if (active) {
+    apiRequest<Dashboard>("/dashboard", {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then((data) => {
+        if (!controller.signal.aborted) {
           setDashboard(data);
         }
-      } catch (loadError) {
+      })
+      .catch((loadError: unknown) => {
         if (controller.signal.aborted) {
           return;
         }
 
-        if (active) {
-          setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Błąd pobierania danych do dashboard",
-          );
-        }
-      } finally {
-        if (active) {
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Błąd pobierania danych do dashboard",
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
           setLoading(false);
         }
-      }
-    }
+      });
 
-    void loadDashboard();
-
-    return () => {
-      active = false;
-      controller.abort();
-    };
+    return () => controller.abort();
   }, []);
 
   const activeRoomsCount = dashboard?.activeRoomsCount ?? 0;

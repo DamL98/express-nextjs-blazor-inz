@@ -1,12 +1,9 @@
 @page "/rooms/{Id}"
 @implements IDisposable
-@using FrontendBlazor.Client.Features.Reservations
 @using FrontendBlazor.Client.Features.Reservations.DTOs
-@using FrontendBlazor.Client.Features.Rooms
 @using FrontendBlazor.Client.Features.Rooms.DTOs
 @using FrontendBlazor.Client.Infrastructure.Api
-@inject RoomsApi RoomsApi
-@inject ReservationsApi ReservationsApi
+@inject ApiClient Api
 
 <PageTitle>@(_room?.Name ?? "Szczegoly sali")</PageTitle>
 
@@ -152,9 +149,9 @@
 
         try
         {
-            _room = await RoomsApi.GetRoomByIdAsync(
-                Id,
-                _requestCancellation.Token);
+            _room = await Api.ApiRequestAsync<RoomDto>(
+                $"/rooms/{Uri.EscapeDataString(Id)}",
+                cancellationToken: _requestCancellation.Token);
         }
         catch (OperationCanceledException) when (_requestCancellation.IsCancellationRequested)
         {
@@ -187,10 +184,11 @@
         {
             var start = DateTime.Parse(_form.StartTime).ToUniversalTime();
             var end = DateTime.Parse(_form.EndTime).ToUniversalTime();
-            var availability = await RoomsApi.GetRoomAvailabilityAsync(
-                _room.Id,
-                start,
-                end);
+            var startValue = Uri.EscapeDataString(start.ToString("O"));
+            var endValue = Uri.EscapeDataString(end.ToString("O"));
+            var availability = await Api.ApiRequestAsync<RoomAvailabilityDto>(
+                $"/rooms/{Uri.EscapeDataString(_room.Id)}/availability" +
+                $"?start={startValue}&end={endValue}");
 
             if (!availability.IsAvailable)
             {
@@ -198,15 +196,21 @@
                 return;
             }
 
-            await ReservationsApi.CreateReservationAsync(
-                new CreateReservationRequestDto(
-                    _room.Id,
-                    _form.Title.Trim(),
-                    string.IsNullOrWhiteSpace(_form.Description)
-                        ? null
-                        : _form.Description.Trim(),
-                    start.ToString("O"),
-                    end.ToString("O")));
+            await Api.ApiRequestAsync<ReservationDto>(
+                "/reservations",
+                new ApiRequestOptions
+                {
+                    Method = HttpMethod.Post,
+                    Body = new CreateReservationRequestDto(
+                        _room.Id,
+                        _form.Title.Trim(),
+                        string.IsNullOrWhiteSpace(_form.Description)
+                            ? null
+                            : _form.Description.Trim(),
+                        start.ToString("O"),
+                        end.ToString("O")),
+                    IsBrowserCredentialRequired = true,
+                });
 
             _form = new ReservationFormState();
             _successMessage = "Rezerwacja utworzona";

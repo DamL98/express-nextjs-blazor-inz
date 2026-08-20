@@ -1,8 +1,7 @@
-@using FrontendBlazor.Client.Features.GoogleCalendar
 @implements IDisposable
 @using FrontendBlazor.Client.Features.GoogleCalendar.DTOs
 @using FrontendBlazor.Client.Infrastructure.Api
-@inject GoogleCalendarApi GoogleCalendarApi
+@inject ApiClient Api
 @inject NavigationManager Navigation
 
 <section class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -82,7 +81,12 @@
     {
         try
         {
-            _status = await GoogleCalendarApi.GetStatusAsync(
+            _status = await Api.ApiRequestAsync<GoogleCalendarConnectionStatusDto>(
+                "/google-calendar/status",
+                new ApiRequestOptions
+                {
+                    IsBrowserCredentialRequired = true,
+                },
                 _requestCancellation.Token);
         }
         catch (OperationCanceledException) when (_requestCancellation.IsCancellationRequested)
@@ -108,8 +112,14 @@
 
     private Task ConnectAsync()
     {
+        var url = new Uri(Api.BaseAddress, "google-calendar/connect/start");
+        var builder = new UriBuilder(url)
+        {
+            Query = $"redirectTo={Uri.EscapeDataString(Navigation.Uri)}",
+        };
+
         Navigation.NavigateTo(
-            GoogleCalendarApi.BuildConnectionUrl(Navigation.Uri),
+            builder.Uri.ToString(),
             forceLoad: true);
 
         return Task.CompletedTask;

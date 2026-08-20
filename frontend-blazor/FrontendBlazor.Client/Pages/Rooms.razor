@@ -1,9 +1,8 @@
 @page "/rooms"
 @implements IDisposable
-@using FrontendBlazor.Client.Features.Rooms
 @using FrontendBlazor.Client.Features.Rooms.DTOs
 @using FrontendBlazor.Client.Infrastructure.Api
-@inject RoomsApi RoomsApi
+@inject ApiClient Api
 
 <PageTitle>Sale</PageTitle>
 
@@ -58,7 +57,9 @@
     {
         try
         {
-            _rooms = await RoomsApi.GetRoomsAsync(_requestCancellation.Token);
+            _rooms = await Api.ApiRequestAsync<IReadOnlyList<RoomDto>>(
+                "/rooms",
+                cancellationToken: _requestCancellation.Token);
         }
         catch (OperationCanceledException) when (_requestCancellation.IsCancellationRequested)
         {

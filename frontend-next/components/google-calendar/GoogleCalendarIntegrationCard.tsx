@@ -1,56 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import {
-  getGoogleCalendarStatus,
-  redirectToGoogleCalendarConnection,
-} from "@/features/google-calendar/google-calendar.api";
-import type { GoogleCalendarConnectionStatus } from "@/features/google-calendar/google-calendar.types";
-
-function formatDateTime(value: string | null) {
-  if (!value) {
-    return null;
-  }
-
-  return new Intl.DateTimeFormat("pl-PL", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function getStatusMessage(
-  status: string | null,
-  reason: string | null,
-) {
-  if (status === "connected") {
-    return {
-      tone: "success" as const,
-      text: "Konto Google Calendar zostalo polaczone",
-    };
-  }
-
-  if (status === "error") {
-    const reasonMessages = {
-      access_denied: "Polaczenie Google Calendar zostalo anulowane przez uzytkownika",
-      google_account_mismatch:
-        "Wybrane konto Google nie zgadza sie z kontem uzytym do logowania",
-      google_refresh_token_missing:
-        "Google nie zwrocil refresh tokena. Ponownie polacz konto",
-      missing_code: "Google nie zwrocil kodu autoryzacyjnego",
-    };
-
-    return {
-      tone: "error" as const,
-      text:
-        reasonMessages[reason as keyof typeof reasonMessages] ||
-        "Blad laczenia z Google Calendar",
-    };
-  }
-
-  return null;
-}
+  apiRequest,
+  type GoogleCalendarConnectionStatus,
+} from "@/lib/api";
+import { API_URL } from "@/lib/config/env";
+import { formatDateTime } from "@/lib/formatters";
 
 export function GoogleCalendarIntegrationCard() {
   const searchParams = useSearchParams();
@@ -59,54 +17,67 @@ export function GoogleCalendarIntegrationCard() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let active = true;
     const controller = new AbortController();
 
-    async function loadStatus() {
-      try {
-        const data = await getGoogleCalendarStatus(controller.signal);
-
-        if (active) {
+    apiRequest<GoogleCalendarConnectionStatus>("/google-calendar/status", {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then((data) => {
+        if (!controller.signal.aborted) {
           setStatus(data);
         }
-      } catch (loadError) {
+      })
+      .catch((loadError: unknown) => {
         if (controller.signal.aborted) {
           return;
         }
 
-        if (active) {
-          setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Blad pobrania statusu Google Calendar",
-          );
-        }
-      } finally {
-        if (active) {
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Blad pobrania statusu Google Calendar",
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
           setLoading(false);
         }
-      }
-    }
+      });
 
-    void loadStatus();
-
-    return () => {
-      active = false;
-      controller.abort();
-    };
+    return () => controller.abort();
   }, []);
 
-  const callbackMessage = useMemo(
-    () =>
-      getStatusMessage(
-        searchParams.get("googleCalendar"),
-        searchParams.get("reason"),
-      ),
-    [searchParams],
-  );
+  const callbackStatus = searchParams.get("googleCalendar");
+  const callbackReason = searchParams.get("reason");
+  const reasonMessages: Record<string, string> = {
+    access_denied:
+      "Polaczenie Google Calendar zostalo anulowane przez uzytkownika",
+    google_account_mismatch:
+      "Wybrane konto Google nie zgadza sie z kontem uzytym do logowania",
+    google_refresh_token_missing:
+      "Google nie zwrocil refresh tokena. Ponownie polacz konto",
+    missing_code: "Google nie zwrocil kodu autoryzacyjnego",
+  };
+  const callbackMessage =
+    callbackStatus === "connected"
+      ? {
+      tone: "success",
+      text: "Konto Google Calendar zostalo polaczone",
+        } as const
+      : callbackStatus === "error"
+        ? {
+            tone: "error",
+            text:
+              reasonMessages[callbackReason ?? ""] ??
+              "Blad laczenia z Google Calendar",
+          } as const
+        : null;
 
   function handleConnect() {
-    redirectToGoogleCalendarConnection(window.location.href);
+    const url = new URL(`${API_URL}/google-calendar/connect/start`);
+    url.searchParams.set("redirectTo", window.location.href);
+    window.location.assign(url.toString());
   }
 
   const connectedAt = formatDateTime(status?.connectedAt ?? null);

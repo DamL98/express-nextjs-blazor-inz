@@ -5,8 +5,7 @@ import { useEffect, useState } from "react";
 
 import { GoogleCalendarIntegrationCard } from "@/components/google-calendar/GoogleCalendarIntegrationCard";
 import { ReservationsList } from "@/components/reservations/ReservationList";
-import { getMyReservations } from "@/features/reservations/reservations.api";
-import type { Reservation } from "@/features/reservations/reservations.types";
+import { apiRequest, type Reservation } from "@/lib/api";
 
 export default function ReservationsPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -14,40 +13,27 @@ export default function ReservationsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let active = true;
     const controller = new AbortController();
 
-    async function loadReservations() {
-      try {
-        const data = await getMyReservations({}, controller.signal);
-        if (active) {
-          setReservations(data);
-        }
-      } catch (loadError) {
-        if (controller.signal.aborted) {
-          return;
-        }
+    apiRequest<Reservation[]>("/reservations/my", {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then((data) => {
+        if (!controller.signal.aborted) { setReservations(data); }
+      })
+      .catch((loadError: unknown) => {
+        if (controller.signal.aborted) { return; }
 
-        if (active) {
-          setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Błąd pobierania rezerwacji",
-          );
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
+        setError(
+          loadError instanceof Error ? loadError.message : "Błąd pobierania rezerwacji",
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) { setLoading(false); }
+      });
 
-    void loadReservations();
-
-    return () => {
-      active = false;
-      controller.abort();
-    };
+    return () => controller.abort();
   }, []);
 
   return (

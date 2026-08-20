@@ -1,9 +1,9 @@
 @page "/"
 @implements IDisposable
-@using FrontendBlazor.Client.Features.Dashboard
+@using FrontendBlazor.Client.Features.Dashboard.DTOs
 @using FrontendBlazor.Client.Features.Reservations.DTOs
 @using FrontendBlazor.Client.Infrastructure.Api
-@inject DashboardApi DashboardApi
+@inject ApiClient Api
 
 <PageTitle>Dashboard</PageTitle>
 
@@ -90,7 +90,12 @@
     {
         try
         {
-            var dashboard = await DashboardApi.GetDashboardAsync(
+            var dashboard = await Api.ApiRequestAsync<DashboardDto>(
+                "/dashboard",
+                new ApiRequestOptions
+                {
+                    IsBrowserCredentialRequired = true,
+                },
                 _requestCancellation.Token);
             _activeRoomsCount = dashboard.ActiveRoomsCount;
             _nextReservations = dashboard.NextReservations;

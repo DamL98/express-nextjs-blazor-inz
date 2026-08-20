@@ -4,26 +4,10 @@ import { useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 
-function authErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Nieznany blad";
-}
-
 export default function LoginPage() {
   const { loginWithGoogle } = useAuth();
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
-  async function googleLogin() {
-    setError("");
-    setSubmitting(true);
-
-    try {
-      await loginWithGoogle();
-    } catch (loginError) {
-      setError(authErrorMessage(loginError));
-      setSubmitting(false);
-    }
-  }
 
   return (
     <main className="grid min-h-screen place-items-center bg-gray-50 px-4 py-8">
@@ -35,7 +19,21 @@ export default function LoginPage() {
         <button
           className="flex min-h-[46px] w-full items-center justify-center gap-[10px] rounded-[11px] border border-[var(--app-line)] bg-white font-[750] text-[var(--app-ink)] hover:border-[#aebbd0] hover:bg-[#f6f8fc] disabled:cursor-wait disabled:opacity-65"
           type="button"
-          onClick={() => void googleLogin()}
+          onClick={async () => {
+            setError("");
+            setSubmitting(true);
+
+            try {
+              await loginWithGoogle();
+            } catch (loginError) {
+              setError(
+                loginError instanceof Error
+                  ? loginError.message
+                  : "Nieznany blad",
+              );
+              setSubmitting(false);
+            }
+          }}
           disabled={submitting}
         >
           <span className="text-lg font-extrabold text-[#4285f4]">G</span>

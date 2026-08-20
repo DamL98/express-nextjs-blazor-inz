@@ -1,9 +1,6 @@
 import { API_URL } from "@/lib/config/env";
 import type { ApiSuccess, ProblemDetails } from "./api-response.types";
 
-type ApiRequestOptions = RequestInit;
-const API_REQUEST_TIMEOUT_MS = 15_000;
-
 export class ApiClientError extends Error {
   readonly type: string;
   readonly status: number;
@@ -23,113 +20,24 @@ export class ApiClientError extends Error {
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isProblemDetails(value: unknown): value is ProblemDetails {
-  return isRecord(value) &&
-    typeof value.type === "string" &&
-    typeof value.title === "string" &&
-    typeof value.status === "number";
-}
-
-function isApiSuccess<T>(value: unknown): value is ApiSuccess<T> {
-  return isRecord(value) && value.success === true && "data" in value;
-}
-
-async function readJson(response: Response): Promise<unknown> {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
-}
-
 export async function apiRequest<T>(
   path: string,
-  options: ApiRequestOptions = {},
+  options: RequestInit = {},
 ): Promise<T> {
-  const { headers, signal: externalSignal, ...requestOptions } = options;
-  const requestController = new AbortController();
-  let timedOut = false;
-  const timeoutId = window.setTimeout(() => {
-    timedOut = true;
-    requestController.abort();
-  }, API_REQUEST_TIMEOUT_MS);
-  const abortRequest = () => requestController.abort(externalSignal?.reason);
-
-  if (externalSignal?.aborted) {
-    abortRequest();
-  } else {
-    externalSignal?.addEventListener("abort", abortRequest, { once: true });
-  }
-
-  let response: Response;
-  let body: unknown;
-
-  try {
-    response = await fetch(`${API_URL}${path}`, {
-      ...requestOptions,
-      signal: requestController.signal,
-      credentials: "include",
-      headers: {
-        Accept: "application/json, application/problem+json",
-        "Content-Type": "application/json",
-        ...(headers || {}),
-      },
-    });
-    body = await readJson(response);
-  } catch (error) {
-    if (timedOut) {
-      throw new ApiClientError({
-        type: "/problems/api-timeout",
-        title: "Przekroczono czas oczekiwania na API",
-        status: 408,
-        detail: "API nie odpowiedzialo w ciagu 15 sekund",
-        code: "API_TIMEOUT",
-      });
-    }
-
-    if (externalSignal?.aborted) {
-      throw error;
-    }
-
-    throw new ApiClientError({
-      type: "/problems/api-connection-error",
-      title: "Blad laczenia z API",
-      status: 0,
-      detail: "Blad laczenia z API",
-      code: "API_CONNECTION_ERROR",
-    });
-  } finally {
-    window.clearTimeout(timeoutId);
-    externalSignal?.removeEventListener("abort", abortRequest);
-  }
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    credentials: "include",
+    headers: {
+      Accept: "application/json, application/problem+json",
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+  const body = (await response.json()) as ApiSuccess<T> | ProblemDetails;
 
   if (!response.ok) {
-    if (isProblemDetails(body)) {
-      throw new ApiClientError(body);
-    }
-
-    throw new ApiClientError({
-      type: "about:blank",
-      title: response.statusText || "Blad API",
-      status: response.status,
-      detail: "API zwrocilo nieprawidlowa odpowiedz bledu",
-      code: `HTTP_${response.status}`,
-    });
+    throw new ApiClientError(body as ProblemDetails);
   }
 
-  if (!isApiSuccess<T>(body)) {
-    throw new ApiClientError({
-      type: "/problems/api-invalid-response",
-      title: "Nieprawidlowa odpowiedz API",
-      status: response.status,
-      detail: "Brak oczekiwanego envelope odpowiedzi sukcesu",
-      code: "API_INVALID_RESPONSE",
-    });
-  }
-
-  return body.data;
+  return (body as ApiSuccess<T>).data;
 }

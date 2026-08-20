@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-
 import { useAuth } from "@/components/auth-provider";
 
 export function Topbar() {

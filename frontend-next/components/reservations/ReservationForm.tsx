@@ -3,8 +3,11 @@
 import { type SubmitEvent, useState } from "react";
 import Link from "next/link";
 
-import { createReservation } from "@/features/reservations/reservations.api";
-import { getRoomAvailability } from "@/features/rooms/rooms.api";
+import {
+  apiRequest,
+  type Reservation,
+  type RoomAvailability,
+} from "@/lib/api";
 
 
 type ReservationFormProps = {
@@ -71,7 +74,6 @@ export function ReservationForm({ roomId }: ReservationFormProps) {
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-
     setSuccessMessage(null);
     setErrorMessage(null);
 
@@ -87,10 +89,12 @@ export function ReservationForm({ roomId }: ReservationFormProps) {
     try {
       const startTime = toISOStringFromLocalInput(form.startTime);
       const endTime = toISOStringFromLocalInput(form.endTime);
-      const availability = await getRoomAvailability(
-        roomId,
-        startTime,
-        endTime,
+      const query = new URLSearchParams({
+        start: startTime,
+        end: endTime,
+      });
+      const availability = await apiRequest<RoomAvailability>(
+        `/rooms/${encodeURIComponent(roomId)}/availability?${query.toString()}`,
       );
 
       if (!availability.available) {
@@ -98,23 +102,24 @@ export function ReservationForm({ roomId }: ReservationFormProps) {
         return;
       }
 
-      await createReservation({
-        roomId,
-        title: form.title.trim(),
-        description: form.description.trim() || undefined,
-        startTime,
-        endTime,
+      await apiRequest<Reservation>("/reservations", {
+        method: "POST",
+        body: JSON.stringify({
+          roomId,
+          title: form.title.trim(),
+          description: form.description.trim() || undefined,
+          startTime,
+          endTime,
+        }),
       });
 
       setForm(initialState);
       setSuccessMessage("Rezerwacja utworzona");
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Nie udało się utworzyć rezerwacji";
 
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Nie udało się utworzyć rezerwacji";
       setErrorMessage(message);
+
     } finally {
       setIsSubmitting(false);
     }

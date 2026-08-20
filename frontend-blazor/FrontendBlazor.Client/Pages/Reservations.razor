@@ -1,11 +1,11 @@
 @page "/reservations"
 @implements IDisposable
 @using FrontendBlazor.Client.Features.GoogleCalendar
-@using FrontendBlazor.Client.Features.Reservations
 @using FrontendBlazor.Client.Features.Reservations.DTOs
+@using FrontendBlazor.Client.Features.Reservations
 @using FrontendBlazor.Client.Infrastructure.Api
 @using FrontendBlazor.Client.Infrastructure.Browser
-@inject ReservationsApi ReservationsApi
+@inject ApiClient Api
 @inject BrowserDialogService BrowserDialog
 
 <PageTitle>Moje rezerwacje</PageTitle>
@@ -129,8 +129,13 @@
     {
         try
         {
-            _reservations = await ReservationsApi.GetMyReservationsAsync(
-                cancellationToken: _requestCancellation.Token);
+            _reservations = await Api.ApiRequestAsync<IReadOnlyList<ReservationDto>>(
+                "/reservations/my",
+                new ApiRequestOptions
+                {
+                    IsBrowserCredentialRequired = true,
+                },
+                _requestCancellation.Token);
         }
         catch (OperationCanceledException) when (_requestCancellation.IsCancellationRequested)
         {
@@ -168,7 +173,13 @@
 
         try
         {
-            var cancelledReservation = await ReservationsApi.CancelReservationAsync(reservationId);
+            var cancelledReservation = await Api.ApiRequestAsync<ReservationDto>(
+                $"/reservations/{Uri.EscapeDataString(reservationId)}/cancel",
+                new ApiRequestOptions
+                {
+                    Method = HttpMethod.Patch,
+                    IsBrowserCredentialRequired = true,
+                });
             _reservations = _reservations
                 .Select(reservation => reservation.Id == reservationId
                     ? cancelledReservation
