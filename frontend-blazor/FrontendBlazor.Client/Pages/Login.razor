@@ -8,7 +8,7 @@
     <section class="w-full max-w-[430px] rounded-[22px] border border-blue-900/20 bg-white/[.97] p-[38px] shadow-[0_24px_70px_rgba(23,32,51,0.14)] max-[480px]:px-[22px] max-[480px]:py-7">
         <p class="mb-2 text-xs font-extrabold tracking-[0.14em] text-[var(--app-accent)] uppercase">System rezerwacji</p>
         <h1 class="text-[32px] font-bold tracking-[-0.04em] text-[var(--app-ink)]">Zaloguj sie</h1>
-        <p class="mt-[10px] mb-[26px] leading-[1.55] text-[var(--app-muted)]">Zaloguj sie przez konto Google</p>
+        <p class="mt-[10px] mb-[26px] leading-[1.55] text-[var(--app-muted)]">Zaloguj sie przez konto Google lub lokalnie</p>
 
         <button
             type="button"
@@ -18,6 +18,40 @@
             <span class="text-lg font-extrabold text-[#4285f4]">G</span>
             @(_isSubmitting ? "Przekierowanie..." : "Kontynuuj z Google")
         </button>
+
+        <div class="my-5 flex items-center gap-3 text-xs font-semibold text-[var(--app-muted)] uppercase">
+            <span class="h-px flex-1 bg-[var(--app-line)]"></span>
+            <span>lub</span>
+            <span class="h-px flex-1 bg-[var(--app-line)]"></span>
+        </div>
+
+        <form aria-label="Logowanie lokalne">
+            <fieldset class="space-y-4">
+                <label class="block text-sm font-semibold text-[var(--app-ink)]">
+                    E-mail
+                    <input
+                        class="mt-2 min-h-[46px] w-full rounded-[11px] border border-[var(--app-line)] bg-white px-3 text-base font-normal text-[var(--app-ink)] outline-none focus:border-[var(--app-accent)]"
+                        type="email"
+                        autocomplete="email"
+                        placeholder="uzytkownik@example.com" />
+                </label>
+
+                <label class="block text-sm font-semibold text-[var(--app-ink)]">
+                    Haslo
+                    <input
+                        class="mt-2 min-h-[46px] w-full rounded-[11px] border border-[var(--app-line)] bg-white px-3 text-base font-normal text-[var(--app-ink)] outline-none focus:border-[var(--app-accent)]"
+                        type="password"
+                        autocomplete="current-password"
+                        placeholder="Wprowadz haslo" />
+                </label>
+
+                <button
+                    type="button"
+                    class="min-h-[46px] w-full rounded-[11px] bg-[var(--app-accent)] font-bold text-white">
+                    Zaloguj sie
+                </button>
+            </fieldset>
+        </form>
 
         @if (_errorMessage is not null)
         {
