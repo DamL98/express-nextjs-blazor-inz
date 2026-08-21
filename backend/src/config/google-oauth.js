@@ -3,6 +3,7 @@ import {
   GoogleOAuthConfigurationError,
   GoogleOAuthValidationError,
 } from "./config.errors.js";
+import { getGoogleOAuthEnvironment } from "./environment.js";
 
 const GOOGLE_IDENTITY_SCOPES = ["openid", "email", "profile"];
 export const GOOGLE_CALENDAR_SCOPES = [
@@ -10,23 +11,15 @@ export const GOOGLE_CALENDAR_SCOPES = [
   "https://www.googleapis.com/auth/calendar.events",
 ];
 
-// POBIERANIE SECRETS START
-export function getGoogleClientId() {
-  return process.env.GOOGLE_OAUTH_CLIENT_ID?.trim();
-}
-
-function getGoogleClientSecret() {
-  return process.env.GOOGLE_OAUTH_CLIENT_SECRET?.trim();
-}
-
 export function validateGoogleOAuthConfiguration() {
+  const config = getGoogleOAuthEnvironment();
   const missing = [];
 
-  if (!getGoogleClientId()) {
+  if (!config.clientId) {
     missing.push("GOOGLE_OAUTH_CLIENT_ID");
   }
 
-  if (!getGoogleClientSecret()) {
+  if (!config.clientSecret) {
     missing.push("GOOGLE_OAUTH_CLIENT_SECRET");
   }
 
@@ -38,37 +31,11 @@ export function validateGoogleOAuthConfiguration() {
 }
 
 export function getGoogleOAuthRedirectUri() {
-  return (
-    process.env.GOOGLE_OAUTH_REDIRECT_URI?.trim() ||
-    `http://localhost:${process.env.PORT || 4000}/api/v1/auth/google/callback`
-  );
+  return getGoogleOAuthEnvironment().loginRedirectUri;
 }
 
 export function getGoogleCalendarOAuthRedirectUri() {
-  return (
-    process.env.GOOGLE_CALENDAR_OAUTH_REDIRECT_URI?.trim() ||
-    `http://localhost:${process.env.PORT || 4000}/api/v1/google-calendar/connect/callback`
-  );
-}
-// POBRANIE SECRETS END
-
-
-
-// CQRS
-export function getAllowedFrontendOrigins() {
-  return [
-    process.env.FRONTEND_NEXT_URL?.trim() || "http://localhost:3000",
-    process.env.FRONTEND_BLAZOR_URL?.trim() || "http://localhost:5173",
-  ];
-}
-
-export function getDefaultFrontendRedirectUrl() {
-  return (
-    process.env.GOOGLE_OAUTH_DEFAULT_SUCCESS_URL?.trim() ||
-    process.env.FRONTEND_NEXT_URL?.trim() ||
-    "http://localhost:3000"
-    //trzeba dodac url blazora
-  );
+  return getGoogleOAuthEnvironment().calendarRedirectUri;
 }
 
 
@@ -86,7 +53,9 @@ function parseRedirectUrl(value) {
 function buildAllowedFrontendOrigins() {
   try {
     return new Set(
-      getAllowedFrontendOrigins().map((origin) => new URL(origin).origin),
+      getGoogleOAuthEnvironment().allowedFrontendOrigins.map(
+        (origin) => new URL(origin).origin,
+      ),
     );
   } catch (error) {
     throw new GoogleOAuthConfigurationError(
@@ -98,7 +67,8 @@ function buildAllowedFrontendOrigins() {
 
 // Redirect może wskazywać dowolną ścieżkę, ale tylko na dozwolonym frontendzie.
 export function validateFrontendRedirectUrl(value) {
-  const redirectUrl = value?.trim() || getDefaultFrontendRedirectUrl();
+  const redirectUrl = value?.trim() ||
+    getGoogleOAuthEnvironment().defaultSuccessUrl;
   const url = parseRedirectUrl(redirectUrl);
   const allowedOrigins = buildAllowedFrontendOrigins();
 
@@ -113,11 +83,13 @@ export function validateFrontendRedirectUrl(value) {
 
 export function createGoogleOAuthClient(redirectUri = getGoogleOAuthRedirectUri()) {
   validateGoogleOAuthConfiguration();
+  const config = getGoogleOAuthEnvironment();
 
-  const clientId = getGoogleClientId();
-  const clientSecret = getGoogleClientSecret();
-
-  return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+  return new google.auth.OAuth2(
+    config.clientId,
+    config.clientSecret,
+    redirectUri,
+  );
 }
 
 // *****************************************************************
@@ -174,17 +146,25 @@ export function buildGoogleAuthorizationUrl({
 // sprawdzamy czy google na pewno potwierdzil/uwierzytelnil usera
 //
 //
-// audience: getGoogleClientId() - czy token wystawiony dla tej apki
+// audience sprawdza, czy token został wystawiony dla tej aplikacji
 // sciagamy tylko payload z wyniku
 // mapuje pola od Googla na lokalny obiekt usera
 
 export async function verifyGoogleIdToken(idToken) {
   const client = createGoogleOAuthClient();
-  const ticket = await client.verifyIdToken({
-    idToken,
-    audience: getGoogleClientId(),
-  });
-  const payload = ticket.getPayload();
+  let payload;
+
+  try {
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: getGoogleOAuthEnvironment().clientId,
+    });
+    payload = ticket.getPayload();
+  } catch (error) {
+    throw new GoogleOAuthValidationError("Nieprawidlowy token Google", {
+      cause: error,
+    });
+  }
 
   return normalizeGoogleProfile({
     id: payload?.sub,
@@ -210,24 +190,31 @@ export async function exchangeGoogleCodeForProfile(code, redirectUri = getGoogle
 // tworzy klienta oauth google -> dostaje ten sam redirectUri, ktory byl uzyty przy starcie logowania
 export async function exchangeGoogleCode(code, redirectUri = getGoogleOAuthRedirectUri()) {
   const client = createGoogleOAuthClient(redirectUri);
-  const { tokens } = await client.getToken(code);
+  let tokens;
+  let profile;
 
-  // zapisuje tokeny w kliencie
-  // potrzebne bo pozneijsze requesty odpytuja juz jako Zalogowany User
-  client.setCredentials(tokens);
+  try {
+    ({ tokens } = await client.getToken(code));
 
-  // tworzy klienta do Google OAuth2 API
-  // uzywane do pobrania info o profilu Google
-  const oauth2 = google.oauth2({
-    version: "v2",
-    auth: client,
-  });
-  const { data } = await oauth2.userinfo.get();
+    client.setCredentials(tokens);
+
+    const oauth2 = google.oauth2({
+      version: "v2",
+      auth: client,
+    });
+    const { data } = await oauth2.userinfo.get();
+    profile = data;
+  } catch (error) {
+    throw new GoogleOAuthValidationError(
+      "Nieprawidlowy kod autoryzacyjny Google",
+      { cause: error },
+    );
+  }
 
   // zwraca Usera w lokalnym formacie
   // RAW tokeny od Google
   return {
-    googleUser: normalizeGoogleProfile(data),
+    googleUser: normalizeGoogleProfile(profile),
     tokens,
   };
 }

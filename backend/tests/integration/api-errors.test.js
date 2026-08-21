@@ -35,7 +35,7 @@ describe("API error responses", () => {
     expect(response.headers["content-type"]).toMatch(/^application\/problem\+json/);
     expect(response.body.code).toBe("VALIDATION_ERROR");
     expect(response.body.status).toBe(400);
-    expect(response.body.errors.fieldErrors.capacityMin).toBeDefined();
+    expect(response.body.errors.properties.capacityMin.errors).toBeDefined();
   });
 
   it("zwraca Problem Details dla chronionego endpointu bez sesji", async () => {

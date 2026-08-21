@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { verifyGoogleOAuthState } from "../../src/config/auth.js";
 import {
   GoogleCalendarTokenError,
   GoogleOAuthConfigurationError,
   GoogleOAuthValidationError,
   OAuthStateVerificationError,
 } from "../../src/config/config.errors.js";
-import { decryptGoogleRefreshToken } from "../../src/config/google-calendar.js";
+import { decryptGoogleRefreshToken } from "../../src/security/googleRefreshToken.js";
+import { verifyGoogleOAuthState } from "../../src/security/jwt.js";
 import {
   validateFrontendRedirectUrl,
   validateGoogleOAuthConfiguration,

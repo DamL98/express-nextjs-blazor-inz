@@ -1,11 +1,8 @@
-import { extractBearerToken, getAuthCookieName, getSessionCookieOptions } from "../../config/auth.js";
-import {
-  GoogleOAuthConfigurationError,
-  GoogleOAuthValidationError,
-} from "../../config/config.errors.js";
+import { extractBearerToken, getSessionCookieOptions } from "../../config/auth.js";
+import { getAuthEnvironment } from "../../config/environment.js";
 import { getGoogleOAuthRedirectUri } from "../../config/google-oauth.js";
 import { ApiError } from "../../errors/apiError.js";
-import { ProblemDefinitions } from "../../errors/problemDefinitions.js";
+import { Problems } from "../../errors/problems.js";
 import { ApiResponse } from "../../utils/apiResponse.js";
 import {
   createGoogleAuthorizationUrl,
@@ -28,46 +25,11 @@ function sessionSource(req) {
 }
 
 function applySessionCookie(res, token) {
-  res.cookie(getAuthCookieName(), token, getSessionCookieOptions());
-}
-
-function mapGoogleAuthenticationError(error, fallbackDetail) {
-  if (error instanceof ApiError) {
-    return error;
-  }
-
-  if (error instanceof GoogleOAuthConfigurationError) {
-    return ApiError.from(ProblemDefinitions.GOOGLE_OAUTH_NOT_CONFIGURED, {
-      detail: error.message,
-      cause: error,
-    });
-  }
-
-  if (error instanceof GoogleOAuthValidationError) {
-    return ApiError.from(ProblemDefinitions.GOOGLE_AUTH_FAILED, {
-      detail: error.message,
-      cause: error,
-    });
-  }
-
-  return ApiError.from(ProblemDefinitions.GOOGLE_AUTH_FAILED, {
-    detail: fallbackDetail,
-    cause: error,
-  });
-}
-
-function mapGoogleAuthorizationError(error) {
-  if (error instanceof GoogleOAuthConfigurationError) {
-    return ApiError.from(ProblemDefinitions.GOOGLE_OAUTH_NOT_CONFIGURED, {
-      detail: error.message,
-      cause: error,
-    });
-  }
-
-  return ApiError.from(ProblemDefinitions.INVALID_GOOGLE_REDIRECT, {
-    detail: error.message || "Nieprawidlowy adres przekierowania Google",
-    cause: error,
-  });
+  res.cookie(
+    getAuthEnvironment().cookieName,
+    token,
+    getSessionCookieOptions(),
+  );
 }
 
 export async function getCurrentUser(_req, res) {
@@ -79,7 +41,7 @@ export async function createSession(req, res, next) {
 
   if (!idToken && !authorizationCode) {
     return next(
-      ApiError.from(ProblemDefinitions.GOOGLE_AUTH_PAYLOAD_REQUIRED, {
+      new ApiError(Problems.GOOGLE_AUTH_PAYLOAD_REQUIRED, {
         detail: "Przekaz Google idToken lub authorizationCode",
       }),
     );
@@ -93,10 +55,7 @@ export async function createSession(req, res, next) {
     applySessionCookie(res, session.token);
     return ApiResponse.ok(session).send(res);
   } catch (error) {
-    return next(mapGoogleAuthenticationError(
-      error,
-      "Blad uwierzytelniania OAuth",
-    ));
+    return next(error);
   }
 }
 
@@ -105,7 +64,7 @@ export async function getGoogleAuthorizationUrl(req, res, next) {
     const authorizationUrl = createGoogleAuthorizationUrl(req.query.redirectTo);
     return ApiResponse.ok({ authorizationUrl }).send(res);
   } catch (error) {
-    return next(mapGoogleAuthorizationError(error));
+    return next(error);
   }
 }
 
@@ -114,14 +73,14 @@ export async function redirectToGoogleAuthorization(req, res, next) {
     const authorizationUrl = createGoogleAuthorizationUrl(req.query.redirectTo);
     return res.redirect(302, authorizationUrl);
   } catch (error) {
-    return next(mapGoogleAuthorizationError(error));
+    return next(error);
   }
 }
 
 export async function handleGoogleOAuthCallback(req, res, next) {
   if (req.query.error) {
     return next(
-      ApiError.from(ProblemDefinitions.GOOGLE_AUTH_DENIED, {
+      new ApiError(Problems.GOOGLE_AUTH_DENIED, {
         detail: `Google OAuth zwrocilo blad: ${req.query.error}`,
       }),
     );
@@ -131,7 +90,7 @@ export async function handleGoogleOAuthCallback(req, res, next) {
 
   if (!code) {
     return next(
-      ApiError.from(ProblemDefinitions.GOOGLE_AUTH_CODE_REQUIRED),
+      new ApiError(Problems.GOOGLE_AUTH_CODE_REQUIRED),
     );
   }
 
@@ -153,15 +112,12 @@ export async function handleGoogleOAuthCallback(req, res, next) {
 
     return ApiResponse.ok(session).send(res);
   } catch (error) {
-    return next(mapGoogleAuthenticationError(
-      error,
-      "Blad logowania Google OAuth",
-    ));
+    return next(error);
   }
 }
 
 export async function logout(_req, res) {
-  res.clearCookie(getAuthCookieName(), {
+  res.clearCookie(getAuthEnvironment().cookieName, {
     ...getSessionCookieOptions(),
   });
 

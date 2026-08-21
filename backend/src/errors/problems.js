@@ -1,45 +1,25 @@
+// standard IETF RFC - https://datatracker.ietf.org/doc/html/rfc9457
 function createProblem(code, status, title, detail = title) {
-  return Object.freeze({
+  return {
     type: `/problems/${code.toLowerCase().replaceAll("_", "-")}`,
     title,
     status,
     code,
     detail,
-  });
+  };
 }
 
-export const ProblemDefinitions = Object.freeze({
-  // Ogolne bledy HTTP
-  BAD_REQUEST: createProblem("BAD_REQUEST", 400, "Nieprawidlowe zadanie"),
+export const Problems = {
   VALIDATION_ERROR: createProblem(
     "VALIDATION_ERROR",
     400,
     "Nieprawidlowe dane wejsciowe",
   ),
-  UNAUTHORIZED: createProblem(
-    "UNAUTHORIZED",
-    401,
-    "Wymagane uwierzytelnienie",
-  ),
   FORBIDDEN: createProblem("FORBIDDEN", 403, "Brak uprawnien"),
-  NOT_FOUND: createProblem("NOT_FOUND", 404, "Nie znaleziono zasobu"),
-  CONFLICT: createProblem("CONFLICT", 409, "Konflikt zasobu"),
-  TOO_MANY_REQUESTS: createProblem(
-    "TOO_MANY_REQUESTS",
-    429,
-    "Zbyt wiele zadan",
-  ),
   ROUTE_NOT_FOUND: createProblem(
     "ROUTE_NOT_FOUND",
     404,
     "Nie znaleziono endpointu",
-  ),
-
-  // Bledy serwera / infra
-  SERVICE_UNAVAILABLE: createProblem(
-    "SERVICE_UNAVAILABLE",
-    503,
-    "Usluga niedostepna",
   ),
   INTERNAL_SERVER_ERROR: createProblem(
     "INTERNAL_SERVER_ERROR",
@@ -48,7 +28,6 @@ export const ProblemDefinitions = Object.freeze({
     "Wystapil nieoczekiwany blad serwera",
   ),
 
-  // Uwierzytelnianie i ggl OAuth
   AUTH_TOKEN_REQUIRED: createProblem(
     "AUTH_TOKEN_REQUIRED",
     401,
@@ -108,7 +87,6 @@ export const ProblemDefinitions = Object.freeze({
     "Konflikt powiazania konta",
   ),
 
-  // Integracje ggl calendar
   GOOGLE_CALENDAR_NOT_CONFIGURED: createProblem(
     "GOOGLE_CALENDAR_NOT_CONFIGURED",
     503,
@@ -135,7 +113,6 @@ export const ProblemDefinitions = Object.freeze({
     "Brak refresh tokenu Google",
   ),
 
-  // Logika biznesowa sal - rooms
   ROOM_NOT_FOUND: createProblem("ROOM_NOT_FOUND", 404, "Nie znaleziono sali"),
   ROOM_INACTIVE: createProblem(
     "ROOM_INACTIVE",
@@ -144,8 +121,6 @@ export const ProblemDefinitions = Object.freeze({
     "Nie mozna zarezerwowac nieaktywnej sali",
   ),
 
-  // Logika biznesowa rezerwacji - reservations
-  INVALID_DATE: createProblem("INVALID_DATE", 400, "Nieprawidlowa data"),
   INVALID_DATE_FORMAT: createProblem(
     "INVALID_DATE_FORMAT",
     400,
@@ -174,10 +149,4 @@ export const ProblemDefinitions = Object.freeze({
     "Termin sali jest zajety",
     "Sala jest juz zarezerwowana w wybranym terminie",
   ),
-});
-
-export function findProblemByType(type) {
-  return Object.values(ProblemDefinitions).find(
-    (definition) => definition.type === type,
-  ) ?? null;
-}
+};

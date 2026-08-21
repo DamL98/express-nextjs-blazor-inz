@@ -1,7 +1,7 @@
 import request from "supertest";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
-import { createSessionToken } from "../../src/config/auth.js";
+import { createSessionToken } from "../../src/security/jwt.js";
 import { prisma } from "../../src/config/prisma.js";
 
 const {
@@ -53,7 +53,9 @@ vi.mock("../../src/config/google-calendar.js", () => ({
       insert: vi.fn(),
     },
   })),
-  createGoogleCalendarApiFromTokens: vi.fn(),
+}));
+
+vi.mock("../../src/security/googleRefreshToken.js", () => ({
   decryptGoogleRefreshToken: vi.fn(() => "refresh-token"),
   encryptGoogleRefreshToken: vi.fn((value) => `encrypted:${value}`),
 }));

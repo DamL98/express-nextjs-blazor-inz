@@ -1,7 +1,7 @@
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { createSessionToken } from "../../src/config/auth.js";
+import { createSessionToken } from "../../src/security/jwt.js";
 import { prisma } from "../../src/config/prisma.js";
 import { app } from "../../src/app.js";
 

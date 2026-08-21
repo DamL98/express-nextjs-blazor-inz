@@ -1,20 +1,20 @@
 import {
   extractBearerToken,
-  getAuthCookieName,
-  verifySessionToken,
 } from "../config/auth.js";
+import { getAuthEnvironment } from "../config/environment.js";
 import { ApiError } from "../errors/apiError.js";
-import { ProblemDefinitions } from "../errors/problemDefinitions.js";
+import { Problems } from "../errors/problems.js";
 import { getCurrentUser } from "../modules/auth/auth.service.js";
+import { verifySessionToken } from "../security/jwt.js";
 
 export async function authenticate(req, res, next) {
   const token =
     extractBearerToken(req.get("authorization")) ||
-    req.cookies?.[getAuthCookieName()] || null;
+    req.cookies?.[getAuthEnvironment().cookieName] || null;
 
   if (!token) {
     return next(
-      ApiError.from(ProblemDefinitions.AUTH_TOKEN_REQUIRED),
+      new ApiError(Problems.AUTH_TOKEN_REQUIRED),
     );
   }
 
@@ -23,7 +23,7 @@ export async function authenticate(req, res, next) {
     session = verifySessionToken(token);
   } catch (error) {
     return next(
-      ApiError.from(ProblemDefinitions.AUTH_TOKEN_INVALID),
+      new ApiError(Problems.AUTH_TOKEN_INVALID),
     );
   }
 
@@ -40,7 +40,7 @@ export async function authenticate(req, res, next) {
 export function requireRole(...allowedRoles) {
   return (_req, res, next) => {
     if (!res.locals.user || !allowedRoles.includes(res.locals.user.role.name)) {
-      return next(ApiError.from(ProblemDefinitions.FORBIDDEN));
+      return next(new ApiError(Problems.FORBIDDEN));
     }
 
     return next();

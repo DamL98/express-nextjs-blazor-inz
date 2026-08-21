@@ -1,10 +1,11 @@
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
+import { GoogleOAuthValidationError } from "../../src/config/config.errors.js";
 
 const { verifyGoogleIdTokenMock, buildGoogleAuthorizationUrlMock } = vi.hoisted(() => ({
   verifyGoogleIdTokenMock: vi.fn(async (token) => {
     if (token === "invalid-google-token") {
-      throw new Error("invalid token");
+      throw new GoogleOAuthValidationError("invalid token");
     }
 
     return {
@@ -32,9 +33,6 @@ vi.mock("../../src/config/google-oauth.js", () => ({
 
 vi.mock("../../src/config/google-calendar.js", () => ({
   createGoogleCalendarApiFromRefreshToken: vi.fn(),
-  createGoogleCalendarApiFromTokens: vi.fn(),
-  decryptGoogleRefreshToken: vi.fn(),
-  encryptGoogleRefreshToken: vi.fn(),
 }));
 
 import { app } from "../../src/app.js";
