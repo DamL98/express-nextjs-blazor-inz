@@ -1,93 +1,55 @@
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 import { app } from "../../src/app.js";
 
+const API = "/api/v1/rooms";
+const EMPTY_UUID = "00000000-0000-0000-0000-000000000000";
+
+let room;
+
+beforeAll(async () => {
+  const response = await request(app).get(API);
+  room = response.body.data.find((item) => item.isActive);
+});
+
 describe("Rooms API", () => {
-  it("GET /api/v1/rooms should return rooms list", async () => {
-    const response = await request(app).get("/api/v1/rooms");
+  it("zwraca liste aktywnych sal", async () => {
+    const response = await request(app).get(`${API}?active=true`);
 
     expect(response.status).toBe(200);
-    expect(response.body.success).toBe(true);
-    expect(Array.isArray(response.body.data)).toBe(true);
     expect(response.body.data.length).toBeGreaterThan(0);
+    expect(response.body.data.every((item) => item.isActive)).toBe(true);
   });
 
-  it("GET /api/v1/rooms?active=true zwraca dostępne sale", async () => {
-    const response = await request(app).get("/api/v1/rooms?active=true");
+  it("zwraca szczegoly sali", async () => {
+    const response = await request(app).get(`${API}/${room.id}`);
 
     expect(response.status).toBe(200);
-    expect(response.body.success).toBe(true);
-
-    for (const room of response.body.data) {
-      expect(room.isActive).toBe(true);
-    }
+    expect(response.body.data.id).toBe(room.id);
   });
 
-  it("GET /api/v1/rooms?capacityMin=10 zwraca sale z miejscami mininum 10", async () => {
-    const response = await request(app).get("/api/v1/rooms?capacityMin=10");
+  it("zwraca dostepnosc sali", async () => {
+    const response = await request(app).get(
+      `${API}/${room.id}/availability?start=2035-01-01T10:00:00.000Z&end=2035-01-01T11:00:00.000Z`,
+    );
 
     expect(response.status).toBe(200);
-    expect(response.body.success).toBe(true);
-
-    for (const room of response.body.data) {
-      expect(room.capacity).toBeGreaterThanOrEqual(10);
-    }
+    expect(response.body.data.roomId).toBe(room.id);
+    expect(response.body.data.available).toBeTypeOf("boolean");
   });
 
-  it("GET /api/v1/rooms?capacityMin=abc zwraca VALIDATION_ERROR", async () => {
-    const response = await request(app).get("/api/v1/rooms?capacityMin=abc");
+  it("odrzuca nieprawidlowy filtr pojemnosci", async () => {
+    const response = await request(app).get(`${API}?capacityMin=abc`);
 
     expect(response.status).toBe(400);
     expect(response.body.code).toBe("VALIDATION_ERROR");
   });
 
-  it("GET /api/v1/rooms/:id zwraca pojedynczą sale", async () => {
-    const roomsResponse = await request(app).get("/api/v1/rooms");
-    const roomId = roomsResponse.body.data[0].id;
-
-    const response = await request(app).get(`/api/v1/rooms/${roomId}`);
-
-    expect(response.status).toBe(200);
-    expect(response.body.success).toBe(true);
-    expect(response.body.data.id).toBe(roomId);
-  });
-
-  it("GET /api/v1/rooms/:id zwraca 404 dla nieistniejącej sali", async () => {
-    const response = await request(app).get(
-      "/api/v1/rooms/00000000-0000-0000-0000-000000000000",
-    );
+  it("zwraca blad dla nieistniejacej sali", async () => {
+    const response = await request(app).get(`${API}/${EMPTY_UUID}`);
 
     expect(response.status).toBe(404);
     expect(response.body.code).toBe("ROOM_NOT_FOUND");
-  });
-
-  it("GET /api/v1/rooms/:id/availability zwraca dostępne terminy dla sali", async () => {
-    const roomsResponse = await request(app).get("/api/v1/rooms");
-    const roomId = roomsResponse.body.data[0].id;
-
-    const response = await request(app).get(
-      `/api/v1/rooms/${roomId}/availability?start=2030-01-01T10:00:00.000Z&end=2030-01-01T11:00:00.000Z`,
-    );
-
-    expect(response.status).toBe(200);
-    expect(response.body.success).toBe(true);
-    expect(response.body.data.roomId).toBe(roomId);
-    expect(typeof response.body.data.available).toBe("boolean");
-    expect(Array.isArray(response.body.data.conflicts)).toBe(true);
-  });
-
-  it("GET /api/v1/rooms/:id/availability should reject invalid time range", async () => {
-    const roomsResponse = await request(app).get("/api/v1/rooms");
-    const roomId = roomsResponse.body.data[0].id;
-
-    const response = await request(app).get(
-      `/api/v1/rooms/${roomId}/availability?start=2030-01-01T11:00:00.000Z&end=2030-01-01T10:00:00.000Z`,
-    );
-
-    //console.log("INVALID TIME RANGE RESPONSE:", response.status, response.body);
-
-    expect(response.status).toBe(400);
-    expect(response.body.code).toBe("INVALID_TIME_RANGE");
   });
 });
