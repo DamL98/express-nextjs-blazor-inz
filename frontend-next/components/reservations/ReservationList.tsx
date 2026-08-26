@@ -2,21 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { cancelReservation } from "@/features/reservations/reservations.api";
-import { useAuth } from "@/components/auth-provider";
 
-import type { Reservation } from "@/features/reservations/reservations.types";
+import { apiRequest, type Reservation } from "@/lib/api";
+import { formatDateTime } from "@/lib/formatters";
 
 type ReservationsListProps = {
   initialReservations: Reservation[];
 };
-
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("pl-PL", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
 
 function getStatusLabel(status: Reservation["status"]) {
   if (status === "ACTIVE") {
@@ -42,19 +34,13 @@ function getStatusClassName(status: Reservation["status"]) {
   return "border-gray-200 bg-gray-50 text-gray-600";
 }
 
-export function ReservationsList({
-  initialReservations,
-}: ReservationsListProps) {
-  const { getIdToken } = useAuth();
+export function ReservationsList({ initialReservations }: ReservationsListProps) {
   const [reservations, setReservations] = useState(initialReservations);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   async function handleCancel(id: string) {
-    const confirmed = window.confirm(
-      "Czy na pewno chcesz anulować tę rezerwację?"
-    );
-
+    const confirmed = window.confirm( "Czy na pewno chcesz anulować tę rezerwację?");
     if (!confirmed) {
       return;
     }
@@ -63,21 +49,21 @@ export function ReservationsList({
     setErrorMessage(null);
 
     try {
-      const token = await getIdToken();
-      const cancelledReservation = await cancelReservation(id, token);
+      const cancelledReservation = await apiRequest<Reservation>(
+        `/reservations/${encodeURIComponent(id)}/cancel`,
+        { method: "PATCH" },
+      );
 
       setReservations((current) =>
         current.map((reservation) =>
           reservation.id === id ? cancelledReservation : reservation
         )
       );
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Błąd anulowania rezerwacji";
 
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Błąd anulowania rezerwacji";
       setErrorMessage(message);
+
     } finally {
       setPendingId(null);
     }
@@ -85,15 +71,13 @@ export function ReservationsList({
 
   if (reservations.length === 0) {
     return (
-
       <div className="rounded-xl border border-gray-200 bg-white p-6 text-gray-600 shadow-sm">
               <Link
                 href="/rooms"
                 className="text-sm font-medium text-blue-600 hover:text-blue-700"
               >
-                ← back /rooms
+                ← back /dashboard
               </Link>
-
         Nie masz jeszcze żadnych rezerwacji
       </div>
     );
@@ -123,11 +107,7 @@ export function ReservationsList({
               </p>
             </div>
 
-            <span
-              className={`inline-flex w-fit rounded-full border px-3 py-1 text-xs font-medium ${getStatusClassName(
-                reservation.status
-              )}`}
-            >
+            <span className={`inline-flex w-fit rounded-full border px-3 py-1 text-xs font-medium ${getStatusClassName(reservation.status)}`}>
               {getStatusLabel(reservation.status)}
             </span>
           </div>

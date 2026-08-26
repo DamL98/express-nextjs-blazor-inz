@@ -1,25 +1,27 @@
-import "dotenv/config"
-import pg from "pg"; // natywnego sterownik PostgreSQL
+import "dotenv/config";
+
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import pg from "pg";
+
 import { ConfigurationError } from "./config.errors.js";
+import { getDatabaseEnvironment } from "./environment.js";
 
-const { Pool } = pg;
-const connectionString = process.env.DATABASE_URL;
+const { connectionString } = getDatabaseEnvironment();
 
-if(!connectionString){
+if (!connectionString) {
   throw new ConfigurationError("DATABASE_URL required");
 }
 
-const pool = new Pool({ connectionString });
+const pool = new pg.Pool({ connectionString });
 const adapter = new PrismaPg(pool);
-export const prisma = new PrismaClient({adapter});
 
-// db conn funkcje podpiete w server.js
-export async function connectDatabase(){
+export const prisma = new PrismaClient({ adapter });
+
+export async function connectDatabase() {
   await prisma.$connect();
 }
 
-export async function disconnectDatabase(){
+export async function disconnectDatabase() {
   await prisma.$disconnect();
 }

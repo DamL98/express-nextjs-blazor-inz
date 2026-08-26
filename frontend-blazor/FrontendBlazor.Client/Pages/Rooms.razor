@@ -1,45 +1,44 @@
 @page "/rooms"
 @implements IDisposable
-@using FrontendBlazor.Client.Features.Rooms
-@using FrontendBlazor.Client.Features.Rooms.DTOs
 @using FrontendBlazor.Client.Infrastructure.Api
-@inject RoomsApi RoomsApi
+@using FrontendBlazor.Client.Models
+@inject ApiClient Api
 
 <PageTitle>Sale</PageTitle>
 
 <section
-    class="rooms-page"
+    class="mx-auto max-w-6xl px-6 py-8"
     data-measurement-page="rooms"
-    data-measurement-state="@GetMeasurementState()"
+    data-measurement-state="@(_isLoading ? "loading" : _errorMessage is null ? "ready" : "error")"
     data-measurement-count="@_rooms.Count">
-    <header class="rooms-header">
-        <h1>Lista sal</h1>
-        <p>Wybierz salę</p>
+    <header>
+        <h1 class="text-2xl font-bold text-gray-900">Lista sal</h1>
+        <p class="mt-2 text-gray-600">Wybierz salę</p>
     </header>
 
     @if (_isLoading)
     {
-        <div class="state-card">Ładowanie sal...</div>
+        <div class="mt-6 rounded-xl border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600">Ładowanie sal...</div>
     }
     else if (_errorMessage is not null)
     {
-        <div class="state-card error-state" role="alert">@_errorMessage</div>
+        <div class="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">@_errorMessage</div>
     }
     else if (_rooms.Count == 0)
     {
-        <div class="state-card">Brak sal do wyświetlenia</div>
+        <div class="mt-6 rounded-xl border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600">Brak sal do wyświetlenia</div>
     }
     else
     {
-        <div class="rooms-grid">
+        <div class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             @foreach (var room in _rooms)
             {
-                <article class="room-card">
-                    <h2>@room.Name</h2>
-                    <p class="room-location">@room.Location</p>
-                    <p class="room-capacity">Liczba miejsc: @room.Capacity</p>
-                    <p class="room-status">@(room.IsActive ? "Aktywna" : "Nieaktywna")</p>
-                    <a class="details-link" href="@($"/rooms/{room.Id}")">
+                <article class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <h2 class="text-lg font-semibold text-gray-900">@room.Name</h2>
+                    <p class="mt-1 text-sm text-gray-600">@room.Location</p>
+                    <p class="mt-3 text-sm text-gray-700">Liczba miejsc: @room.Capacity</p>
+                    <p class="mt-3 text-sm text-gray-500">@(room.IsActive ? "Aktywna" : "Nieaktywna")</p>
+                    <a class="mt-4 inline-block rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700" href="@($"/rooms/{room.Id}")">
                         Zobacz szczegóły
                     </a>
                 </article>
@@ -58,7 +57,9 @@
     {
         try
         {
-            _rooms = await RoomsApi.GetRoomsAsync(_requestCancellation.Token);
+            _rooms = await Api.ApiRequestAsync<IReadOnlyList<RoomDto>>(
+                "/rooms",
+                cancellationToken: _requestCancellation.Token);
         }
         catch (OperationCanceledException) when (_requestCancellation.IsCancellationRequested)
         {
@@ -81,8 +82,4 @@
         _requestCancellation.Dispose();
     }
 
-    private string GetMeasurementState()
-    {
-        return _isLoading ? "loading" : _errorMessage is null ? "ready" : "error";
-    }
 }

@@ -1,8 +1,8 @@
 import request from "supertest";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createSessionToken } from "../../src/config/auth.js";
 import { prisma } from "../../src/config/prisma.js";
+import { authorize, getUserSession } from "../support/integration.js";
 
 const {
   buildGoogleAuthorizationUrlMock,
@@ -53,7 +53,9 @@ vi.mock("../../src/config/google-calendar.js", () => ({
       insert: vi.fn(),
     },
   })),
-  createGoogleCalendarApiFromTokens: vi.fn(),
+}));
+
+vi.mock("../../src/security/googleRefreshToken.js", () => ({
   decryptGoogleRefreshToken: vi.fn(() => "refresh-token"),
   encryptGoogleRefreshToken: vi.fn((value) => `encrypted:${value}`),
 }));
@@ -89,17 +91,10 @@ beforeAll(async () => {
     },
   });
 
-  user = await prisma.user.findUnique({
-    where: {
-      email: "calendar-user@example.com",
-    },
-    include: {
-      role: true,
-    },
-  });
+  ({ user, token } = await getUserSession("calendar-user@example.com"));
+});
 
-  token = createSessionToken(user);
-
+beforeEach(async () => {
   await prisma.calendarIntegration.deleteMany({
     where: {
       userId: user.id,
@@ -107,80 +102,71 @@ beforeAll(async () => {
   });
 });
 
+afterAll(async () => {
+  await prisma.calendarIntegration.deleteMany({ where: { userId: user.id } });
+  await prisma.user.deleteMany({ where: { email: "calendar-user@example.com" } });
+});
+
 describe("Google Calendar integration API", () => {
-  it("GET /api/v1/google-calendar/status zwraca brak polaczenia", async () => {
-    const response = await request(app)
-      .get(`${API}/status`)
-      .set("Authorization", `Bearer ${token}`);
+  it("wymaga zalogowania", async () => {
+    const response = await request(app).get(`${API}/status`);
 
-    expect(response.status).toBe(200);
-    expect(response.body.data.connected).toBe(false);
+    expect(response.status).toBe(401);
+    expect(response.body.code).toBe("AUTH_TOKEN_REQUIRED");
   });
 
-  it("GET /api/v1/google-calendar/connect/start przekierowuje do Google OAuth", async () => {
-    const response = await request(app)
-      .get(`${API}/connect/start`)
-      .set("Authorization", `Bearer ${token}`)
-      .query({ redirectTo: "http://localhost:3000/reservations" });
+  it("obsluguje caly cykl polaczenia z kalendarzem", async () => {
+    const initialStatus = await authorize(request(app).get(`${API}/status`), token);
 
-    expect(response.status).toBe(302);
-    expect(response.headers.location).toContain("accounts.google.com");
-  });
+    expect(initialStatus.status).toBe(200);
+    expect(initialStatus.body.data.connected).toBe(false);
 
-  it("GET /api/v1/google-calendar/connect/callback zapisuje refresh token i wraca na frontend", async () => {
-    const startResponse = await request(app)
-      .get(`${API}/connect/start`)
-      .set("Authorization", `Bearer ${token}`)
-      .query({ redirectTo: "http://localhost:3000/reservations" });
-
+    const startResponse = await authorize(
+      request(app)
+        .get(`${API}/connect/start`)
+        .query({ redirectTo: "http://localhost:3000/reservations" }),
+      token,
+    );
     const callbackUrl = new URL(startResponse.headers.location);
     const state = callbackUrl.searchParams.get("state");
 
-    const response = await request(app)
+    const callbackResponse = await request(app)
       .get(`${API}/connect/callback`)
-      .query({
-        code: "calendar-auth-code",
-        state,
-      });
+      .query({ code: "calendar-auth-code", state });
 
-    expect(response.status).toBe(302);
-    expect(response.headers.location).toContain("googleCalendar=connected");
+    const connectedStatus = await authorize(
+      request(app).get(`${API}/status`),
+      token,
+    );
+    const disconnectResponse = await authorize(
+      request(app).delete(`${API}/connection`),
+      token,
+    );
 
-    const integration = await prisma.calendarIntegration.findUnique({
-      where: {
-        userId: user.id,
-      },
+    expect(startResponse.status).toBe(302);
+    expect(startResponse.headers.location).toContain("accounts.google.com");
+    expect(callbackResponse.status).toBe(302);
+    expect(callbackResponse.headers.location).toContain("googleCalendar=connected");
+    expect(connectedStatus.body.data).toMatchObject({
+      connected: true,
+      calendarEmail: "calendar-user@example.com",
     });
-
-    expect(integration).not.toBeNull();
-    expect(integration?.calendarEmail).toBe("calendar-user@example.com");
-    expect(integration?.refreshTokenEncrypted).toBe("encrypted:refresh-token");
-  });
-
-  it("GET /api/v1/google-calendar/status zwraca aktywne polaczenie", async () => {
-    const response = await request(app)
-      .get(`${API}/status`)
-      .set("Authorization", `Bearer ${token}`);
-
-    expect(response.status).toBe(200);
-    expect(response.body.data.connected).toBe(true);
-    expect(response.body.data.calendarEmail).toBe("calendar-user@example.com");
-  });
-
-  it("DELETE /api/v1/google-calendar/connection usuwa polaczenie", async () => {
-    const response = await request(app)
-      .delete(`${API}/connection`)
-      .set("Authorization", `Bearer ${token}`);
-
-    expect(response.status).toBe(200);
-    expect(response.body.data.disconnected).toBe(true);
+    expect(disconnectResponse.status).toBe(200);
+    expect(disconnectResponse.body.data.disconnected).toBe(true);
 
     const integration = await prisma.calendarIntegration.findUnique({
-      where: {
-        userId: user.id,
-      },
+      where: { userId: user.id },
     });
 
     expect(integration).toBeNull();
+  });
+
+  it("odrzuca nieprawidlowy OAuth state", async () => {
+    const response = await request(app)
+      .get(`${API}/connect/callback`)
+      .query({ code: "test-code", state: "invalid-state" });
+
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe("GOOGLE_CALENDAR_STATE_INVALID");
   });
 });

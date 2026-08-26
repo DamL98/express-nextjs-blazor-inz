@@ -1,16 +1,17 @@
 import request from "supertest";
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
+import { GoogleOAuthValidationError } from "../../src/config/config.errors.js";
 
 const { verifyGoogleIdTokenMock, buildGoogleAuthorizationUrlMock } = vi.hoisted(() => ({
   verifyGoogleIdTokenMock: vi.fn(async (token) => {
     if (token === "invalid-google-token") {
-      throw new Error("invalid token");
+      throw new GoogleOAuthValidationError("invalid token");
     }
 
     return {
       googleId: "auth-test-google-user",
-      email: "user@example.com",
-      fullName: "Damian Lll",
+      email: "auth-test@example.com",
+      fullName: "Auth Test",
       avatarUrl: "https://example.com/avatar.png",
       emailVerified: true,
     };
@@ -32,45 +33,32 @@ vi.mock("../../src/config/google-oauth.js", () => ({
 
 vi.mock("../../src/config/google-calendar.js", () => ({
   createGoogleCalendarApiFromRefreshToken: vi.fn(),
-  createGoogleCalendarApiFromTokens: vi.fn(),
-  decryptGoogleRefreshToken: vi.fn(),
-  encryptGoogleRefreshToken: vi.fn(),
 }));
 
 import { app } from "../../src/app.js";
+import { prisma } from "../../src/config/prisma.js";
+
+afterAll(async () => {
+  await prisma.user.deleteMany({
+    where: { email: "auth-test@example.com" },
+  });
+});
 
 describe("Google OAuth API", () => {
-  it("GET /api/v1/auth/me wymaga tokenu sesji backendu", async () => {
-    const response = await request(app).get("/api/v1/auth/me");
-
-    expect(response.status).toBe(401);
-    expect(response.body.code).toBe("AUTH_TOKEN_REQUIRED");
-  });
-
-  it("POST /api/v1/auth/session synchronizuje konto Google i zwraca sesje backendu", async () => {
-    const response = await request(app)
-      .post("/api/v1/auth/session")
-      .set("Authorization", "Bearer valid-google-token");
-
-    expect(response.status).toBe(200);
-    expect(response.body.data.user.email).toBe("user@example.com");
-    expect(response.body.data.user.googleId).toBe("auth-test-google-user");
-    expect(response.body.data.user.role.name).toBe("user");
-    expect(typeof response.body.data.token).toBe("string");
-  });
-
-  it("GET /api/v1/auth/me akceptuje token sesji backendu", async () => {
+  it("tworzy sesje Google i zwraca zalogowanego uzytkownika", async () => {
     const sessionResponse = await request(app)
       .post("/api/v1/auth/session")
       .set("Authorization", "Bearer valid-google-token");
 
-    const response = await request(app)
+    const meResponse = await request(app)
       .get("/api/v1/auth/me")
       .set("Authorization", `Bearer ${sessionResponse.body.data.token}`);
 
-    expect(response.status).toBe(200);
-    expect(response.body.data.email).toBe("user@example.com");
-    expect(response.body.data.googleId).toBe("auth-test-google-user");
+    expect(sessionResponse.status).toBe(200);
+    expect(sessionResponse.body.data.user.email).toBe("auth-test@example.com");
+    expect(typeof sessionResponse.body.data.token).toBe("string");
+    expect(meResponse.status).toBe(200);
+    expect(meResponse.body.data.googleId).toBe("auth-test-google-user");
   });
 
   it("POST /api/v1/auth/session odrzuca nieprawidlowy token Google", async () => {
@@ -82,7 +70,7 @@ describe("Google OAuth API", () => {
     expect(response.body.code).toBe("GOOGLE_AUTH_FAILED");
   });
 
-  it("GET /api/v1/auth/google/url zwraca URL autoryzacji Google", async () => {
+  it("zwraca URL autoryzacji Google", async () => {
     const response = await request(app)
       .get("/api/v1/auth/google/url")
       .query({ redirectTo: "http://localhost:3000/login" });

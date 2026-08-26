@@ -3,8 +3,11 @@
 import { type SubmitEvent, useState } from "react";
 import Link from "next/link";
 
-import { useAuth } from "@/components/auth-provider";
-import { createReservation } from "@/features/reservations/reservations.api";
+import {
+  apiRequest,
+  type Reservation,
+  type RoomAvailability,
+} from "@/lib/api";
 
 
 type ReservationFormProps = {
@@ -29,8 +32,34 @@ function toISOStringFromLocalInput(value: string): string {
   return new Date(value).toISOString();
 }
 
+function validateForm(form: FormState): string | null {
+  if (!form.title.trim()) {
+    return "Tytul jest wymagany";
+  }
+
+  if (!form.startTime) {
+    return "Poczatek rezerwacji jest wymagany";
+  }
+
+  if (!form.endTime) {
+    return "Koniec rezerwacji jest wymagany";
+  }
+
+  const start = new Date(form.startTime);
+  const end = new Date(form.endTime);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return "Podaj poprawny zakres czasu";
+  }
+
+  if (start >= end) {
+    return "Poczatek musi byc wczesniej niz koniec";
+  }
+
+  return null;
+}
+
 export function ReservationForm({ roomId }: ReservationFormProps) {
-  const { getIdToken } = useAuth();
   const [form, setForm] = useState<FormState>(initialState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -45,30 +74,52 @@ export function ReservationForm({ roomId }: ReservationFormProps) {
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    setIsSubmitting(true);
     setSuccessMessage(null);
     setErrorMessage(null);
 
+    const validationError = validateForm(form);
+
+    if (validationError) {
+      setErrorMessage(validationError);
+      return;
+    }
+
+    setIsSubmitting(true);
+
     try {
-      const token = await getIdToken();
-      await createReservation({
-        roomId,
-        title: form.title,
-        description: form.description || undefined,
-        startTime: toISOStringFromLocalInput(form.startTime),
-        endTime: toISOStringFromLocalInput(form.endTime),
-      }, token);
+      const startTime = toISOStringFromLocalInput(form.startTime);
+      const endTime = toISOStringFromLocalInput(form.endTime);
+      const query = new URLSearchParams({
+        start: startTime,
+        end: endTime,
+      });
+      const availability = await apiRequest<RoomAvailability>(
+        `/rooms/${encodeURIComponent(roomId)}/availability?${query.toString()}`,
+      );
+
+      if (!availability.available) {
+        setErrorMessage("Sala jest niedostepna w wybranym terminie");
+        return;
+      }
+
+      await apiRequest<Reservation>("/reservations", {
+        method: "POST",
+        body: JSON.stringify({
+          roomId,
+          title: form.title.trim(),
+          description: form.description.trim() || undefined,
+          startTime,
+          endTime,
+        }),
+      });
 
       setForm(initialState);
       setSuccessMessage("Rezerwacja utworzona");
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Nie udało się utworzyć rezerwacji";
 
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Nie udało się utworzyć rezerwacji";
       setErrorMessage(message);
+
     } finally {
       setIsSubmitting(false);
     }

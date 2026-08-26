@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { getRooms } from "@/features/rooms/rooms.api";
-import type { Room } from "@/features/rooms/rooms.types";
+import { apiRequest, type Room } from "@/lib/api";
 
 export default function RoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -12,35 +11,34 @@ export default function RoomsPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    let isActive = true;
+    const controller = new AbortController();
 
-    async function loadRooms() {
-      try {
-        const data = await getRooms();
-
-        if (isActive) {
+    apiRequest<Room[]>("/rooms", {
+      signal: controller.signal,
+    })
+      .then((data) => {
+        if (!controller.signal.aborted) {
           setRooms(data);
         }
-      } catch (error) {
-        if (isActive) {
-          setErrorMessage(
-            error instanceof Error
-              ? error.message
-              : "Blad pobierania listy sal",
-          );
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) {
+          return;
         }
-      } finally {
-        if (isActive) {
+
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Blad pobierania listy sal",
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
           setIsLoading(false);
         }
-      }
-    }
+      });
 
-    void loadRooms();
-
-    return () => {
-      isActive = false;
-    };
+    return () => controller.abort();
   }, []);
 
   const measurementState = isLoading

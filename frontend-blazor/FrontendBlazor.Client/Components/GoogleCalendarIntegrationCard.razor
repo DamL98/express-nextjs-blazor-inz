@@ -1,0 +1,138 @@
+@implements IDisposable
+@using FrontendBlazor.Client.Formatting
+@using FrontendBlazor.Client.Infrastructure.Api
+@using FrontendBlazor.Client.Models
+@inject ApiClient Api
+@inject NavigationManager Navigation
+
+<section class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+    <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+            <h2 class="text-lg font-semibold text-gray-900">Integracja Google Calendar</h2>
+            <p class="mt-2 max-w-2xl text-sm text-gray-600">Zapis rezerwacji w kalendarzu google</p>
+        </div>
+
+        @if (_status?.IsConnected != true)
+        {
+            <button
+                type="button"
+                class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                @onclick="Connect">
+                Polacz z Google
+            </button>
+        }
+    </div>
+
+    @if (CallbackStatus == "connected")
+    {
+        <div class="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            Konto Google Calendar zostalo polaczone
+        </div>
+    }
+    else if (CallbackStatus == "error")
+    {
+        var callbackText = CallbackReason switch
+        {
+            "access_denied" => "Polaczenie Google Calendar zostalo anulowane przez uzytkownika",
+            "google_account_mismatch" => "Wybrane konto Google nie zgadza sie z kontem uzytym do logowania",
+            "google_refresh_token_missing" => "Google nie zwrocil refresh tokena. Ponownie polacz konto",
+            "missing_code" => "Google nie zwrocil kodu autoryzacyjnego",
+            _ => "Blad laczenia z Google Calendar",
+        };
+
+        <div class="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            @callbackText
+        </div>
+    }
+
+    @if (_errorMessage is not null)
+    {
+        <div class="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">@_errorMessage</div>
+    }
+
+    <div class="mt-5 rounded-lg border border-gray-200 bg-gray-50 p-4">
+        @if (_isLoading)
+        {
+            <p class="text-sm text-gray-600">Ladowanie statusu...</p>
+        }
+        else if (_status?.IsConnected == true)
+        {
+            <div class="space-y-2 text-sm text-gray-700">
+                <p><span class="font-medium text-gray-900">Status:</span> polaczono</p>
+                <p><span class="font-medium text-gray-900">Konto:</span> @(_status.CalendarEmail ?? "brak danych")</p>
+                <p><span class="font-medium text-gray-900">Polaczono:</span> @(DateTimeFormatter.Format(_status.ConnectedAt) ?? "brak danych")</p>
+            </div>
+        }
+        else
+        {
+            <p class="text-sm text-gray-600">Konto Google nie jest jeszcze polaczone z Google Calendar</p>
+        }
+    </div>
+</section>
+
+@code {
+    private readonly CancellationTokenSource _requestCancellation = new();
+    private GoogleCalendarConnectionStatusDto? _status;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    [Parameter]
+    public string? CallbackStatus { get; set; }
+
+    [Parameter]
+    public string? CallbackReason { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool isFirstRender)
+    {
+        if (!isFirstRender || !RendererInfo.IsInteractive)
+        {
+            return;
+        }
+
+        try
+        {
+            _status = await Api.ApiRequestAsync<GoogleCalendarConnectionStatusDto>(
+                "/google-calendar/status",
+                new ApiRequestOptions
+                {
+                    IsBrowserCredentialRequired = true,
+                },
+                _requestCancellation.Token);
+        }
+        catch (OperationCanceledException) when (_requestCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            _errorMessage = ApiErrorMessage.FromException(
+                exception,
+                "Blad pobrania statusu Google Calendar");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+
+        if (!_requestCancellation.IsCancellationRequested)
+        {
+            StateHasChanged();
+        }
+    }
+
+    private void Connect()
+    {
+        var url = new Uri(Api.BaseAddress, "google-calendar/connect/start");
+        var builder = new UriBuilder(url)
+        {
+            Query = $"redirectTo={Uri.EscapeDataString(Navigation.Uri)}",
+        };
+
+        Navigation.NavigateTo(builder.Uri.ToString(), forceLoad: true);
+    }
+
+    public void Dispose()
+    {
+        _requestCancellation.Cancel();
+        _requestCancellation.Dispose();
+    }
+}

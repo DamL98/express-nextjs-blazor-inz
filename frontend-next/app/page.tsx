@@ -1,78 +1,50 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { useAuth } from "@/components/auth-provider";
-import { getMyReservations } from "@/features/reservations/reservations.api";
-import type { Reservation } from "@/features/reservations/reservations.types";
-import { getRooms } from "@/features/rooms/rooms.api";
-import type { Room } from "@/features/rooms/rooms.types";
-
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("pl-PL", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
+import { apiRequest, type Dashboard } from "@/lib/api";
+import { formatDateTime } from "@/lib/formatters";
 
 export default function DashboardPage() {
-  const { getIdToken } = useAuth();
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let active = true;
+    const controller = new AbortController();
 
-    async function loadDashboard() {
-      try {
-        const token = await getIdToken();
-        const [roomsData, reservationsData] = await Promise.all([
-          getRooms(),
-          getMyReservations({}, token),
-        ]);
+    apiRequest<Dashboard>("/dashboard", {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then((data) => {
+        if (!controller.signal.aborted) {
+          setDashboard(data);
+        }
+      })
+      .catch((loadError: unknown) => {
+        if (controller.signal.aborted) {
+          return;
+        }
 
-        if (active) {
-          setRooms(roomsData);
-          setReservations(reservationsData);
-        }
-      } catch (loadError) {
-        if (active) {
-          setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Błąd pobierania danych do dashboard",
-          );
-        }
-      } finally {
-        if (active) {
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Błąd pobierania danych do dashboard",
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
           setLoading(false);
         }
-      }
-    }
+      });
 
-    void loadDashboard();
+    return () => controller.abort();
+  }, []);
 
-    return () => {
-      active = false;
-    };
-  }, [getIdToken]);
-
-  const activeRoomsCount = rooms.filter((room) => room.isActive).length;
-  const nextReservations = useMemo(
-    () =>
-      reservations
-        .filter((reservation) => reservation.status === "ACTIVE")
-        .slice()
-        .sort(
-          (a, b) =>
-            new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
-        )
-        .slice(0, 3),
-    [reservations],
-  );
+  const activeRoomsCount = dashboard?.activeRoomsCount ?? 0;
+  const nextReservations = dashboard?.nextReservations ?? [];
 
   return (
     <div

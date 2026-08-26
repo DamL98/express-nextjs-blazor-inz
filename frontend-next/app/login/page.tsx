@@ -1,156 +1,85 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { type SubmitEvent, useState } from "react";
+import { useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 
-function authErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Nieznany blad";
-}
-
 export default function LoginPage() {
-  const router = useRouter();
-  const { login, register, loginWithGoogle } = useAuth();
-  const [mode, setMode] = useState<"login" | "register">("login");
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const { loginWithGoogle } = useAuth();
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  async function submit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-
-    if (mode === "register" && password !== confirmPassword) {
-      setError("Hasla nie sa takie same");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      if (mode === "register") {
-        await register(fullName, email, password);
-      } else {
-        await login(email, password);
-      }
-
-      router.replace("/");
-    } catch (submitError) {
-      setError(authErrorMessage(submitError));
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function googleLogin() {
-    setError("");
-
-    try {
-      await loginWithGoogle();
-    } catch (loginError) {
-      setError(authErrorMessage(loginError));
-    }
-  }
-
   return (
-    <main className="auth-shell login-page">
-      <section className="auth-card">
-        <p className="eyebrow">System rezerwacji</p>
-        <h1>{mode === "login" ? "Zaloguj sie" : "Utworz konto"}</h1>
-
-        <p className="muted">
-          {mode === "login"
-            ? "Zaloguj sie przez konto Google"
-            : "Blad"}
-        </p>
+    <main className="grid min-h-screen place-items-center bg-gray-50 px-4 py-8">
+      <section className="w-full max-w-[430px] rounded-[22px] border border-blue-900/20 bg-white/[.97] p-[38px] shadow-[0_24px_70px_rgba(23,32,51,0.14)] max-[480px]:px-[22px] max-[480px]:py-7">
+        <p className="mb-2 text-xs font-extrabold tracking-[0.14em] text-[var(--app-accent)] uppercase">System rezerwacji</p>
+        <h1 className="text-[32px] font-bold tracking-[-0.04em] text-[var(--app-ink)]">Zaloguj sie</h1>
+        <p className="mt-[10px] mb-[26px] leading-[1.55] text-[var(--app-muted)]">Zaloguj sie przez konto Google lub lokalnie</p>
 
         <button
-          className="google-button"
+          className="flex min-h-[46px] w-full items-center justify-center gap-[10px] rounded-[11px] border border-[var(--app-line)] bg-white font-[750] text-[var(--app-ink)] hover:border-[#aebbd0] hover:bg-[#f6f8fc] disabled:cursor-wait disabled:opacity-65"
           type="button"
-          onClick={() => void googleLogin()}
+          onClick={async () => {
+            setError("");
+            setSubmitting(true);
+
+            try {
+              await loginWithGoogle();
+            } catch (loginError) {
+              setError(
+                loginError instanceof Error
+                  ? loginError.message
+                  : "Nieznany blad",
+              );
+              setSubmitting(false);
+            }
+          }}
           disabled={submitting}
         >
-          <span className="google-mark">G</span> Kontynuuj z Google
+          <span className="text-lg font-extrabold text-[#4285f4]">G</span>
+          {submitting ? "Przekierowanie..." : "Kontynuuj z Google"}
         </button>
 
-        <div className="separator"><span>lub</span></div>
+        <div className="my-5 flex items-center gap-3 text-xs font-semibold text-[var(--app-muted)] uppercase">
+          <span className="h-px flex-1 bg-[var(--app-line)]" />
+          <span>lub</span>
+          <span className="h-px flex-1 bg-[var(--app-line)]" />
+        </div>
 
-        <form onSubmit={submit}>
-          {mode === "register" ? (
-            <label>
-              Imie i nazwisko
+        <form aria-label="Logowanie lokalne">
+          <fieldset className="space-y-4">
+            <label className="block text-sm font-semibold text-[var(--app-ink)]">
+              E-mail
               <input
-                required
-                value={fullName}
-                onChange={(event) => setFullName(event.target.value)}
-                autoComplete="name"
+                className="mt-2 min-h-[46px] w-full rounded-[11px] border border-[var(--app-line)] bg-white px-3 text-base font-normal text-[var(--app-ink)] outline-none focus:border-[var(--app-accent)]"
+                type="email"
+                autoComplete="email"
+                placeholder="uzytkownik@example.com"
               />
             </label>
-          ) : null}
 
-          <label>
-            E-mail
-            <input
-              required
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              autoComplete="email"
-            />
-          </label>
-
-          <label>
-            Haslo
-            <input
-              required
-              minLength={6}
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
-            />
-          </label>
-
-          {mode === "register" ? (
-            <label>
-              Powtorz haslo
+            <label className="block text-sm font-semibold text-[var(--app-ink)]">
+              Haslo
               <input
-                required
-                minLength={6}
+                className="mt-2 min-h-[46px] w-full rounded-[11px] border border-[var(--app-line)] bg-white px-3 text-base font-normal text-[var(--app-ink)] outline-none focus:border-[var(--app-accent)]"
                 type="password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                autoComplete="new-password"
+                autoComplete="current-password"
+                placeholder="Wprowadz haslo"
               />
             </label>
-          ) : null}
 
-          {error ? <p className="error-message" role="alert">{error}</p> : null}
-
-          <button className="primary-button" disabled={submitting} type="submit">
-            {submitting
-              ? "Czekaj.."
-              : mode === "login"
-                ? "Zaloguj sie"
-                : "Zarejestruj sie"}
-          </button>
+            <button
+              className="min-h-[46px] w-full rounded-[11px] bg-[var(--app-accent)] font-bold text-white"
+              type="button"
+            >
+              Zaloguj sie
+            </button>
+          </fieldset>
         </form>
 
-        <button
-          className="mode-button"
-          type="button"
-          onClick={() => {
-            setMode(mode === "login" ? "register" : "login");
-            setError("");
-          }}
-        >
-          {mode === "login"
-            ? "Nie masz konta? Zarejestruj sie"
-            : "Masz juz konto? Zaloguj sie"}
-        </button>
+        {error ? (
+          <p className="mt-4 rounded-[9px] bg-[#fff0f0] px-3 py-[11px] text-[13px] leading-[1.4] text-[#9d2424]" role="alert">{error}</p>
+        ) : null}
       </section>
     </main>
   );

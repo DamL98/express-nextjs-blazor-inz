@@ -1,16 +1,34 @@
 import { randomUUID } from "node:crypto";
+import { z, ZodError } from "zod";
 
-import { toApiError } from "../errors/apiErrorMapper.js";
-import { ApiResponse } from "../utils/apiResponse.js";
+import { ApiError } from "../errors/apiError.js";
+import { Problems } from "../errors/problems.js";
 
 export function errorMiddleware(error, _req, res, _next) {
-  const apiError = toApiError(error, {
-    includeDebugDetails: process.env.NODE_ENV === "development",
-  });
+  const instance = `urn:uuid:${randomUUID()}`;
 
-  if (apiError.code === "INTERNAL_SERVER_ERROR") {
-    console.error("Nieprzewidziany error:", error);
+  if (error instanceof ZodError) {
+    const problem = Problems.VALIDATION_ERROR;
+
+    return res
+      .status(problem.status)
+      .type("application/problem+json")
+      .json({
+        ...problem,
+        instance,
+        errors: z.treeifyError(error),
+      });
   }
 
-  return ApiResponse.problem(apiError, `urn:uuid:${randomUUID()}`).send(res);
+  let apiError = error;
+
+  if (!(apiError instanceof ApiError)) {
+    console.error("Nieprzewidziany błąd:", error);
+    apiError = new ApiError(Problems.INTERNAL_SERVER_ERROR, { cause: error });
+  }
+
+  return res
+    .status(apiError.status)
+    .type("application/problem+json")
+    .json(apiError.toProblemDetails(instance));
 }

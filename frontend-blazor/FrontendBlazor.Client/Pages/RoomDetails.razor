@@ -1,114 +1,110 @@
 @page "/rooms/{Id}"
 @implements IDisposable
-@using FrontendBlazor.Client.Features.Reservations
-@using FrontendBlazor.Client.Features.Reservations.DTOs
-@using FrontendBlazor.Client.Features.Rooms
-@using FrontendBlazor.Client.Features.Rooms.DTOs
 @using FrontendBlazor.Client.Infrastructure.Api
-@inject RoomsApi RoomsApi
-@inject ReservationsApi ReservationsApi
+@using FrontendBlazor.Client.Models
+@inject ApiClient Api
 
 <PageTitle>@(_room?.Name ?? "Szczegoly sali")</PageTitle>
 
 <section
-    class="room-details-page"
+    class="mx-auto max-w-4xl px-6 py-8"
     data-measurement-page="room-details"
-    data-measurement-state="@GetMeasurementState()">
-    <a class="back-link" href="/rooms">← Wroc do listy sal</a>
+    data-measurement-state="@(_isLoading ? "loading" : _errorMessage is null && _room is not null ? "ready" : "error")">
+    <a class="text-sm font-medium text-blue-600 hover:text-blue-700" href="/rooms">← Wroc do listy sal</a>
 
     @if (_isLoading)
     {
-        <div class="state-card">Ladowanie...</div>
+        <div class="mt-6 rounded-xl border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600">Ladowanie...</div>
     }
     else if (_errorMessage is not null)
     {
-        <div class="state-card error-state" role="alert">@_errorMessage</div>
+        <div class="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">@_errorMessage</div>
     }
     else if (_room is not null)
     {
-        <article class="room-details-card">
-            <h1>@_room.Name</h1>
-            <p class="room-location">@_room.Location</p>
+        <article class="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h1 class="text-2xl font-bold text-gray-900">@_room.Name</h1>
+            <p class="mt-2 text-gray-600">@_room.Location</p>
 
-            <div class="room-properties">
+            <div class="mt-6 grid gap-4 sm:grid-cols-2">
                 <div>
-                    <span>Liczba miejsc</span>
-                    <strong>@_room.Capacity</strong>
+                    <p class="text-sm text-gray-500">Liczba miejsc</p>
+                    <p class="font-medium text-gray-900">@_room.Capacity</p>
                 </div>
                 <div>
-                    <span>Status</span>
-                    <strong>@(_room.IsActive ? "Aktywna" : "Nieaktywna")</strong>
+                    <p class="text-sm text-gray-500">Status</p>
+                    <p class="font-medium text-gray-900">@(_room.IsActive ? "Aktywna" : "Nieaktywna")</p>
                 </div>
             </div>
 
             @if (!string.IsNullOrWhiteSpace(_room.Description))
             {
-                <p class="room-description">@_room.Description</p>
+                <p class="mt-6 text-gray-700">@_room.Description</p>
             }
         </article>
 
         @if (_room.IsActive)
         {
-            <section class="reservation-form-card">
-                <h2>Zarezerwuj sale</h2>
+            <section class="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                <h2 class="text-lg font-semibold text-gray-900">Zarezerwuj sale</h2>
 
-                <EditForm FormName="reservation-form" Model="_form" OnSubmit="SubmitReservationAsync" class="reservation-form">
-                    <div class="form-field">
-                        <label for="title">Nazwa rezerwacji</label>
+                <EditForm FormName="reservation-form" Model="_form" OnSubmit="SubmitReservationAsync" class="mt-5 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700" for="title">Nazwa rezerwacji</label>
                         <InputText
                             id="title"
                             @bind-Value="_form.Title"
                             required
-                            class="form-control" />
+                            class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100" />
                     </div>
 
-                    <div class="form-field">
-                        <label for="description">Opis</label>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700" for="description">Opis</label>
                         <InputTextArea
                             id="description"
                             @bind-Value="_form.Description"
-                            class="form-control textarea"
+                            class="mt-1 min-h-24 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                             placeholder="Opis opcjonalny" />
                     </div>
 
-                    <div class="form-grid">
-                        <div class="form-field">
-                            <label for="startTime">Poczatek</label>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700" for="startTime">Poczatek</label>
                             <InputText
                                 id="startTime"
                                 type="datetime-local"
                                 @bind-Value="_form.StartTime"
                                 required
-                                class="form-control" />
+                                class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100" />
                         </div>
 
-                        <div class="form-field">
-                            <label for="endTime">Koniec</label>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700" for="endTime">Koniec</label>
                             <InputText
                                 id="endTime"
                                 type="datetime-local"
                                 @bind-Value="_form.EndTime"
                                 required
-                                class="form-control" />
+                                class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100" />
                         </div>
                     </div>
 
                     @if (_formError is not null)
                     {
-                        <div class="message-box error-message" role="alert">@_formError</div>
+                        <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">@_formError</div>
                     }
 
                     @if (_successMessage is not null)
                     {
-                        <div class="message-box success-message">
+                        <div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
                             <p>@_successMessage</p>
-                            <a href="/reservations">Przejdz do moich rezerwacji</a>
+                            <a class="mt-2 inline-block font-medium text-green-800 underline" href="/reservations">Przejdz do moich rezerwacji</a>
                         </div>
                     }
 
                     <button
                         type="submit"
-                        class="primary-button"
+                        class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                         disabled="@_isSubmitting">
                         @(_isSubmitting ? "Tworzenie..." : "Utworz rezerwacje")
                     </button>
@@ -117,7 +113,7 @@
         }
         else
         {
-            <section class="inactive-room-card">
+            <section class="mt-6 rounded-xl border border-yellow-200 bg-yellow-50 p-6 text-sm text-yellow-800">
                 Ta sala jest nieaktywna i nie mozna jej zarezerwowac.
             </section>
         }
@@ -152,9 +148,9 @@
 
         try
         {
-            _room = await RoomsApi.GetRoomByIdAsync(
-                Id,
-                _requestCancellation.Token);
+            _room = await Api.ApiRequestAsync<RoomDto>(
+                $"/rooms/{Uri.EscapeDataString(Id)}",
+                cancellationToken: _requestCancellation.Token);
         }
         catch (OperationCanceledException) when (_requestCancellation.IsCancellationRequested)
         {
@@ -173,8 +169,30 @@
 
     private async Task SubmitReservationAsync()
     {
-        _formError = ValidateForm();
+        _formError = null;
         _successMessage = null;
+
+        if (string.IsNullOrWhiteSpace(_form.Title))
+        {
+            _formError = "Tytul jest wymagany";
+        }
+        else if (string.IsNullOrWhiteSpace(_form.StartTime))
+        {
+            _formError = "Poczatek rezerwacji jest wymagany";
+        }
+        else if (string.IsNullOrWhiteSpace(_form.EndTime))
+        {
+            _formError = "Koniec rezerwacji jest wymagany";
+        }
+        else if (!DateTime.TryParse(_form.StartTime, out var formStart) ||
+            !DateTime.TryParse(_form.EndTime, out var formEnd))
+        {
+            _formError = "Podaj poprawny zakres czasu";
+        }
+        else if (formStart >= formEnd)
+        {
+            _formError = "Poczatek musi byc wczesniej niz koniec";
+        }
 
         if (_formError is not null || _room is null)
         {
@@ -187,16 +205,33 @@
         {
             var start = DateTime.Parse(_form.StartTime).ToUniversalTime();
             var end = DateTime.Parse(_form.EndTime).ToUniversalTime();
+            var startValue = Uri.EscapeDataString(start.ToString("O"));
+            var endValue = Uri.EscapeDataString(end.ToString("O"));
+            var availability = await Api.ApiRequestAsync<RoomAvailabilityDto>(
+                $"/rooms/{Uri.EscapeDataString(_room.Id)}/availability" +
+                $"?start={startValue}&end={endValue}");
 
-            await ReservationsApi.CreateReservationAsync(
-                new CreateReservationRequestDto(
-                    _room.Id,
-                    _form.Title.Trim(),
-                    string.IsNullOrWhiteSpace(_form.Description)
-                        ? null
-                        : _form.Description.Trim(),
-                    start.ToString("O"),
-                    end.ToString("O")));
+            if (!availability.IsAvailable)
+            {
+                _formError = "Sala jest niedostepna w wybranym terminie";
+                return;
+            }
+
+            await Api.ApiRequestAsync<ReservationDto>(
+                "/reservations",
+                new ApiRequestOptions
+                {
+                    Method = HttpMethod.Post,
+                    Body = new CreateReservationRequestDto(
+                        _room.Id,
+                        _form.Title.Trim(),
+                        string.IsNullOrWhiteSpace(_form.Description)
+                            ? null
+                            : _form.Description.Trim(),
+                        start.ToString("O"),
+                        end.ToString("O")),
+                    IsBrowserCredentialRequired = true,
+                });
 
             _form = new ReservationFormState();
             _successMessage = "Rezerwacja utworzona";
@@ -213,50 +248,10 @@
         }
     }
 
-    private string? ValidateForm()
-    {
-        if (string.IsNullOrWhiteSpace(_form.Title))
-        {
-            return "Tytul jest wymagany";
-        }
-
-        if (string.IsNullOrWhiteSpace(_form.StartTime))
-        {
-            return "Poczatek rezerwacji jest wymagany";
-        }
-
-        if (string.IsNullOrWhiteSpace(_form.EndTime))
-        {
-            return "Koniec rezerwacji jest wymagany";
-        }
-
-        if (!DateTime.TryParse(_form.StartTime, out var start) ||
-            !DateTime.TryParse(_form.EndTime, out var end))
-        {
-            return "Podaj poprawny zakres czasu";
-        }
-
-        if (start >= end)
-        {
-            return "Poczatek musi byc wczesniej niz koniec";
-        }
-
-        return null;
-    }
-
     public void Dispose()
     {
         _requestCancellation.Cancel();
         _requestCancellation.Dispose();
-    }
-
-    private string GetMeasurementState()
-    {
-        return _isLoading
-            ? "loading"
-            : _errorMessage is null && _room is not null
-                ? "ready"
-                : "error";
     }
 
     private sealed class ReservationFormState

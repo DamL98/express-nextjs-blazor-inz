@@ -1,10 +1,6 @@
 import { getGoogleCalendarOAuthRedirectUri } from "../../config/google-oauth.js";
-import {
-  ConfigurationError,
-  GoogleOAuthValidationError,
-} from "../../config/config.errors.js";
 import { ApiError } from "../../errors/apiError.js";
-import { ProblemDefinitions } from "../../errors/problemDefinitions.js";
+import { Problems } from "../../errors/problems.js";
 import { ApiResponse } from "../../utils/apiResponse.js";
 import {
   connectCalendarFromCode,
@@ -27,24 +23,6 @@ function buildRedirectUrl(redirectTo, status, reason = null) {
   return url.toString();
 }
 
-function mapCalendarStartError(error) {
-  if (error instanceof ConfigurationError) {
-    return ApiError.from(ProblemDefinitions.GOOGLE_CALENDAR_NOT_CONFIGURED, {
-      detail: error.message,
-      cause: error,
-    });
-  }
-
-  if (error instanceof GoogleOAuthValidationError) {
-    return ApiError.from(ProblemDefinitions.INVALID_GOOGLE_REDIRECT, {
-      detail: error.message,
-      cause: error,
-    });
-  }
-
-  return error;
-}
-
 export async function getGoogleCalendarStatus(_req, res) {
   const status = await getConnectionStatus(
     res.locals.user.id,
@@ -63,7 +41,7 @@ export async function startGoogleCalendarConnection(req, res, next) {
 
     return res.redirect(302, authorizationUrl);
   } catch (error) {
-    return next(mapCalendarStartError(error));
+    return next(error);
   }
 }
 
@@ -72,7 +50,7 @@ export async function handleGoogleCalendarCallback(req, res, next) {
 
   if (!state) {
     return next(
-      ApiError.from(ProblemDefinitions.GOOGLE_CALENDAR_STATE_REQUIRED),
+      new ApiError(Problems.GOOGLE_CALENDAR_STATE_REQUIRED),
     );
   }
 
@@ -110,13 +88,6 @@ export async function handleGoogleCalendarCallback(req, res, next) {
 
     return res.redirect(302, buildRedirectUrl(redirectTo, "connected"));
   } catch (error) {
-    if (error instanceof ConfigurationError) {
-      return next(ApiError.from(
-        ProblemDefinitions.GOOGLE_CALENDAR_NOT_CONFIGURED,
-        { detail: error.message, cause: error },
-      ));
-    }
-
     if (error instanceof ApiError) {
       return res.redirect(
         302,

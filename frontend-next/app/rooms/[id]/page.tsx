@@ -5,8 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { ReservationForm } from "@/components/reservations/ReservationForm";
-import { getRoomById } from "@/features/rooms/rooms.api";
-import type { Room } from "@/features/rooms/rooms.types";
+import { apiRequest, type Room } from "@/lib/api";
 
 export default function RoomDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -15,35 +14,34 @@ export default function RoomDetailsPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    let isActive = true;
+    const controller = new AbortController();
 
-    async function loadRoom() {
-      try {
-        const data = await getRoomById(id);
-
-        if (isActive) {
+    apiRequest<Room>(`/rooms/${encodeURIComponent(id)}`, {
+      signal: controller.signal,
+    })
+      .then((data) => {
+        if (!controller.signal.aborted) {
           setRoom(data);
         }
-      } catch (error) {
-        if (isActive) {
-          setErrorMessage(
-            error instanceof Error
-              ? error.message
-              : "Blad pobierania danych sali",
-          );
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) {
+          return;
         }
-      } finally {
-        if (isActive) {
+
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Blad pobierania danych sali",
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
           setIsLoading(false);
         }
-      }
-    }
+      });
 
-    void loadRoom();
-
-    return () => {
-      isActive = false;
-    };
+    return () => controller.abort();
   }, [id]);
 
   const measurementState = isLoading

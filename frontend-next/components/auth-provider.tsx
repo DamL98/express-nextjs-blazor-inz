@@ -13,8 +13,8 @@ import {
 import { apiRequest } from "@/lib/api";
 import { API_URL } from "@/lib/config/env";
 
-// wzorzec usera zapisany w lokalnej bazie
-// backend zwraca ten obiekt po potwierdzeniu aktywnej sesji
+// Profil konta Google zapisany w bazie aplikacji.
+// Backend zwraca go po zweryfikowaniu sesji użytkownika.
 export type LocalUser = {
   id: string;
   googleId: string;
@@ -25,30 +25,21 @@ export type LocalUser = {
   role: { name: string };
 };
 
-// wlasciwosci i funkcje do ktorych maja dostep componenty wewnatrz AuthContext
+// Stan uwierzytelnienia udostępniany komponentom potomnym providera.
 type AuthContext = {
   user: LocalUser | null;
   loading: boolean;
-  // lokalny formularz logowania zostaje w UI, ale aktualna architektura
-  // obsluguje tylko Google OAuth po stronie backendu
-  login: (_email: string, _password: string) => Promise<void>;
-  register: (_fullName: string, _email: string, _password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
-  // zwraca token uzywany w headerze Authorization potrzebne do api
-  // przy sesji cookie backendu nie jest juz potrzebny, ale interfejs zostaje
-  getIdToken: () => Promise<string>;
 };
 
-// null context na start przed zalogowaniem
+// Wartość null pozwala wykryć użycie useAuth poza AuthProvider.
 const AuthContext = createContext<AuthContext | null>(null);
 
-const GOOGLE_LOGIN_UNAVAILABLE_MESSAGE =
-  "Customowe logowanie jest off, zaloguj przez google";
-
-async function getCurrentSessionUser() {
+async function getCurrentSessionUser(signal?: AbortSignal) {
   return apiRequest<LocalUser>("/auth/me", {
     cache: "no-store",
+    signal,
   });
 }
 
@@ -57,45 +48,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let active = true;
+    const controller = new AbortController();
 
-    async function loadSession() {
-      try {
-        // pobranie rekordu z localdb dla aktywnej sesji przegladarki
-        const currentUser = await getCurrentSessionUser();
-
-        if (active) {
+    // Backend odtwarza użytkownika na podstawie ciasteczka sesyjnego.
+    getCurrentSessionUser(controller.signal)
+      .then((currentUser) => {
+        if (!controller.signal.aborted) {
           setUser(currentUser);
         }
-      } catch {
-        if (active) {
-          setUser(null);
+      })
+      .catch(() => {
+        if (controller.signal.aborted) {
+          return;
         }
-      } finally {
-        if (active) {
+
+        setUser(null);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
           setLoading(false);
         }
-      }
-    }
+      });
 
-    void loadSession();
-
-    return () => {
-      active = false;
-    };
+    return () => controller.abort();
   }, []);
 
-  // USER LOGIN
-  const login = useCallback(async () => {
-    throw new Error(GOOGLE_LOGIN_UNAVAILABLE_MESSAGE);
-  }, []);
-
-  // USER REGISTER
-  const register = useCallback(async () => {
-    throw new Error(GOOGLE_LOGIN_UNAVAILABLE_MESSAGE);
-  }, []);
-
-  // GOOGLE LOGIN
+  // Logowanie odbywa się wyłącznie przez Google OAuth obsługiwane przez backend.
   const loginWithGoogle = useCallback(async () => {
     const redirectTo = `${window.location.origin}/login`;
     const url = new URL(`${API_URL}/auth/google/start`);
@@ -104,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.assign(url.toString());
   }, []);
 
-  // LOGOUT
+  // Backend usuwa ciasteczko sesyjne, a frontend czyści bieżący profil.
   const logout = useCallback(async () => {
     await apiRequest("/auth/logout", {
       method: "POST",
@@ -112,23 +90,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  const getIdToken = useCallback(async () => "", []);
-
-  // ograniczenia re-renderowania komponentow korzystajacych z useAuth
-  // dopoki zadna wartosc sie nie zmieni
+  // Zachowuje referencję kontekstu, dopóki nie zmieni się jego stan.
   const value = useMemo(
-    () => ({ user, loading, login, register, loginWithGoogle, logout, getIdToken }),
-    [user, loading, login, register, loginWithGoogle, logout, getIdToken],
+    () => ({ user, loading, loginWithGoogle, logout }),
+    [user, loading, loginWithGoogle, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-// hook udostepniajacy dane i metody uwierzytelniania komponentom wewn. AuthProvider
+// Udostępnia stan uwierzytelnienia wyłącznie wewnątrz AuthProvider.
 export function useAuth() {
   const context = useContext(AuthContext);
 
-  // uzycie hooka poza <AuthProvider>
   if (!context) {
     throw new Error("useAuth musi byc uzywany wewnatrz AuthProvider");
   }

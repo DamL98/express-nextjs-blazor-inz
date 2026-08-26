@@ -19,14 +19,6 @@ export class ApiResponse {
     });
   }
 
-  static problem(error, instance) {
-    return new ApiResponse(
-      error.status,
-      error.toProblemDetails(instance),
-      "application/problem+json",
-    );
-  }
-
   send(res) {
     res.status(this.statusCode);
     res.type(this.contentType);

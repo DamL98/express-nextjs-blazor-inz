@@ -2,8 +2,6 @@ import { z } from "zod";
 
 import {
   createGoogleCalendarApiFromRefreshToken,
-  decryptGoogleRefreshToken,
-  encryptGoogleRefreshToken,
 } from "../../config/google-calendar.js";
 import {
   GOOGLE_CALENDAR_SCOPES,
@@ -13,21 +11,43 @@ import {
   validateFrontendRedirectUrl,
 } from "../../config/google-oauth.js";
 import {
-  createGoogleOAuthState,
-  verifyGoogleOAuthState,
-} from "../../config/auth.js";
-import {
+  ConfigurationError,
   GoogleOAuthValidationError,
-  OAuthStateVerificationError,
 } from "../../config/config.errors.js";
 import { ApiError } from "../../errors/apiError.js";
-import { ProblemDefinitions } from "../../errors/problemDefinitions.js";
+import { Problems } from "../../errors/problems.js";
 import { calendarIntegrationRepository } from "../../repositories/calendar-integration.repository.js";
 import { reservationRepository } from "../../repositories/reservation.repository.js";
 import { userRepository } from "../../repositories/user.repository.js";
+import {
+  decryptGoogleRefreshToken,
+  encryptGoogleRefreshToken,
+} from "../../security/googleRefreshToken.js";
+import {
+  createGoogleOAuthState,
+  verifyGoogleOAuthState,
+} from "../../security/jwt.js";
 
 const GOOGLE_CALENDAR_PROVIDER = "google";
 const GOOGLE_CALENDAR_STATE_PURPOSE = "google-calendar-connect";
+
+function toGoogleCalendarApiError(error, validationProblem) {
+  if (error instanceof ConfigurationError) {
+    return new ApiError(Problems.GOOGLE_CALENDAR_NOT_CONFIGURED, {
+      detail: error.message,
+      cause: error,
+    });
+  }
+
+  if (validationProblem && error instanceof GoogleOAuthValidationError) {
+    return new ApiError(validationProblem, {
+      detail: error.message,
+      cause: error,
+    });
+  }
+
+  return error;
+}
 
 const googleCalendarStateSchema = z.object({
   purpose: z.literal(GOOGLE_CALENDAR_STATE_PURPOSE),
@@ -81,19 +101,23 @@ function buildReservationEvent(reservation, room) {
 }
 
 export function createConnectionAuthorizationUrl(userId, redirectTo) {
-  const validatedRedirectTo = validateFrontendRedirectUrl(redirectTo);
-  // Osobny stan OAuth pozwala powiązać połączenie kalendarza z użytkownikiem.
-  const state = createGoogleOAuthState({
-    purpose: GOOGLE_CALENDAR_STATE_PURPOSE,
-    redirectTo: validatedRedirectTo,
-    userId,
-  });
+  try {
+    const validatedRedirectTo = validateFrontendRedirectUrl(redirectTo);
+    // Osobny stan OAuth pozwala powiązać połączenie z użytkownikiem.
+    const state = createGoogleOAuthState({
+      purpose: GOOGLE_CALENDAR_STATE_PURPOSE,
+      redirectTo: validatedRedirectTo,
+      userId,
+    });
 
-  return buildGoogleAuthorizationUrl({
-    state,
-    scope: GOOGLE_CALENDAR_SCOPES,
-    redirectUri: getGoogleCalendarOAuthRedirectUri(),
-  });
+    return buildGoogleAuthorizationUrl({
+      state,
+      scope: GOOGLE_CALENDAR_SCOPES,
+      redirectUri: getGoogleCalendarOAuthRedirectUri(),
+    });
+  } catch (error) {
+    throw toGoogleCalendarApiError(error, Problems.INVALID_GOOGLE_REDIRECT);
+  }
 }
 
 export function readConnectionState(state) {
@@ -102,20 +126,16 @@ export function readConnectionState(state) {
   try {
     payload = verifyGoogleOAuthState(state);
   } catch (error) {
-    if (error instanceof OAuthStateVerificationError) {
-      throw ApiError.from(ProblemDefinitions.GOOGLE_CALENDAR_STATE_INVALID, {
-        cause: error,
-      });
-    }
-
-    throw error;
+    throw new ApiError(Problems.GOOGLE_CALENDAR_STATE_INVALID, {
+      cause: error,
+    });
   }
 
   const parsed = googleCalendarStateSchema.safeParse(payload);
 
   if (!parsed.success) {
-    throw ApiError.from(ProblemDefinitions.GOOGLE_CALENDAR_STATE_INVALID, {
-      extensions: { errors: parsed.error.flatten() },
+    throw new ApiError(Problems.GOOGLE_CALENDAR_STATE_INVALID, {
+      cause: parsed.error,
     });
   }
 
@@ -125,13 +145,10 @@ export function readConnectionState(state) {
       redirectTo: validateFrontendRedirectUrl(parsed.data.redirectTo),
     };
   } catch (error) {
-    if (error instanceof GoogleOAuthValidationError) {
-      throw ApiError.from(ProblemDefinitions.GOOGLE_CALENDAR_STATE_INVALID, {
-        cause: error,
-      });
-    }
-
-    throw error;
+    throw toGoogleCalendarApiError(
+      error,
+      Problems.GOOGLE_CALENDAR_STATE_INVALID,
+    );
   }
 }
 
@@ -141,37 +158,41 @@ export async function getConnectionStatus(userId) {
 }
 
 export async function connectCalendarFromCode(state, code, redirectUri) {
-  const { userId } = readConnectionState(state);
-  const user = await userRepository.findPublicUserById(userId);
+  try {
+    const { userId } = readConnectionState(state);
+    const user = await userRepository.findPublicUserById(userId);
 
-  if (!user) {
-    throw ApiError.from(ProblemDefinitions.AUTH_SESSION_INVALID);
-  }
+    if (!user) {
+      throw new ApiError(Problems.AUTH_SESSION_INVALID);
+    }
 
-  const { googleUser, tokens } = await exchangeGoogleCode(code, redirectUri);
+    const { googleUser, tokens } = await exchangeGoogleCode(code, redirectUri);
 
-  if (googleUser.googleId !== user.googleId) {
-    throw ApiError.from(ProblemDefinitions.GOOGLE_ACCOUNT_MISMATCH, {
-      detail: "Polaczenie Calendar musi dotyczyc konta uzytego do logowania",
+    if (googleUser.googleId !== user.googleId) {
+      throw new ApiError(Problems.GOOGLE_ACCOUNT_MISMATCH, {
+        detail: "Polaczenie Calendar musi dotyczyc konta uzytego do logowania",
+      });
+    }
+
+    if (!tokens.refresh_token) {
+      throw new ApiError(Problems.GOOGLE_REFRESH_TOKEN_MISSING, {
+        detail: "Google nie zwrocil refresh tokenu. Ponownie wyraz zgode",
+      });
+    }
+
+    // Refresh token umożliwia synchronizację bez udziału użytkownika.
+    const integration = await calendarIntegrationRepository.upsertConnection({
+      userId,
+      provider: GOOGLE_CALENDAR_PROVIDER,
+      calendarEmail: googleUser.email,
+      refreshTokenEncrypted: encryptGoogleRefreshToken(tokens.refresh_token),
+      tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
     });
+
+    return mapConnection(integration);
+  } catch (error) {
+    throw toGoogleCalendarApiError(error);
   }
-
-  if (!tokens.refresh_token) {
-    throw ApiError.from(ProblemDefinitions.GOOGLE_REFRESH_TOKEN_MISSING, {
-      detail: "Google nie zwrocil refresh tokenu. Ponownie wyraz zgode",
-    });
-  }
-
-  // Po zgodzie refresh token jest używany do tworzenia wydarzeń w tle.
-  const integration = await calendarIntegrationRepository.upsertConnection({
-    userId,
-    provider: GOOGLE_CALENDAR_PROVIDER,
-    calendarEmail: googleUser.email,
-    refreshTokenEncrypted: encryptGoogleRefreshToken(tokens.refresh_token),
-    tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
-  });
-
-  return mapConnection(integration);
 }
 
 export async function disconnectCalendar(userId) {

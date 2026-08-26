@@ -25,6 +25,7 @@ public static class ApiServiceCollectionExtensions
         services.AddScoped(_ => new HttpClient
         {
             BaseAddress = apiUrl,
+            Timeout = TimeSpan.FromSeconds(15),
         });
         services.AddScoped<ApiClient>();
 

@@ -46,3 +46,11 @@ export async function findConflictingRoomReservations(roomId, startTime, endTime
     },
   });
 }
+
+export async function countActiveRooms() {
+  return prisma.room.count({
+    where: {
+      isActive: true,
+    },
+  });
+}

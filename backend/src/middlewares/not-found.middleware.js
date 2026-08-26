@@ -1,9 +1,9 @@
 import { ApiError } from "../errors/apiError.js";
-import { ProblemDefinitions } from "../errors/problemDefinitions.js";
+import { Problems } from "../errors/problems.js";
 
 export function notFoundMiddleware(req, _res, next) {
   return next(
-    ApiError.from(ProblemDefinitions.ROUTE_NOT_FOUND, {
+    new ApiError(Problems.ROUTE_NOT_FOUND, {
       detail: `Endpoint ${req.method} ${req.originalUrl} nie istnieje`,
     }),
   );

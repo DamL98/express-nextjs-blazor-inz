@@ -1,57 +1,37 @@
-function buildUrl(apiBaseUrl, path) {
-    return new URL(path.replace(/^\//, ""), apiBaseUrl).toString();
-}
+const requestControllers = new Map();
 
-const responseBodies = new Map();
-let responseSequence = 0;
-
-export async function startApiRequest(
+export async function sendApiRequest(
+    requestId,
     apiBaseUrl,
     path,
     method,
-    token,
     body) {
-    const headers = {
-        Accept: "application/json, application/problem+json",
-    };
+    const controller = new AbortController();
+    requestControllers.set(requestId, controller);
 
-    if (token) {
-        headers.Authorization = `Bearer ${token}`;
+    try {
+        const response = await fetch(
+            new URL(path.replace(/^\//, ""), apiBaseUrl),
+            {
+                method,
+                credentials: "include",
+                headers: {
+                    Accept: "application/json, application/problem+json",
+                    ...(body === null ? {} : { "Content-Type": "application/json" }),
+                },
+                body,
+                signal: controller.signal,
+            });
+
+        return {
+            statusCode: response.status,
+            body: await response.text(),
+        };
+    } finally {
+        requestControllers.delete(requestId);
     }
-
-    if (body !== null) {
-        headers["Content-Type"] = "application/json";
-    }
-
-    const response = await fetch(buildUrl(apiBaseUrl, path), {
-        method,
-        credentials: "include",
-        headers,
-        body,
-    });
-    const responseBody = new Uint8Array(await response.arrayBuffer());
-    const responseId = `${Date.now()}-${responseSequence += 1}`;
-
-    responseBodies.set(responseId, responseBody);
-
-    return {
-        responseId,
-        statusCode: response.status,
-        contentType: response.headers.get("content-type"),
-        bodyLength: responseBody.byteLength,
-    };
 }
 
-export function getApiResponseBody(responseId) {
-    const responseBody = responseBodies.get(responseId);
-
-    if (!responseBody) {
-        throw new Error(`Nie znaleziono odpowiedzi API: ${responseId}`);
-    }
-
-    return responseBody;
-}
-
-export function releaseApiResponse(responseId) {
-    responseBodies.delete(responseId);
+export function cancelApiRequest(requestId) {
+    requestControllers.get(requestId)?.abort();
 }

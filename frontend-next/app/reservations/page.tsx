@@ -3,49 +3,38 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { useAuth } from "@/components/auth-provider";
 import { GoogleCalendarIntegrationCard } from "@/components/google-calendar/GoogleCalendarIntegrationCard";
 import { ReservationsList } from "@/components/reservations/ReservationList";
-import { getMyReservations } from "@/features/reservations/reservations.api";
-import type { Reservation } from "@/features/reservations/reservations.types";
+import { apiRequest, type Reservation } from "@/lib/api";
 
 export default function ReservationsPage() {
-  const { getIdToken } = useAuth();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let active = true;
+    const controller = new AbortController();
 
-    async function loadReservations() {
-      try {
-        const token = await getIdToken();
-        const data = await getMyReservations({}, token);
-        if (active) {
-          setReservations(data);
-        }
-      } catch (loadError) {
-        if (active) {
-          setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Błąd pobierania rezerwacji",
-          );
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
+    apiRequest<Reservation[]>("/reservations/my", {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then((data) => {
+        if (!controller.signal.aborted) { setReservations(data); }
+      })
+      .catch((loadError: unknown) => {
+        if (controller.signal.aborted) { return; }
 
-    void loadReservations();
+        setError(
+          loadError instanceof Error ? loadError.message : "Błąd pobierania rezerwacji",
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) { setLoading(false); }
+      });
 
-    return () => {
-      active = false;
-    };
-  }, [getIdToken]);
+    return () => controller.abort();
+  }, []);
 
   return (
     <main
