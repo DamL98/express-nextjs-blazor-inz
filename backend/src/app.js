@@ -14,10 +14,10 @@ import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 // middlewares
 import { errorMiddleware } from "./middlewares/error.middleware.js";
 import { notFoundMiddleware } from "./middlewares/not-found.middleware.js";
+import problemsRoutes from "./errors/problems.routes.js";
 
 // utils
 import { ApiResponse } from "./utils/apiResponse.js";
-import { Problems } from "./errors/problems.js";
 
 export const app = express();
 const environment = getApplicationEnvironment();
@@ -46,34 +46,8 @@ function healthHandler(_req, res) {
 app.get("/health", healthHandler);
 app.get("/api/v1/health", healthHandler);
 
-app.get("/problems/:slug", (req, res, next) => {
-  const type = `/problems/${req.params.slug}`;
-  const definition = Object.values(Problems).find(
-    (problem) => problem.type === type,
-  );
-
-  if (!definition) {
-    return next();
-  }
-
-  return res
-    .type("html")
-    .send(`<!doctype html>
-      <html lang="pl">
-        <head><meta charset="utf-8"><title>${definition.title}</title></head>
-        <body>
-          <main>
-            <h1>${definition.title}</h1>
-            <dl>
-              <dt>Type</dt><dd><code>${definition.type}</code></dd>
-              <dt>HTTP status</dt><dd>${definition.status}</dd>
-              <dt>Code</dt><dd><code>${definition.code}</code></dd>
-              <dt>Default detail</dt><dd>${definition.detail}</dd>
-            </dl>
-          </main>
-        </body>
-      </html>`);
-});
+// view html z definicja erroru api
+app.use("/problems", problemsRoutes);
 
 app.use("/api/v1/rooms", roomsRoutes);
 app.use("/api/v1/auth", authRoutes);
