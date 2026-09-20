@@ -1,0 +1,19 @@
+name: inz-measurements
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: measurement
+      POSTGRES_PASSWORD: local-measurement-only
+      POSTGRES_DB: inz_measurements
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - measurement_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U measurement -d inz_measurements"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+volumes:
+  measurement_data:

@@ -72,7 +72,7 @@ export function ReservationsList({ initialReservations }: ReservationsListProps)
   if (reservations.length === 0) {
     return (
       <div className="rounded-xl border border-gray-200 bg-white p-6 text-gray-600 shadow-sm">
-              <Link
+              <Link prefetch={false}
                 href="/rooms"
                 className="text-sm font-medium text-blue-600 hover:text-blue-700"
               >

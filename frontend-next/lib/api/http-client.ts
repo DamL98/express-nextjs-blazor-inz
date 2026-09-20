@@ -24,20 +24,27 @@ export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  const headers = new Headers(options.headers);
+  if (!headers.has("Accept")) headers.set("Accept", "application/json, application/problem+json");
+  if (options.body != null && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
+    cache: "no-store",
     credentials: "include",
-    headers: {
-      Accept: "application/json, application/problem+json",
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    headers,
   });
-  const body = (await response.json()) as ApiSuccess<T> | ProblemDetails;
+  const text = await response.text();
+  let body: ApiSuccess<T> | ProblemDetails | undefined;
+  try { body = text ? JSON.parse(text) : undefined; } catch { /* Preserve HTTP errors even for non-JSON responses. */ }
 
   if (!response.ok) {
-    throw new ApiClientError(body as ProblemDetails);
+    if (response.status === 401 && typeof window !== "undefined") window.dispatchEvent(new Event("api-session-expired"));
+    throw new ApiClientError({
+      type: "about:blank", title: `Blad API HTTP ${response.status}`,
+      ...(body && typeof body === "object" ? body : {}), status: response.status,
+    });
   }
-
-  return (body as ApiSuccess<T>).data;
+  if (response.status === 204) return undefined as T;
+  if (!body || !("success" in body) || body.success !== true || !("data" in body)) throw new Error("Nieprawidlowa odpowiedz API");
+  return body.data;
 }

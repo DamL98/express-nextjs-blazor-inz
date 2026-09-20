@@ -8,7 +8,8 @@
   "scripts": {
     "build": "npm run css:build && dotnet build FrontendBlazor.sln --no-restore",
     "css:build": "tailwindcss -i ./Styles/tailwind.css -o ./FrontendBlazor/wwwroot/app.css --minify",
-    "css:watch": "tailwindcss -i ./Styles/tailwind.css -o ./FrontendBlazor/wwwroot/app.css --watch"
+    "css:watch": "tailwindcss -i ./Styles/tailwind.css -o ./FrontendBlazor/wwwroot/app.css --watch",
+    "publish": "npm run css:build && dotnet publish FrontendBlazor/FrontendBlazor.csproj -c Release"
   },
   "devDependencies": {
     "@tailwindcss/cli": "4.3.1",

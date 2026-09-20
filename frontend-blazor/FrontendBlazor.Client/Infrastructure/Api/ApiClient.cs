@@ -21,6 +21,8 @@ public sealed class ApiClient(
     public Uri BaseAddress => httpClient.BaseAddress
         ?? throw new InvalidOperationException("Brak BaseAddress dla API");
 
+    public event Action? SessionExpired;
+
     public async Task<T> ApiRequestAsync<T>(
         string path,
         ApiRequestOptions? options = null,
@@ -41,9 +43,10 @@ public sealed class ApiClient(
 
         if (response.StatusCode is < 200 or >= 300)
         {
-            var problem = JsonSerializer.Deserialize<ProblemDetailsDto>(
-                response.Body,
-                SerializerOptions);
+            if (response.StatusCode == 401) SessionExpired?.Invoke();
+            ProblemDetailsDto? problem = null;
+            try { problem = JsonSerializer.Deserialize<ProblemDetailsDto>(response.Body, SerializerOptions); }
+            catch (JsonException) { /* A proxy may return an HTML error. */ }
 
             throw new ApiException(
                 problem?.Code ?? problem?.Type ?? $"HTTP_{response.StatusCode}",
@@ -54,6 +57,7 @@ public sealed class ApiClient(
                 problem?.Instance);
         }
 
+        if (response.StatusCode == 204) return default!;
         var result = JsonSerializer.Deserialize<ApiResponse<T>>(
             response.Body,
             SerializerOptions);
@@ -75,7 +79,9 @@ public sealed class ApiClient(
         if (OperatingSystem.IsBrowser())
         {
             request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
+            request.SetBrowserRequestCache(BrowserRequestCache.NoStore);
         }
+        request.Headers.Accept.ParseAdd("application/json, application/problem+json");
 
         if (options.Body is not null)
         {

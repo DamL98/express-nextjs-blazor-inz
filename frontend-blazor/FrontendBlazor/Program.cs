@@ -22,6 +22,11 @@ builder.Services.AddScoped<AuthContext>();
 
 var app = builder.Build();
 
+if (app.Environment.IsEnvironment("Measurement"))
+{
+    app.MapGet("/measurement-info", () => new { production = !app.Environment.IsDevelopment(), renderer = "webassembly" });
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

@@ -11,13 +11,13 @@ export default function LoginPage() {
 
   return (
     <main className="grid min-h-screen place-items-center bg-gray-50 px-4 py-8">
-      <section className="w-full max-w-[430px] rounded-[22px] border border-blue-900/20 bg-white/[.97] p-[38px] shadow-[0_24px_70px_rgba(23,32,51,0.14)] max-[480px]:px-[22px] max-[480px]:py-7">
-        <p className="mb-2 text-xs font-extrabold tracking-[0.14em] text-[var(--app-accent)] uppercase">System rezerwacji</p>
-        <h1 className="text-[32px] font-bold tracking-[-0.04em] text-[var(--app-ink)]">Zaloguj sie</h1>
-        <p className="mt-[10px] mb-[26px] leading-[1.55] text-[var(--app-muted)]">Zaloguj sie przez konto Google lub lokalnie</p>
+      <section className="rounded-login border border-blue-900/20 bg-white/97 p-login shadow-login max-login:px-login-mobile max-login:py-7">
+        <p className="mb-2 text-xs font-extrabold tracking-eyebrow text-app-accent uppercase">System rezerwacji</p>
+        <h1 className="text-login-title font-bold tracking-login-title text-app-ink">Zaloguj sie</h1>
+        <p className="mt-2.5 mb-6.5 leading-login text-app-muted">Zaloguj sie przez konto Google lub lokalnie</p>
 
         <button
-          className="flex min-h-[46px] w-full items-center justify-center gap-[10px] rounded-[11px] border border-[var(--app-line)] bg-white font-[750] text-[var(--app-ink)] hover:border-[#aebbd0] hover:bg-[#f6f8fc] disabled:cursor-wait disabled:opacity-65"
+          className="flex min-h-control w-full items-center justify-center gap-2.5 rounded-control border border-app-line bg-white font-control text-app-ink hover:border-app-line-hover hover:bg-app-surface-hover disabled:cursor-wait disabled:opacity-65"
           type="button"
           onClick={async () => {
             setError("");
@@ -36,32 +36,32 @@ export default function LoginPage() {
           }}
           disabled={submitting}
         >
-          <span className="text-lg font-extrabold text-[#4285f4]">G</span>
+          <span className="text-lg font-extrabold text-google">G</span>
           {submitting ? "Przekierowanie..." : "Kontynuuj z Google"}
         </button>
 
-        <div className="my-5 flex items-center gap-3 text-xs font-semibold text-[var(--app-muted)] uppercase">
-          <span className="h-px flex-1 bg-[var(--app-line)]" />
+        <div className="my-5 flex items-center gap-3 text-xs font-semibold text-app-muted uppercase">
+          <span className="h-px flex-1 bg-app-line" />
           <span>lub</span>
-          <span className="h-px flex-1 bg-[var(--app-line)]" />
+          <span className="h-px flex-1 bg-app-line" />
         </div>
 
         <form aria-label="Logowanie lokalne">
           <fieldset className="space-y-4">
-            <label className="block text-sm font-semibold text-[var(--app-ink)]">
+            <label className="block text-sm font-semibold text-app-ink">
               E-mail
               <input
-                className="mt-2 min-h-[46px] w-full rounded-[11px] border border-[var(--app-line)] bg-white px-3 text-base font-normal text-[var(--app-ink)] outline-none focus:border-[var(--app-accent)]"
+                className="mt-2 min-h-control w-full rounded-control border border-app-line bg-white px-3 text-base font-normal text-app-ink outline-none focus:border-app-accent"
                 type="email"
                 autoComplete="email"
                 placeholder="uzytkownik@example.com"
               />
             </label>
 
-            <label className="block text-sm font-semibold text-[var(--app-ink)]">
+            <label className="block text-sm font-semibold text-app-ink">
               Haslo
               <input
-                className="mt-2 min-h-[46px] w-full rounded-[11px] border border-[var(--app-line)] bg-white px-3 text-base font-normal text-[var(--app-ink)] outline-none focus:border-[var(--app-accent)]"
+                className="mt-2 min-h-control w-full rounded-control border border-app-line bg-white px-3 text-base font-normal text-app-ink outline-none focus:border-app-accent"
                 type="password"
                 autoComplete="current-password"
                 placeholder="Wprowadz haslo"
@@ -69,7 +69,7 @@ export default function LoginPage() {
             </label>
 
             <button
-              className="min-h-[46px] w-full rounded-[11px] bg-[var(--app-accent)] font-bold text-white"
+              className="min-h-control w-full rounded-control bg-app-accent font-bold text-white"
               type="button"
             >
               Zaloguj sie
@@ -78,7 +78,7 @@ export default function LoginPage() {
         </form>
 
         {error ? (
-          <p className="mt-4 rounded-[9px] bg-[#fff0f0] px-3 py-[11px] text-[13px] leading-[1.4] text-[#9d2424]" role="alert">{error}</p>
+          <p className="mt-4 rounded-notice bg-app-error-surface px-3 py-notice text-notice leading-notice text-app-error-text" role="alert">{error}</p>
         ) : null}
       </section>
     </main>

@@ -11,10 +11,14 @@
     data-measurement-interactive="@(RendererInfo.IsInteractive ? "true" : "false")">
 </span>
 
-@if (Auth.IsLoading)
+@if (Auth.Error is not null)
+{
+    <main role="alert" class="p-8">@Auth.Error</main>
+}
+else if (Auth.IsLoading || Auth.Error is not null)
 {
     <main class="grid min-h-screen place-items-center bg-gray-50 px-4 py-8">
-        <div class="w-full max-w-[430px] rounded-[22px] border border-blue-900/20 bg-white/[.97] p-[38px] text-[var(--app-ink)] shadow-[0_24px_70px_rgba(23,32,51,0.14)] max-[480px]:px-[22px] max-[480px]:py-7">Ładowanie sesji...</div>
+        <div class="w-full max-w-login rounded-login border border-blue-900/20 bg-white/97 p-login text-app-ink shadow-login max-login:px-login-mobile max-login:py-7">Ładowanie sesji...</div>
     </main>
 }
 else if (_isLoginPage && !Auth.IsAuthenticated)
@@ -30,7 +34,7 @@ else if (!_isLoginPage && Auth.IsAuthenticated)
 else
 {
     <main class="grid min-h-screen place-items-center bg-gray-50 px-4 py-8">
-        <div class="w-full max-w-[430px] rounded-[22px] border border-blue-900/20 bg-white/[.97] p-[38px] text-[var(--app-ink)] shadow-[0_24px_70px_rgba(23,32,51,0.14)] max-[480px]:px-[22px] max-[480px]:py-7">Przekierowanie...</div>
+        <div class="w-full max-w-login rounded-login border border-blue-900/20 bg-white/97 p-login text-app-ink shadow-login max-login:px-login-mobile max-login:py-7">Przekierowanie...</div>
     </main>
 }
 

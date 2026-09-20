@@ -1,39 +1,53 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
+import { request } from "@playwright/test";
 import {
-  getArgument,
-  getIntegerArgument,
+  authStateFile,
+  cacheModes,
+  datasets,
+  flows,
+  frameworks,
+  measurementDatabaseUrl,
   measurementsDirectory,
+  projectName,
+  protocolVersion,
   repositoryDirectory,
-  runCommand,
-} from "./script-utils";
+  safeId,
+  urls,
+  type Framework,
+} from "../measurement-config";
+import { argument, choiceArgument, integerArgument, runCommand } from "./cli";
 
-type Flow = "read" | "write";
-type Dataset = "small" | "medium" | "large";
-type CacheMode = "fresh-context" | "warm-return";
-type Framework = "next" | "blazor";
+// Odczytuje parametry jednej serii pomiarowej, sprawdza ich poprawność i tworzy
+// domyślny identyfikator, pod którym zostaną zapisane wyniki.
+function readConfiguration() {
+  const flow = choiceArgument("flow", "read", flows);
+  const dataset = choiceArgument(
+    "dataset",
+    "small",
+    datasets.map((item) => item.name),
+  );
+  const cacheMode = choiceArgument("cache", "fresh-context", cacheModes);
+  const repetitions = integerArgument("repetitions", 30, 2);
+  const warmups = integerArgument("warmups", 3, 1);
+  const defaultRunId = `${flow}-${dataset}-${cacheMode}-${new Date()
+    .toISOString()
+    .replace(/[^a-z0-9]/gi, "-")}`;
+  const runId = safeId(argument("run-id", defaultRunId)!);
 
-type MeasurementConfiguration = {
-  flow: Flow;
-  dataset: Dataset;
-  cacheMode: CacheMode;
-  repetitions: number;
-  warmups: number;
-  runId: string;
-};
+  if (process.env.MEASUREMENT_DIAGNOSTIC === "true") {
+    throw new Error("Tryb diagnostyczny nie może zapisywać wyników pomiarowych");
+  }
 
-type PlaywrightRun = MeasurementConfiguration & {
-  framework: Framework;
-  sampleIndex: number;
-  recordResults: boolean;
-  repeatEach?: number;
-};
+  return { flow, dataset, cacheMode, repetitions, warmups, runId };
+}
 
-const backendDirectory = path.join(
-  repositoryDirectory,
-  "backend"
-);
-
+const configuration = readConfiguration();
+const { flow, dataset, cacheMode, repetitions, warmups, runId } = configuration;
+const backendDirectory = path.join(repositoryDirectory, "backend");
+const outputDirectory = path.join(measurementsDirectory, "results", "raw", runId);
 const playwrightCli = path.join(
   measurementsDirectory,
   "node_modules",
@@ -41,237 +55,274 @@ const playwrightCli = path.join(
   "test",
   "cli.js",
 );
+const tsxCli = path.join(measurementsDirectory, "node_modules", "tsx", "dist", "cli.mjs");
 
-const tsxCli = path.join(
-  measurementsDirectory,
-  "node_modules",
-  "tsx",
-  "dist",
-  "cli.mjs",
-);
-
-/** sprawdza argument tekstowy względem dozwolonych wartości pomiarowych */
-function readChoice<T extends string>(
-  name: string,
-  fallback: T,
-  allowedValues: readonly T[],
-): T {
-  const value = getArgument(name, fallback) as T;
-
-  if (!allowedValues.includes(value)) {
-    throw new Error(
-      `Parametr --${name} musi mieć wartość: ${allowedValues.join(", ")}.`,
-    );
-  }
-
-  return value;
-}
-
-/** tworzy id używane w nazwach folderów i raportów */
-function createRunId(flow: Flow, dataset: Dataset, cacheMode: CacheMode): string {
-  const timestamp = new Date().toISOString().replaceAll(":", "-");
-  return `${flow}-${dataset}-${cacheMode}-${timestamp}`;
-}
-
-/** buduje config pomiarów na podstawie argumentów przekazanych do skryptu npm */
-function readMeasurementConfiguration(): MeasurementConfiguration {
-  const flow = readChoice("flow", "read", ["read", "write"]);
-  const dataset = readChoice("dataset", "small", ["small", "medium", "large"]);
-  const cacheMode = readChoice("cache", "fresh-context", [
-    "fresh-context",
-    "warm-return",
-  ]);
-  const repetitions = getIntegerArgument("repetitions", 30, 1);
-  const warmups = getIntegerArgument("warmups", 3);
-  const runId = getArgument(
-    "run-id",
-    createRunId(flow, dataset, cacheMode),
-  )!;
-
-  return { flow, dataset, cacheMode, repetitions, warmups, runId };
-}
-
-/** uruchamia seed backendu przed pomiarami wymagającymi konkretnego rozmiaru danych */
-function seedDatabase(dataset: Dataset): void {
-  console.log(`\n[seed] Przygotowanie datasetu ${dataset}`);
-
-  runCommand(process.execPath, [`prisma/seed.measurements.${dataset}.js`], {
-    cwd: backendDirectory,
-    env: {
-      ...process.env,
-      MEASUREMENT_STRICT_DATASET: "true",
-    },
-  });
-}
-
-/** zwraca nazwę projektu z playwright.config.ts dla wybranego wariantu pomiaru */
-function getProjectName(
-  framework: Framework,
-  dataset: Dataset,
-  cacheMode: CacheMode,
-): string {
-  const suffix = cacheMode === "warm-return" ? "-warm" : "";
-  return `${framework}-${dataset}${suffix}`;
-}
-
-/** uruchamia pojedynczą serię testu Playwright i przekazuje jej metadane przez zmienne środowiskowe */
-function runPlaywright(configuration: PlaywrightRun): void {
-  const {
-    flow,
-    framework,
-    dataset,
-    cacheMode,
-    runId,
-    sampleIndex,
-    recordResults,
-    repeatEach = 1,
-  } = configuration;
-  const project = getProjectName(framework, dataset, cacheMode);
-
-  console.log(
-    `\n[playwright] ${flow}, ${project}, sample=${sampleIndex}, record=${recordResults}`,
-  );
-
-  runCommand(
-    process.execPath,
-    [
-      playwrightCli,
-      "test",
-      `tests/${flow}-flow.spec.ts`,
-      `--project=${project}`,
-      `--repeat-each=${repeatEach}`,
-    ],
-    {
-      env: {
-        ...process.env,
-        MEASUREMENT_RUN_ID: runId,
-        MEASUREMENT_SAMPLE_INDEX: String(sampleIndex),
-        MEASUREMENT_RECORD_RESULTS: String(recordResults),
-      },
-    },
-  );
-}
-
-/** sprawdza czy wymagana usluga przez pomiary odpowiada pod podanym url */
-async function checkService(name: string, url: string): Promise<void> {
+// Pobiera informacje kontrolne wystawione przez usługę. Limit czasu pozwala
+// szybko zgłosić, że operator nie uruchomił wymaganej aplikacji
+async function readServiceInfo(name: string, url: string) {
   try {
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(5_000),
-    });
-
+    const response = await fetch(url, { signal: AbortSignal.timeout(5_000) });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
+    return await response.json();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`${name} nie odpowiada pod ${url}: ${message}`);
   }
 }
 
-/** przed pomiarami sprawdza pliki sesji, Playwright oraz backend/nextjs/blazor */
-async function runPreflightChecks(): Promise<void> {
-  const requiredFiles = [
-    playwrightCli,
-    path.join(measurementsDirectory, "playwright", ".auth", "next-user.json"),
-    path.join(measurementsDirectory, "playwright", ".auth", "blazor-user.json"),
-  ];
-
-  for (const requiredFile of requiredFiles) {
-    if (!fs.existsSync(requiredFile)) {
-      throw new Error(`Brak wymaganego pliku: ${requiredFile}`);
-    }
-  }
-
-  await Promise.all([
-    checkService("Backend", "http://localhost:4000/api/v1/health"),
-    checkService("Next.js", "http://localhost:3000"),
-    checkService("Blazor", "http://localhost:5173"),
+// Sprawdza równolegle oba frontendy i API. Odpowiedzi potwierdzają, że pomiar
+// dotyczy produkcyjnych aplikacji, właściwych rendererów i bazy measurements
+async function checkServices() {
+  const [next, blazor, api] = await Promise.all([
+    readServiceInfo("Next.js", `${urls.next}/measurement-info`),
+    readServiceInfo("Blazor", `${urls.blazor}/measurement-info`),
+    readServiceInfo("Express API", `${new URL(urls.api).origin}/measurement-info`),
   ]);
-}
 
-/** zmienia kolejność frameworków co próbkę, aby ograniczyć wpływ kolejności na wynik */
-function getFrameworkOrder(sampleIndex: number): Framework[] {
-  return sampleIndex % 2 === 0
-    ? ["next", "blazor"]
-    : ["blazor", "next"];
-}
-
-/** uruchamia próbki rozgrzewkowe, które nie są zapisywane do wyników końcowych */
-function runWarmups(configuration: MeasurementConfiguration): void {
-  if (configuration.warmups === 0) {
-    return;
+  if (!next.production || next.api !== urls.api || next.renderer !== "react-client") {
+    throw new Error("Next.js nie działa w wymaganym trybie pomiarowym.");
+  }
+  if (!blazor.production || blazor.renderer !== "webassembly") {
+    throw new Error("Blazor nie działa jako produkcyjny WebAssembly");
+  }
+  if (!api.production || !api.isolated) {
+    throw new Error("Express API nie korzysta z izolowanej bazy pomiarowej");
   }
 
-  for (const framework of ["next", "blazor"] as const) {
-    if (configuration.flow === "write") {
-      seedDatabase(configuration.dataset);
+  return { next, blazor, api };
+}
+
+// Zwraca ścieżkę zapisanej sesji użytkownika i przerywa pracę, jeśli plik nie
+// został wcześniej utworzony podczas ręcznego logowania.
+function authFilePath() {
+  const storageState = path.join(measurementsDirectory, authStateFile);
+  if (!fs.existsSync(storageState)) {
+    throw new Error(`Brak sesji Playwright: ${authStateFile}`);
+  }
+  return storageState;
+}
+
+// Używa zapisanych cookies do sprawdzenia użytkownika pomiarowego. Jednocześnie
+// wymaga odłączonego Google Calendar, aby zewnętrzna usługa nie zakłócała prób.
+async function checkSession() {
+  const client = await request.newContext({ storageState: authFilePath() });
+  try {
+    const [authResponse, calendarResponse] = await Promise.all([
+      client.get(`${urls.api}/auth/me`),
+      client.get(`${urls.api}/google-calendar/status`),
+    ]);
+
+    if (!authResponse.ok()) {
+      throw new Error("Sesja użytkownika wygasła lub jest nieprawidłowa.");
+    }
+    if (!calendarResponse.ok()) {
+      throw new Error("Nie udało się sprawdzić integracji Google Calendar.");
     }
 
-    runPlaywright({
-      ...configuration,
-      framework,
-      sampleIndex: -1,
-      recordResults: false,
-      repeatEach: configuration.warmups,
-    });
-  }
-}
+    const user = (await authResponse.json()).data;
+    const calendar = (await calendarResponse.json()).data;
 
-/** uruchamia właściwe próbki dla Next.js i Blazora i zapisuje ich wyniki */
-function runMeasuredSamples(configuration: MeasurementConfiguration): void {
-  for (
-    let sampleIndex = 0;
-    sampleIndex < configuration.repetitions;
-    sampleIndex += 1
-  ) {
-    for (const framework of getFrameworkOrder(sampleIndex)) {
-      if (configuration.flow === "write") {
-        seedDatabase(configuration.dataset);
-      }
-
-      runPlaywright({
-        ...configuration,
-        framework,
-        sampleIndex,
-        recordResults: true,
-      });
+    if (calendar.connected) {
+      throw new Error("Konto pomiarowe musi mieć odłączony Google Calendar.");
     }
+
+    return user.email as string;
+
+  } finally {
+    await client.dispose();
   }
 }
 
-/** podsumowaie wynikow */
-function summarizeResults(runId: string, repetitions: number): void {
-  runCommand(process.execPath, [
-    tsxCli,
-    "scripts/summarize-results.ts",
-    `--run-id=${runId}`,
-    `--expected-samples=${repetitions}`,
-  ]);
+// Porównuje aktualną liczbę sal i rezerwacji z wybranym wariantem datasetu.
+// Zapobiega rozpoczęciu serii na przypadkowych albo niepełnych danych.
+async function checkDataset() {
+  const client = await request.newContext({ storageState: authFilePath() });
+  try {
+    const [roomsResponse, reservationsResponse] = await Promise.all([
+      client.get(`${urls.api}/rooms`),
+      client.get(`${urls.api}/reservations/my`),
+    ]);
+
+    if (!roomsResponse.ok() || !reservationsResponse.ok()) {
+      throw new Error("Nie udało się sprawdzić datasetu pomiarowego.");
+    }
+
+    const rooms = (await roomsResponse.json()).data;
+    const reservations = (await reservationsResponse.json()).data;
+    const expected = datasets.find((item) => item.name === dataset)!;
+
+    if (rooms.length !== expected.roomCount) {
+      throw new Error(`Nieprawidłowa liczba sal: ${rooms.length}/${expected.roomCount}.`);
+    }
+    if (reservations.length !== expected.reservationCount) {
+      throw new Error(
+        `Nieprawidłowa liczba rezerwacji: ${reservations.length}/${expected.reservationCount}.`,
+      );
+    }
+  } finally {
+    await client.dispose();
+  }
 }
 
-/** pokazuje config, wykonuje pomiary i generuje raport końcowy */
-async function main(): Promise<void> {
-  const configuration = readMeasurementConfiguration();
+// Uruchamia krótkie polecenie systemowe i zwraca jego standardowe wyjście.
+// Funkcja służy do zapisu wersji narzędzi i stanu repozytorium w manifeście.
+function capture(command: string, argumentsList: string[]) {
+  return execFileSync(command, argumentsList, {
+    cwd: repositoryDirectory,
+    encoding: "utf8",
+    windowsHide: true,
+  }).trim();
+}
 
-  console.log("Pomiary wydajnościowe");
-  console.log(`runId: ${configuration.runId}`);
-  console.log(`flow: ${configuration.flow}`);
-  console.log(`dataset: ${configuration.dataset}`);
-  console.log(`cache: ${configuration.cacheMode}`);
-  console.log(`powtórzenia na framework: ${configuration.repetitions}`);
-  console.log(`rozgrzewki na framework: ${configuration.warmups}`);
+// Buduje manifest opisujący konfigurację serii, wersje usług, konto pomiarowe
+// oraz komputer. Dane pozwalają później odtworzyć warunki eksperymentu.
+function createManifest(
+  services: Awaited<ReturnType<typeof checkServices>>,
+  email: string,
+) {
+  return {
+    protocolVersion,
+    configuration,
+    services,
+    measurementUser: email,
+    startedAt: new Date().toISOString(),
+    finishedAt: undefined as string | undefined,
+    status: "running",
+    node: process.version,
+    dotnet: capture("dotnet", ["--version"]),
+    commit: capture("git", ["rev-parse", "HEAD"]),
+    dirtyFiles: capture("git", ["status", "--short"]),
+    system: {
+      platform: os.platform(),
+      release: os.release(),
+      arch: os.arch(),
+      cpu: os.cpus()[0]?.model,
+      logicalCpus: os.cpus().length,
+      ramBytes: os.totalmem(),
+    },
+    network: "localhost-unthrottled",
+    playwright: JSON.parse(
+      fs.readFileSync(
+        path.join(
+          measurementsDirectory,
+          "node_modules",
+          "@playwright",
+          "test",
+          "package.json",
+        ),
+        "utf8",
+      ),
+    ).version,
+  };
+}
 
-  await runPreflightChecks();
-  seedDatabase(configuration.dataset);
-  runWarmups(configuration);
-  runMeasuredSamples(configuration);
+// Zapisuje bieżący stan manifestu. Ta sama funkcja utrwala rozpoczęcie serii,
+// jej poprawne zakończenie albo informację o błędzie.
+function saveManifest(manifest: ReturnType<typeof createManifest>) {
+  fs.writeFileSync(
+    path.join(outputDirectory, "manifest.json"),
+    JSON.stringify(manifest, null, 2),
+  );
+}
 
-  if (configuration.flow === "write") {
-    seedDatabase(configuration.dataset);
+// Odtwarza dokładnie wybrany dataset dla konta pomiarowego. Reset jest poza
+// mierzonym czasem i zapewnia taki sam stan początkowy każdej próby zapisu.
+function resetDataset(email: string) {
+  runCommand(process.execPath, [`prisma/seed.measurements.${dataset}.js`], {
+    cwd: backendDirectory,
+    env: {
+      ...process.env,
+      DATABASE_URL: measurementDatabaseUrl,
+      DIRECT_URL: measurementDatabaseUrl,
+      MEASUREMENT_USER_EMAIL: email,
+      MEASUREMENT_STRICT_DATASET: "true",
+    },
+  });
+}
+
+// Uruchamia właściwy plik testowy Playwright dla jednego frontendu. Zmienne
+// środowiskowe przekazują testom numer próby i miejsce zapisu rezultatów.
+function runBrowserTests(framework: Framework, sampleIndex: number, record: boolean) {
+  const project = projectName(framework, dataset, cacheMode);
+  runCommand(
+    process.execPath,
+    [playwrightCli, "test", `tests/${flow}-flow.spec.ts`, `--project=${project}`],
+    {
+      env: {
+        ...process.env,
+        MEASUREMENT_RUN_ID: runId,
+        MEASUREMENT_SAMPLE_INDEX: String(sampleIndex),
+        MEASUREMENT_RECORD_RESULTS: String(record),
+        MEASUREMENT_REPORT_DIR: path.join(
+          outputDirectory,
+          "reports",
+          `${framework}-${sampleIndex}`,
+        ),
+      },
+    },
+  );
+}
+
+// Wykonuje jedną próbę dla obu frameworków. Dla zapisów resetuje dane przed
+// każdym frontendem, a w mierzonych próbach zmienia kolejność według AB/BA.
+function runRound(email: string, sampleIndex: number, record: boolean) {
+  const frameworkOrder = frameworks.map((framework) => framework.name);
+  if (record && sampleIndex % 2 !== 0) {
+    frameworkOrder.reverse();
   }
 
-  summarizeResults(configuration.runId, configuration.repetitions);
-  console.log(`\nPomiary zakończone: ${configuration.runId}`);
+  for (const framework of frameworkOrder) {
+    if (flow === "write") {
+      resetDataset(email);
+    }
+    runBrowserTests(framework, sampleIndex, record);
+  }
+}
+
+// Najpierw wykonuje preflight, potem rozgrzewki i właściwe próby. Na końcu
+// tworzy raport, aktualizuje manifest i przy zapisie przywraca czysty dataset.
+async function main() {
+  if (fs.existsSync(outputDirectory)) {
+    throw new Error(`Run ID ${runId} już istnieje.`);
+  }
+
+  const services = await checkServices();
+  const email = await checkSession();
+  if (flow === "write") {
+    resetDataset(email);
+  }
+  await checkDataset();
+
+  fs.mkdirSync(outputDirectory, { recursive: true });
+  const manifest = createManifest(services, email);
+  saveManifest(manifest);
+
+  try {
+    for (let index = 0; index < warmups; index++) {
+      runRound(email, -index - 1, false);
+    }
+    for (let index = 0; index < repetitions; index++) {
+      runRound(email, index, true);
+    }
+
+    runCommand(process.execPath, [
+      tsxCli,
+      "scripts/summarize-results.ts",
+      `--run-id=${runId}`,
+    ]);
+    manifest.status = "complete";
+  } catch (error) {
+    manifest.status = "failed";
+    throw error;
+  } finally {
+    if (flow === "write") {
+      resetDataset(email);
+    }
+    manifest.finishedAt = new Date().toISOString();
+    saveManifest(manifest);
+  }
 }
 
 await main();

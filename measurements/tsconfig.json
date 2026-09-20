@@ -10,8 +10,10 @@
     "types": ["node"]
   },
   "include": [
+    "measurement-config.ts",
     "playwright.config.ts",
     "scripts/**/*.ts",
-    "tests/**/*.ts"
+    "tests/**/*.ts",
+    "unit/**/*.ts"
   ]
 }

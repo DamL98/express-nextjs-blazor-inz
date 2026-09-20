@@ -51,7 +51,7 @@ export function Sidebar() {
           const active = isActivePath(pathname, item.href);
 
           return (
-            <Link
+            <Link prefetch={false}
               key={item.href}
               href={item.href}
               className={`block rounded-lg px-3 py-2 text-sm font-medium transition ${

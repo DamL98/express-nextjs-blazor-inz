@@ -1,0 +1,30 @@
+/* Keep this local theme identical in both frontends. */
+@theme {
+  --color-app-ink: #172033;
+  --color-app-muted: #5b667a;
+  --color-app-line: #d5ddeb;
+  --color-app-accent: #1e3a8a;
+  --color-app-line-hover: #aebbd0;
+  --color-app-surface-hover: #f6f8fc;
+  --color-google: #4285f4;
+  --color-app-error-surface: #fff0f0;
+  --color-app-error-text: #9d2424;
+
+  --shadow-login: 0 24px 70px rgba(23, 32, 51, 0.14);
+  --container-login: 430px;
+  --radius-login: 22px;
+  --radius-control: 11px;
+  --radius-notice: 9px;
+  --spacing-login: 38px;
+  --spacing-login-mobile: 22px;
+  --spacing-control: 46px;
+  --spacing-notice: 11px;
+  --text-login-title: 32px;
+  --text-notice: 13px;
+  --tracking-eyebrow: 0.14em;
+  --tracking-login-title: -0.04em;
+  --leading-login: 1.55;
+  --leading-notice: 1.4;
+  --font-weight-control: 750;
+  --breakpoint-login: 30rem;
+}

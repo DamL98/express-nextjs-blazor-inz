@@ -6,13 +6,18 @@ namespace FrontendBlazor.Client.Infrastructure.Auth;
 
 public sealed class AuthContext(
     ApiClient apiClient,
-    NavigationManager navigation)
+    NavigationManager navigation) : IDisposable
 {
     private bool _isInitialized;
 
     public event Action? Changed;
 
     public LocalUserDto? User { get; private set; }
+
+    public string? Error { get; private set; }
+
+    private void ExpireSession() { User = null; Changed?.Invoke(); }
+    public void Dispose() => apiClient.SessionExpired -= ExpireSession;
 
     public bool IsLoading { get; private set; } = true;
 
@@ -26,6 +31,7 @@ public sealed class AuthContext(
         }
 
         _isInitialized = true;
+        apiClient.SessionExpired += ExpireSession;
 
         try
         {
@@ -36,9 +42,13 @@ public sealed class AuthContext(
                     IsBrowserCredentialRequired = true,
                 });
         }
-        catch
+        catch (ApiException exception) when (exception.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
             User = null;
+        }
+        catch
+        {
+            Error = "Nie mozna sprawdzic sesji. Odswiez strone i sprobuj ponownie.";
         }
         finally
         {

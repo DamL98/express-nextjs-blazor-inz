@@ -35,6 +35,16 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
+if (process.env.MEASUREMENT_DATABASE_ONLY === "true") {
+  app.get("/measurement-info", (_req, res) => {
+    const database = new URL(process.env.DATABASE_URL);
+    res.json({
+      production: environment.isProduction,
+      isolated: database.hostname === "localhost" && database.port === "5434" && database.pathname === "/inz_measurements"
+    });
+  });
+}
+
 function healthHandler(_req, res) {
   return ApiResponse.ok({
     status: "ok",

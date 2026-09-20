@@ -9,6 +9,10 @@ import { apiRequest, type Room } from "@/lib/api";
 
 export default function RoomDetailsPage() {
   const { id } = useParams<{ id: string }>();
+  return <RoomDetails key={id} id={id} />;
+}
+
+function RoomDetails({ id }: { id: string }) {
   const [room, setRoom] = useState<Room | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -56,7 +60,7 @@ export default function RoomDetailsPage() {
       data-measurement-page="room-details"
       data-measurement-state={measurementState}
     >
-      <Link
+      <Link prefetch={false}
         href="/rooms"
         className="text-sm font-medium text-blue-600 hover:text-blue-700"
       >

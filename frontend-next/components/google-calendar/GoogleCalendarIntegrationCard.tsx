@@ -83,7 +83,7 @@ export function GoogleCalendarIntegrationCard() {
   const connectedAt = formatDateTime(status?.connectedAt ?? null);
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+    <section data-measurement-calendar={loading ? "loading" : error ? "error" : "ready"} className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">

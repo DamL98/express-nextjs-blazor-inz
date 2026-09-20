@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { measurementsDirectory } from "./script-utils";
+import { measurementsDirectory } from "../measurement-config";
 
 const resultDirectories = [
   path.join(measurementsDirectory, "results", "raw"),
@@ -21,10 +21,11 @@ function validateResultDirectory(directory: string): void {
 function removeResultDirectory(directory: string): void {
   validateResultDirectory(directory);
   fs.rmSync(directory, { recursive: true, force: true });
+
   console.log(`Usunięto: ${path.relative(measurementsDirectory, directory)}`);
 }
 
-/** czyści wyniki Playwright i surowe próbki przed rozpoczęciem nowych pomiarów */
+/** czyści wyniki Playwright przed rozpoczęciem nowych pomiarów */
 function main(): void {
   resultDirectories.forEach(removeResultDirectory);
 }

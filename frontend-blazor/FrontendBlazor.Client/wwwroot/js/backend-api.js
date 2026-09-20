@@ -15,6 +15,7 @@ export async function sendApiRequest(
             {
                 method,
                 credentials: "include",
+                cache: "no-store",
                 headers: {
                     Accept: "application/json, application/problem+json",
                     ...(body === null ? {} : { "Content-Type": "application/json" }),

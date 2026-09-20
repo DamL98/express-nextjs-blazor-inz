@@ -74,7 +74,7 @@ export default function DashboardPage() {
               Najbliższe rezerwacje
             </h2>
 
-            <Link
+            <Link prefetch={false}
               href="/reservations"
               className="text-sm font-medium text-blue-700 hover:text-blue-800"
             >
