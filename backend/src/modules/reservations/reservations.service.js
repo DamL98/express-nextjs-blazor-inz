@@ -47,14 +47,8 @@ export async function createReservation(userId, data) {
     throw new ApiError(Problems.RESERVATION_IN_PAST)
   }
 
-  const conflict = await reservationRepository.findConflicting(
-    data.roomId,
-    startTime,
-    endTime
-  )
-
-  if (conflict) {
-    throw new ApiError(Problems.ROOM_ALREADY_RESERVED)
+  if (endTime - startTime < 10 * 60 * 1000) {
+    throw new ApiError(Problems.RESERVATION_TOO_SHORT)
   }
 
   const reservation = await reservationRepository.create({

@@ -132,6 +132,12 @@ export const Problems = {
     "Nieprawidlowy zakres czasu",
     "Czas rozpoczecia musi byc wczesniejszy niz czas zakonczenia",
   ),
+  RESERVATION_TOO_SHORT: createProblem(
+    "RESERVATION_TOO_SHORT",
+    400,
+    "Rezerwacja jest za krotka",
+    "Rezerwacja musi trwac co najmniej 10 minut",
+  ),
   RESERVATION_IN_PAST: createProblem(
     "RESERVATION_IN_PAST",
     400,

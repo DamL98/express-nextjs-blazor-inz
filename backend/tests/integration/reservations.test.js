@@ -41,6 +41,58 @@ afterAll(async () => {
 });
 
 describe("Reservations API", () => {
+  it("odrzuca czas krotszy niz 10 minut i akceptuje dokladnie 10 minut", async () => {
+    const body = reservationBody(7, "minimum-duration");
+    const start = new Date(body.startTime).getTime();
+    const tooShort = await authorize(request(app).post(API), testUserToken)
+      .send({ ...body, endTime: new Date(start + 600000 - 1).toISOString() });
+    expect(tooShort.status).toBe(400);
+    expect(tooShort.body.code).toBe("RESERVATION_TOO_SHORT");
+    const valid = await authorize(request(app).post(API), testUserToken)
+      .send({ ...body, endTime: new Date(start + 600000).toISOString() });
+    expect(valid.status).toBe(201);
+  });
+
+  it("zapisuje tylko jedna z rownoczesnych rezerwacji tej samej sali", async () => {
+    const body = reservationBody(8, "concurrent");
+    const responses = await Promise.all(Array.from({ length: 5 }, () =>
+      authorize(request(app).post(API), testUserToken).send(body),
+    ));
+    expect(responses.filter((response) => response.status === 201)).toHaveLength(1);
+    const conflicts = responses.filter((response) => response.status === 409);
+    expect(conflicts).toHaveLength(4);
+    for (const response of conflicts) {
+      expect(response.body.code).toBe("ROOM_ALREADY_RESERVED");
+    }
+    expect(await prisma.reservation.count({ where: { title: body.title } })).toBe(1);
+  });
+
+  it("odrzuca czesciowe nakladanie i dopuszcza terminy stykajace sie", async () => {
+    const body = reservationBody(9, "boundaries");
+    const created = await authorize(request(app).post(API), testUserToken).send(body);
+    expect(created.status).toBe(201);
+    const overlap = await authorize(request(app).post(API), testUserToken).send({
+      ...body, startTime: "2035-01-09T10:30:00.000Z", endTime: "2035-01-09T11:30:00.000Z",
+    });
+    expect(overlap.status).toBe(409);
+    const adjacent = await authorize(request(app).post(API), testUserToken).send({
+      ...body, startTime: body.endTime, endTime: "2035-01-09T12:00:00.000Z",
+    });
+    expect(adjacent.status).toBe(201);
+  });
+
+  it("po anulowaniu pozwala ponownie zajac ten sam termin", async () => {
+    const body = reservationBody(10, "reuse-cancelled");
+    const created = await authorize(request(app).post(API), testUserToken).send(body);
+    expect(created.status).toBe(201);
+    const cancelled = await authorize(
+      request(app).patch(`${API}/${created.body.data.id}/cancel`), testUserToken,
+    );
+    expect(cancelled.status).toBe(200);
+    const recreated = await authorize(request(app).post(API), testUserToken).send(body);
+    expect(recreated.status).toBe(201);
+  });
+
   it("tworzy rezerwacje i zwraca ja na liscie uzytkownika", async () => {
     const createResponse = await authorize(request(app).post(API), testUserToken)
       .send(reservationBody(2, "create"));
