@@ -57,6 +57,15 @@ public sealed class AuthContext(
         }
     }
 
+    public async Task LoginLocalAsync(string email, string password)
+    {
+        var session = await apiClient.ApiRequestAsync<AuthSessionDto>("/auth/login",
+            new ApiRequestOptions { Method = HttpMethod.Post, Body = new { email, password }, IsBrowserCredentialRequired = true });
+        User = session.User;
+        Error = null;
+        Changed?.Invoke();
+    }
+
     public Task LoginWithGoogleAsync()
     {
         var redirectTo = new Uri(

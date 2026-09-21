@@ -14,6 +14,7 @@ export function createSessionToken(user) {
       sub: user.id,
       email: user.email,
       role: user.role.name,
+      sessionVersion: user.sessionVersion ?? 0,
     },
     auth.jwtSecret,
     {

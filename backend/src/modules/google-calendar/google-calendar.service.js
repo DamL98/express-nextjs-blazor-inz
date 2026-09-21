@@ -24,7 +24,6 @@ import {
   encryptGoogleRefreshToken,
 } from "../../security/googleRefreshToken.js";
 import {
-  createGoogleOAuthState,
   verifyGoogleOAuthState,
 } from "../../security/jwt.js";
 
@@ -100,16 +99,8 @@ function buildReservationEvent(reservation, room) {
   };
 }
 
-export function createConnectionAuthorizationUrl(userId, redirectTo) {
+export function createConnectionAuthorizationUrl(state) {
   try {
-    const validatedRedirectTo = validateFrontendRedirectUrl(redirectTo);
-    // Osobny stan OAuth pozwala powiązać połączenie z użytkownikiem.
-    const state = createGoogleOAuthState({
-      purpose: GOOGLE_CALENDAR_STATE_PURPOSE,
-      redirectTo: validatedRedirectTo,
-      userId,
-    });
-
     return buildGoogleAuthorizationUrl({
       state,
       scope: GOOGLE_CALENDAR_SCOPES,

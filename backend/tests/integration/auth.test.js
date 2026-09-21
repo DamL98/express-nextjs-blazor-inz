@@ -37,6 +37,7 @@ vi.mock("../../src/config/google-calendar.js", () => ({
 
 import { app } from "../../src/app.js";
 import { prisma } from "../../src/config/prisma.js";
+import { exchangeGoogleCodeForProfile } from "../../src/config/google-oauth.js";
 
 afterAll(async () => {
   await prisma.user.deleteMany({
@@ -77,5 +78,19 @@ describe("Google OAuth API", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.data.authorizationUrl).toContain("accounts.google.com");
+  });
+
+  it("callback Google wymaga cookie procesu, tworzy sesje i odrzuca ponowne uzycie state", async () => {
+    const browser = request.agent(app);
+    const start = await browser.get("/api/v1/auth/google/start").query({ redirectTo: "http://localhost:3000/login" });
+    const state = new URL(start.headers.location).searchParams.get("state");
+    exchangeGoogleCodeForProfile.mockResolvedValue(await verifyGoogleIdTokenMock("valid"));
+    const missingCookie = await request(app).get("/api/v1/auth/google/callback").query({ state, code: "code" });
+    expect(missingCookie.status).toBe(400);
+    const callback = await browser.get("/api/v1/auth/google/callback").query({ state, code: "code" });
+    expect(callback.headers.location).toContain("auth=success");
+    expect((await browser.get("/api/v1/auth/me")).status).toBe(200);
+    const replay = await browser.get("/api/v1/auth/google/callback").query({ state, code: "code" });
+    expect(replay.status).toBe(400);
   });
 });

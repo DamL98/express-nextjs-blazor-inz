@@ -7,18 +7,14 @@ import {
   OAuthStateVerificationError,
 } from "../../config/config.errors.js";
 import {
-  buildGoogleAuthorizationUrl,
   exchangeGoogleCodeForProfile,
-  validateFrontendRedirectUrl,
   verifyGoogleIdToken,
 } from "../../config/google-oauth.js";
 import { ApiError } from "../../errors/apiError.js";
 import { Problems } from "../../errors/problems.js";
 import { userRepository } from "../../repositories/user.repository.js";
 import {
-  createGoogleOAuthState,
   createSessionToken,
-  verifyGoogleOAuthState,
 } from "../../security/jwt.js";
 
 function toGoogleApiError(error, problem) {
@@ -78,6 +74,10 @@ async function synchronizeGoogleUser(googleUser) {
 
 async function createSessionFromGoogleUser(googleUser) {
   const user = await synchronizeGoogleUser(googleUser);
+  return createUserSession(user);
+}
+
+export function createUserSession(user) {
   const token = createSessionToken(user);
 
   return {
@@ -100,28 +100,6 @@ export async function createSessionFromAuthorizationCode(code, redirectUri) {
   try {
     const googleUser = await exchangeGoogleCodeForProfile(code, redirectUri);
     return await createSessionFromGoogleUser(googleUser);
-  } catch (error) {
-    throw toGoogleApiError(error, Problems.GOOGLE_AUTH_FAILED);
-  }
-}
-
-export function createGoogleAuthorizationUrl(redirectTo) {
-  try {
-    const validatedRedirectTo = validateFrontendRedirectUrl(redirectTo);
-    const state = createGoogleOAuthState({
-      redirectTo: validatedRedirectTo,
-    });
-
-    return buildGoogleAuthorizationUrl({ state });
-  } catch (error) {
-    throw toGoogleApiError(error, Problems.INVALID_GOOGLE_REDIRECT);
-  }
-}
-
-export function readRedirectFromState(state) {
-  try {
-    const payload = verifyGoogleOAuthState(state);
-    return validateFrontendRedirectUrl(payload?.redirectTo);
   } catch (error) {
     throw toGoogleApiError(error, Problems.GOOGLE_AUTH_FAILED);
   }

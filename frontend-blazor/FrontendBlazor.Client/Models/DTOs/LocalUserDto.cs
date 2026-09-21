@@ -6,7 +6,9 @@ public sealed class LocalUserDto
 {
     public string Id { get; init; } = string.Empty;
 
-    public string GoogleId { get; init; } = string.Empty;
+    public string? GoogleId { get; init; }
+
+    public bool HasLocalPassword { get; init; }
 
     public string Email { get; init; } = string.Empty;
 

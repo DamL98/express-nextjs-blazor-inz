@@ -27,7 +27,10 @@ model Role {
 
 model User {
   id                  String               @id @default(uuid())
-  googleId            String               @unique @map("google_id")
+  googleId            String?              @unique @map("google_id")
+  passwordHash        String?              @map("password_hash")
+  sessionVersion      Int                  @default(0) @map("session_version")
+  authTokens          AuthToken[]
   email               String               @unique
   fullName            String               @map("full_name")
   avatarUrl           String?              @map("avatar_url")
@@ -93,4 +96,16 @@ model CalendarIntegration {
   updatedAt             DateTime  @updatedAt @map("updated_at")
 
   @@map("calendar_integrations")
+}
+
+model AuthToken {
+  tokenHash String   @id @map("token_hash")
+  purpose   String
+  userId    String?  @map("user_id")
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @map("expires_at")
+
+  @@index([userId, purpose])
+  @@index([expiresAt])
+  @@map("auth_tokens")
 }

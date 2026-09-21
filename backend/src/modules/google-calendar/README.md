@@ -11,10 +11,10 @@
 ## Data-Flow
 
 1. Zalogowany frontend wysyła `redirectTo` do endpointu startowego.
-2. Backend waliduje origin i tworzy podpisany `state` zawierający `userId`, cel procesu i adres powrotu.
+2. Backend waliduje origin, zapisuje jednorazowy `state` i ustawia cookie procesu OAuth. Stan zawiera `userId`, wersję sesji, cel procesu i adres powrotu.
 3. Google zwraca `code` i `state` do publicznego callbacku backendu.
-4. Backend weryfikuje `state`, pobiera użytkownika i wymienia kod na profil oraz tokeny Google.
-5. Serwis sprawdza, czy konto Google jest tym samym kontem, którego użyto do logowania.
+4. Backend weryfikuje i zużywa `state`, sprawdza cookie oraz sesję inicjującą połączenie, a następnie wymienia kod na profil i tokeny Google.
+5. Serwis sprawdza zgodność z `User.googleId`. Użytkownik lokalny najpierw jawnie łączy Google w sekcji konta; potem osobno udziela zgody na kalendarz.
 6. Refresh token jest szyfrowany i zapisywany w `CalendarIntegration`.
 7. Callback przekierowuje frontend ze statusem `connected` albo `error`.
 8. Podczas zmian rezerwacji backend używa zapisanego tokenu do wywołania Google Calendar API.

@@ -132,6 +132,8 @@ describe("Google Calendar integration API", () => {
 
     const callbackResponse = await request(app)
       .get(`${API}/connect/callback`)
+      .set("Authorization", `Bearer ${token}`)
+      .set("Cookie", startResponse.headers["set-cookie"].map((cookie) => cookie.split(";")[0]))
       .query({ code: "calendar-auth-code", state });
 
     const connectedStatus = await authorize(

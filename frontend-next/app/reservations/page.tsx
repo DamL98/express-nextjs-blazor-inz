@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { GoogleCalendarIntegrationCard } from "@/components/google-calendar/GoogleCalendarIntegrationCard";
+import { AccountSecurityCard } from "@/components/auth/AccountSecurityCard";
 import { ReservationsList } from "@/components/reservations/ReservationList";
 import { apiRequest, type Reservation } from "@/lib/api";
 
@@ -60,6 +61,7 @@ export default function ReservationsPage() {
       </div>
 
       <div className="mt-6">
+        <AccountSecurityCard />
         <GoogleCalendarIntegrationCard />
       </div>
 

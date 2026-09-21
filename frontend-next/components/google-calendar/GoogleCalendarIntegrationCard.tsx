@@ -9,8 +9,10 @@ import {
 } from "@/lib/api";
 import { API_URL } from "@/lib/config/env";
 import { formatDateTime } from "@/lib/formatters";
+import { useAuth } from "@/components/auth-provider";
 
 export function GoogleCalendarIntegrationCard() {
+  const { user } = useAuth();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<GoogleCalendarConnectionStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,13 +96,13 @@ export function GoogleCalendarIntegrationCard() {
           </p>
         </div>
 
-        {!status?.connected ? (
+        {!status?.connected && user?.googleId ? (
           <button
             type="button"
             onClick={handleConnect}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
-            Polacz z Google
+            Wlacz synchronizacje kalendarza
           </button>
         ) : null}
       </div>
@@ -143,7 +145,7 @@ export function GoogleCalendarIntegrationCard() {
           </div>
         ) : (
           <p className="text-sm text-gray-600">
-            Konto Google nie jest jeszcze polaczone z Google Calendar
+            {user?.googleId ? "Synchronizacja nowych rezerwacji z kalendarzem jest wylaczona." : "Najpierw polacz konto Google w sekcji konta powyzej."}
           </p>
         )}
       </div>

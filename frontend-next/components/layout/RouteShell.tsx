@@ -18,9 +18,10 @@ export function RouteShell({ children }: RouteShellProps) {
   const router = useRouter();
   const { user, loading, error } = useAuth();
   const isLoginPage = pathname === LOGIN_PATH;
+  const isAuthAction = pathname === "/auth/action";
 
   useEffect(() => {
-    if (loading || error) {
+    if (loading || error || isAuthAction) {
       return;
     }
 
@@ -32,7 +33,9 @@ export function RouteShell({ children }: RouteShellProps) {
     if (user && isLoginPage) {
       router.replace("/");
     }
-  }, [isLoginPage, loading, error, router, user]);
+  }, [isLoginPage, isAuthAction, loading, error, router, user]);
+
+  if (isAuthAction) return children;
 
   if (error) return <main role="alert" className="p-8">{error}</main>;
 

@@ -1,0 +1,57 @@
+@page "/auth/action"
+@using FrontendBlazor.Client.Infrastructure.Api
+@using FrontendBlazor.Client.Models.DTOs
+@using Microsoft.JSInterop
+@inject ApiClient Api
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Potwierdzenie konta</PageTitle>
+<main class="mx-auto max-w-lg p-8">
+    <h1 class="mb-6 text-2xl font-bold">@(_action == "verify-email" ? "Potwierdz adres e-mail" : "Ustaw nowe haslo")</h1>
+    @if (!string.IsNullOrEmpty(_token) && _action is "verify-email" or "reset-password")
+    {
+        <form @onsubmit="SubmitAsync" @onsubmit:preventDefault class="space-y-4">
+            @if (_action == "reset-password")
+            {
+                <label class="block">Nowe haslo (co najmniej 15 znakow)
+                    <input class="mt-2 w-full rounded border p-3" type="password" @bind="_password" autocomplete="new-password" minlength="15" maxlength="128" required />
+                </label>
+            }
+            <button class="rounded bg-blue-600 px-4 py-2 text-white" disabled="@_busy">@(_busy ? "Prosze czekac..." : "Potwierdz")</button>
+        </form>
+    }
+    else { <p>@(_message ?? "Otworz pelny link z wiadomosci e-mail.")</p> }
+    @if (_error is not null) { <p role="alert" class="mt-4 text-red-700">@_error</p> }
+    <a href="/login" class="mt-6 block text-blue-700">Przejdz do logowania</a>
+</main>
+
+@code {
+    private string _action = "", _token = "", _password = "";
+    private string? _message, _error;
+    private bool _busy;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !RendererInfo.IsInteractive) return;
+        var uri = new Uri(Navigation.Uri);
+        var data = System.Web.HttpUtility.ParseQueryString(uri.Fragment.TrimStart('#'));
+        _action = data["action"] ?? "";
+        _token = data["token"] ?? "";
+        await JS.InvokeVoidAsync("history.replaceState", (object?)null, "", uri.AbsolutePath);
+        StateHasChanged();
+    }
+
+    private async Task SubmitAsync()
+    {
+        _busy = true; _error = null;
+        try
+        {
+            var result = await Api.ApiRequestAsync<AuthResultDto>(_action == "verify-email" ? "/auth/verify-email" : "/auth/password/reset",
+                new ApiRequestOptions { Method = HttpMethod.Post, IsBrowserCredentialRequired = true, Body = new { token = _token, password = _password } });
+            _message = result.Message; _token = ""; _password = "";
+        }
+        catch (Exception exception) { _error = ApiErrorMessage.FromException(exception, "Nieprawidlowy link"); }
+        finally { _busy = false; }
+    }
+}

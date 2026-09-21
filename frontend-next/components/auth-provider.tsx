@@ -17,7 +17,8 @@ import { API_URL } from "@/lib/config/env";
 // backend zwraca go po zweryfikowaniu sesji użytkownika
 export type LocalUser = {
   id: string;
-  googleId: string;
+  googleId: string | null;
+  hasLocalPassword: boolean;
   email: string;
   fullName: string;
   avatarUrl: string | null;
@@ -31,6 +32,7 @@ type AuthContext = {
   loading: boolean;
   error: string | null;
   loginWithGoogle: () => Promise<void>;
+  loginLocal: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -82,6 +84,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => controller.abort();
   }, []);
 
+  const loginLocal = useCallback(async (email: string, password: string) => {
+    const session = await apiRequest<{ user: LocalUser }>("/auth/login", {
+      method: "POST", body: JSON.stringify({ email, password }),
+    });
+    setError(null);
+    setUser(session.user);
+  }, []);
+
   const loginWithGoogle = useCallback(async () => {
     const redirectTo = `${window.location.origin}/login`;
     const url = new URL(`${API_URL}/auth/google/start`);
@@ -100,8 +110,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // zachowuje referencję kontekstu, dopóki nie zmieni się jego stan
   const value = useMemo(
-    () => ({ user, loading, error, loginWithGoogle, logout }),
-    [user, loading, error, loginWithGoogle, logout],
+    () => ({ user, loading, error, loginWithGoogle, loginLocal, logout }),
+    [user, loading, error, loginWithGoogle, loginLocal, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

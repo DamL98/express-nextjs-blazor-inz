@@ -10,6 +10,13 @@ function createProblem(code, status, title, detail = title) {
 }
 
 export const Problems = {
+  AUTH_CREDENTIALS_INVALID: createProblem("AUTH_CREDENTIALS_INVALID", 401, "Nieprawidlowy e-mail lub haslo"),
+  AUTH_EMAIL_UNVERIFIED: createProblem("AUTH_EMAIL_UNVERIFIED", 403, "Potwierdz adres e-mail przed zalogowaniem"),
+  AUTH_ACTION_INVALID: createProblem("AUTH_ACTION_INVALID", 400, "Link wygasl lub zostal juz wykorzystany"),
+  AUTH_RATE_LIMITED: createProblem("AUTH_RATE_LIMITED", 429, "Zbyt wiele prob. Sprobuj ponownie pozniej"),
+  AUTH_MAIL_UNAVAILABLE: createProblem("AUTH_MAIL_UNAVAILABLE", 503, "Wysylka wiadomosci jest chwilowo niedostepna"),
+  GOOGLE_LINK_REQUIRED: createProblem("GOOGLE_LINK_REQUIRED", 409, "Najpierw polacz konto Google w ustawieniach konta"),
+  RESERVATION_BUSY: createProblem("RESERVATION_BUSY", 409, "Trwa zmiana rezerwacji. Ponow probe"),
   VALIDATION_ERROR: createProblem(
     "VALIDATION_ERROR",
     400,

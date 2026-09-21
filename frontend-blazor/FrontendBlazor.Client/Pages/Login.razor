@@ -1,13 +1,17 @@
 @page "/login"
 @using FrontendBlazor.Client.Infrastructure.Auth
 @inject AuthContext Auth
+@inject FrontendBlazor.Client.Infrastructure.Api.ApiClient Api
+@inject NavigationManager Navigation
+@using FrontendBlazor.Client.Infrastructure.Api
+@using FrontendBlazor.Client.Models.DTOs
 
 <PageTitle>Logowanie</PageTitle>
 
 <main class="grid min-h-screen place-items-center bg-gray-50 px-4 py-8">
     <section class="rounded-login border border-blue-900/20 bg-white/97 p-login shadow-login max-login:px-login-mobile max-login:py-7">
         <p class="mb-2 text-xs font-extrabold tracking-eyebrow text-app-accent uppercase">System rezerwacji</p>
-        <h1 class="text-login-title font-bold tracking-login-title text-app-ink">Zaloguj sie</h1>
+        <h1 class="text-login-title font-bold tracking-login-title text-app-ink">@(_mode == "register" ? "Utworz konto" : _mode == "forgot" ? "Reset hasla" : _mode == "verify" ? "Potwierdz e-mail" : "Zaloguj sie")</h1>
         <p class="mt-2.5 mb-6.5 leading-login text-app-muted">Zaloguj sie przez konto Google lub lokalnie</p>
 
         <button
@@ -25,34 +29,50 @@
             <span class="h-px flex-1 bg-app-line"></span>
         </div>
 
-        <form aria-label="Logowanie lokalne">
-            <fieldset class="space-y-4">
+        <form aria-label="Logowanie lokalne" @onsubmit="SubmitAsync" @onsubmit:preventDefault>
+            <fieldset class="space-y-4" disabled="@_isSubmitting">
+                @if (_mode == "register")
+                {
+                    <label class="block text-sm font-semibold text-app-ink">Imie i nazwisko
+                        <input @bind="_fullName" required maxlength="100" autocomplete="name" class="mt-2 min-h-control w-full rounded-control border border-app-line px-3" />
+                    </label>
+                }
                 <label class="block text-sm font-semibold text-app-ink">
                     E-mail
                     <input
                         class="mt-2 min-h-control w-full rounded-control border border-app-line bg-white px-3 text-base font-normal text-app-ink outline-none focus:border-app-accent"
-                        type="email"
+                        type="email" @bind="_email" required maxlength="254"
                         autocomplete="email"
                         placeholder="uzytkownik@example.com" />
                 </label>
 
+                @if (_mode is "login" or "register")
+                {
                 <label class="block text-sm font-semibold text-app-ink">
                     Haslo
                     <input
                         class="mt-2 min-h-control w-full rounded-control border border-app-line bg-white px-3 text-base font-normal text-app-ink outline-none focus:border-app-accent"
-                        type="password"
-                        autocomplete="current-password"
-                        placeholder="Wprowadz haslo" />
+                        type="password" @bind="_password" required minlength="@(_mode == "register" ? 15 : 1)" maxlength="128"
+                        autocomplete="@(_mode == "register" ? "new-password" : "current-password")"
+                        placeholder="@(_mode == "register" ? "Co najmniej 15 znakow" : "Wprowadz haslo")" />
                 </label>
+                }
 
                 <button
-                    type="button"
+                    type="submit"
                     class="min-h-control w-full rounded-control bg-app-accent font-bold text-white">
-                    Zaloguj sie
+                    @(_isSubmitting ? "Prosze czekac..." : _mode == "login" ? "Zaloguj sie" : _mode == "register" ? "Zarejestruj sie" : "Wyslij link")
                 </button>
             </fieldset>
         </form>
 
+        <div class="mt-4 flex flex-wrap gap-3 text-sm text-app-accent">
+            @foreach (var option in _modes.Where(option => option.Key != _mode))
+            {
+                <button type="button" disabled="@_isSubmitting" @onclick="() => SetMode(option.Key)">@option.Value</button>
+            }
+        </div>
+        @if (_message is not null) { <p role="status" class="mt-4 text-sm text-green-700">@_message</p> }
         @if (_errorMessage is not null)
         {
             <p class="mt-4 rounded-notice bg-app-error-surface px-3 py-notice text-notice leading-notice text-app-error-text" role="alert">@_errorMessage</p>
@@ -61,6 +81,38 @@
 </main>
 
 @code {
+    private string _mode = "login", _email = "", _password = "", _fullName = "";
+    private string? _message;
+    private readonly Dictionary<string, string> _modes = new() {
+        ["login"] = "Logowanie", ["register"] = "Rejestracja", ["forgot"] = "Nie pamietam hasla", ["verify"] = "Wyslij ponownie potwierdzenie"
+    };
+    protected override void OnInitialized()
+    {
+        var query = System.Web.HttpUtility.ParseQueryString(new Uri(Navigation.Uri).Query);
+        if (query["auth"] == "error")
+            _errorMessage = "Logowanie Google nie powiodlo sie. Jesli masz konto lokalne, zaloguj sie haslem i polacz Google na stronie rezerwacji.";
+    }
+    private void SetMode(string mode) { _mode = mode; _message = null; _errorMessage = null; _password = ""; }
+    private async Task SubmitAsync()
+    {
+        _isSubmitting = true; _errorMessage = null; _message = null;
+        try
+        {
+            if (_mode == "login") await Auth.LoginLocalAsync(_email, _password);
+            else
+            {
+                var endpoint = _mode == "register" ? "/register" : _mode == "forgot" ? "/password/forgot" : "/verification/request";
+                var result = await Api.ApiRequestAsync<AuthResultDto>("/auth" + endpoint, new ApiRequestOptions {
+                    Method = HttpMethod.Post, IsBrowserCredentialRequired = true,
+                    Body = new { email = _email, password = _password, fullName = _fullName, redirectTo = new Uri(new Uri(Navigation.BaseUri), "auth/action").ToString() }
+                });
+                _message = result.Message;
+            }
+        }
+        catch (Exception exception) { _errorMessage = ApiErrorMessage.FromException(exception, "Operacja nie powiodla sie"); }
+        finally { _isSubmitting = false; }
+    }
+
     private string? _errorMessage;
     private bool _isSubmitting;
 

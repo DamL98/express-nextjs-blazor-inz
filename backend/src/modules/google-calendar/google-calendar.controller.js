@@ -1,3 +1,5 @@
+import { beginOAuthFlow, consumeOAuthFlow } from "../auth/oauth-flow.service.js";
+import { validateFrontendRedirectUrl } from "../../config/google-oauth.js";
 import { getGoogleCalendarOAuthRedirectUri } from "../../config/google-oauth.js";
 import { ApiError } from "../../errors/apiError.js";
 import { Problems } from "../../errors/problems.js";
@@ -34,10 +36,15 @@ export async function getGoogleCalendarStatus(_req, res) {
 export async function startGoogleCalendarConnection(req, res, next) {
   try {
     const redirectTo = res.locals.validated.query.redirectTo;
-    const authorizationUrl = createConnectionAuthorizationUrl(
-      res.locals.user.id,
-      redirectTo,
-    );
+    if (!res.locals.user.googleId) throw new ApiError(Problems.GOOGLE_LINK_REQUIRED);
+
+    const state = await beginOAuthFlow(res, {
+      purpose: "google-calendar-connect", userId: res.locals.user.id,
+      sessionVersion: res.locals.user.sessionVersion,
+      redirectTo: validateFrontendRedirectUrl(redirectTo),
+    });
+
+    const authorizationUrl = createConnectionAuthorizationUrl(state);
 
     return res.redirect(302, authorizationUrl);
   } catch (error) {
@@ -58,6 +65,7 @@ export async function handleGoogleCalendarCallback(req, res, next) {
 
   try {
     redirectTo = readConnectionState(state).redirectTo;
+    await consumeOAuthFlow(req, res, ["google-calendar-connect"]);
   } catch (error) {
     return next(error);
   }

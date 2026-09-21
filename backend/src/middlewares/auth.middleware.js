@@ -29,6 +29,9 @@ export async function authenticate(req, res, next) {
 
   try {
     const user = await getCurrentUser(session.sub);
+    if ((session.sessionVersion ?? 0) !== user.sessionVersion) {
+      throw new ApiError(Problems.AUTH_SESSION_INVALID);
+    }
     res.locals.auth = session;
     res.locals.user = user;
       return next();

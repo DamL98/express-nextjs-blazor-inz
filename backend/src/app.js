@@ -14,6 +14,7 @@ import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 // middlewares
 import { errorMiddleware } from "./middlewares/error.middleware.js";
 import { notFoundMiddleware } from "./middlewares/not-found.middleware.js";
+import { csrfProtection } from "./middlewares/csrf.middleware.js";
 import problemsRoutes from "./errors/problems.routes.js";
 
 // utils
@@ -34,6 +35,7 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
+app.use(csrfProtection);
 
 if (process.env.MEASUREMENT_DATABASE_ONLY === "true") {
   app.get("/measurement-info", (_req, res) => {

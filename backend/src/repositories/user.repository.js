@@ -1,7 +1,11 @@
+import { ApiError } from "../errors/apiError.js";
+import { Problems } from "../errors/problems.js";
 import { prisma } from "../config/prisma.js";
 
-const publicUserSelect = {
+const sessionUserSelect = {
   id: true,
+  sessionVersion: true,
+  passwordHash: true,
   googleId: true,
   email: true,
   fullName: true,
@@ -17,12 +21,57 @@ const publicUserSelect = {
   },
 };
 
+function toPublicUser(user) {
+  if (!user) return null;
+  const { passwordHash, ...profile } = user;
+  return { ...profile, hasLocalPassword: Boolean(passwordHash) };
+}
+
 export const userRepository = {
+  async findCredentials(email) {
+    return prisma.user.findUnique({ where: { email }, include: { role: true } });
+  },
+
+  async createLocal({ email, fullName, passwordHash }) {
+    return prisma.user.create({
+      data: { email, fullName, passwordHash, role: { connectOrCreate: { where: { name: "user" }, create: { name: "user" } } } },
+      select: sessionUserSelect,
+    }).then(toPublicUser);
+  },
+
+  async touchLogin(id) {
+    return prisma.user.update({ where: { id }, data: { lastLoginAt: new Date() }, select: sessionUserSelect }).then(toPublicUser);
+  },
+
+  async changePassword(id, previousHash, passwordHash) {
+    return prisma.$transaction(async (tx) => {
+      const result = await tx.user.updateMany({
+        where: { id, passwordHash: previousHash },
+        data: { passwordHash, sessionVersion: { increment: 1 } },
+      });
+      if (result.count !== 1) throw new ApiError(Problems.AUTH_SESSION_INVALID);
+      await tx.authToken.deleteMany({ where: { userId: id } });
+    });
+  },
+
+  async linkGoogle(id, sessionVersion, googleId) {
+    try {
+      const result = await prisma.user.updateMany({
+        where: { id, googleId: null, sessionVersion },
+        data: { googleId },
+      });
+      if (result.count !== 1) throw new ApiError(Problems.ACCOUNT_LINK_CONFLICT);
+    } catch (error) {
+      if (error.code === "P2002") throw new ApiError(Problems.ACCOUNT_LINK_CONFLICT);
+      throw error;
+    }
+  },
+
   async findPublicUserById(id) {
     return prisma.user.findUnique({
       where: { id },
-      select: publicUserSelect,
-    });
+      select: sessionUserSelect,
+    }).then(toPublicUser);
   },
 
   async synchronizeGoogleUser(data) {
@@ -35,13 +84,10 @@ export const userRepository = {
         return tx.user.update({
           where: { id: existingByGoogleId.id },
           data: {
-            email: data.email,
-            fullName: data.fullName,
-            avatarUrl: data.avatarUrl,
-            emailVerified: data.emailVerified,
+            ...(!existingByGoogleId.passwordHash ? { fullName: data.fullName, avatarUrl: data.avatarUrl } : {}),
             lastLoginAt: new Date(),
           },
-          select: publicUserSelect,
+          select: sessionUserSelect,
         });
       }
 
@@ -50,17 +96,7 @@ export const userRepository = {
       });
 
       if (existingByEmail) {
-        return tx.user.update({
-          where: { id: existingByEmail.id },
-          data: {
-            googleId: data.googleId,
-            fullName: data.fullName,
-            avatarUrl: data.avatarUrl,
-            emailVerified: data.emailVerified,
-            lastLoginAt: new Date(),
-          },
-          select: publicUserSelect,
-        });
+        throw new ApiError(Problems.ACCOUNT_LINK_CONFLICT, { detail: "Zaloguj sie dotychczasowa metoda i polacz konto Google w ustawieniach" });
       }
 
       const userRole = await tx.role.upsert({
@@ -79,8 +115,8 @@ export const userRepository = {
           lastLoginAt: new Date(),
           roleId: userRole.id,
         },
-        select: publicUserSelect,
+        select: sessionUserSelect,
       });
-    });
+    }).then(toPublicUser);
   },
 };
