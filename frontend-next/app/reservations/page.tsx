@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
-import { GoogleCalendarIntegrationCard } from "@/components/google-calendar/GoogleCalendarIntegrationCard";
-import { AccountSecurityCard } from "@/components/auth/AccountSecurityCard";
+import { ReservationAccountPanels } from "@/components/auth/ReservationAccountPanels";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { LoadingCards } from "@/components/ui/LoadingCards";
+import { ErrorNotice } from "@/components/ui/ErrorNotice";
 import { ReservationsList } from "@/components/reservations/ReservationList";
 import { apiRequest, type Reservation } from "@/lib/api";
 
@@ -39,45 +41,20 @@ export default function ReservationsPage() {
 
   return (
     <main
-      className="mx-auto max-w-5xl px-6 py-8"
+      className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-10"
       data-measurement-page="reservations"
       data-measurement-state={loading ? "loading" : error ? "error" : "ready"}
       data-measurement-count={reservations.length}
     >
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Moje rezerwacje
-          </h1>
-          <p className="mt-2 text-gray-600">Lista Twoich rezerwacji.</p>
-        </div>
+      <PageHeader title="Moje rezerwacje" description="Sprawdź nadchodzące spotkania, przejrzyj historię i zarządzaj swoimi terminami.">
+        <Link prefetch={false} href="/rooms" className="inline-block rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800">Zarezerwuj salę</Link>
+      </PageHeader>
 
-        <Link prefetch={false}
-          href="/rooms"
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          Zarezerwuj salę
-        </Link>
-      </div>
+      {loading ? <LoadingCards /> : error ? <ErrorNotice message={error} /> : <ReservationsList initialReservations={reservations} />}
 
-      <div className="mt-6">
-        <AccountSecurityCard />
-        <GoogleCalendarIntegrationCard />
-      </div>
-
-      <div className="mt-6">
-        {loading ? (
-          <div className="rounded-xl border border-gray-200 bg-white p-6 text-gray-600 shadow-sm">
-            Ładowanie rezerwacji...
-          </div>
-        ) : error ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        ) : (
-          <ReservationsList initialReservations={reservations} />
-        )}
-      </div>
+      <Suspense fallback={<LoadingCards count={1} />}>
+        <ReservationAccountPanels />
+      </Suspense>
     </main>
   );
 }

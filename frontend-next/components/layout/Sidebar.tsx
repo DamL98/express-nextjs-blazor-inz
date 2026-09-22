@@ -10,7 +10,7 @@ type NavigationItem = {
 
 const navigationItems: NavigationItem[] = [
   {
-    label: "Dashboard",
+    label: "Przegląd",
     href: "/",
   },
   {
@@ -20,6 +20,10 @@ const navigationItems: NavigationItem[] = [
   {
     label: "Moje rezerwacje",
     href: "/reservations",
+  },
+  {
+    label: "Ustawienia",
+    href: "/settings",
   },
 ];
 
@@ -35,18 +39,18 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden min-h-screen w-64 shrink-0 border-r border-gray-200 bg-white px-4 py-6 md:block">
+    <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-app-line bg-white px-5 py-8 md:flex">
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
           System rezerwacji
         </p>
 
-        <h1 className="mt-2 text-lg font-bold text-gray-900">
+        <p className="mt-3 text-xl font-bold tracking-tight text-app-ink">
           Sale konferencyjne
-        </h1>
+        </p>
       </div>
 
-      <nav className="mt-8 space-y-1">
+      <nav aria-label="Nawigacja główna" className="mt-10 space-y-2">
         {navigationItems.map((item) => {
           const active = isActivePath(pathname, item.href);
 
@@ -54,11 +58,11 @@ export function Sidebar() {
             <Link prefetch={false}
               key={item.href}
               href={item.href}
-              className={`block rounded-lg px-3 py-2 text-sm font-medium transition ${
-                active
-                  ? "bg-blue-50 text-blue-700"
+              aria-current={active ? "page" : undefined}
+              className={`block rounded-xl px-4 py-3 text-sm font-medium transition ${active
+                  ? "bg-blue-900 text-white shadow-sm"
                   : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-              }`}
+                }`}
             >
               {item.label}
             </Link>
@@ -66,9 +70,9 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="mt-8 rounded-xl border border-gray-200 bg-gray-50 p-4">
-        <p className="mt-1 text-xs text-gray-600">
-          ver. demo
+      <div className="mt-auto rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
+        <p className="mt-2 text-xs leading-5 text-app-muted">
+          Wybierz salę i zaplanuj następne spotkanie
         </p>
       </div>
     </aside>

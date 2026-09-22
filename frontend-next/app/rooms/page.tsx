@@ -1,9 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 import { apiRequest, type Room } from "@/lib/api";
+
+import { RoomList } from "@/components/rooms/RoomList";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { LoadingCards } from "@/components/ui/LoadingCards";
+import { ErrorNotice } from "@/components/ui/ErrorNotice";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export default function RoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -49,60 +54,22 @@ export default function RoomsPage() {
 
   return (
     <main
-      className="mx-auto max-w-6xl px-6 py-8"
+      className="mx-auto max-w-7xl px-4 py-8 md:px-8 md:py-10"
       data-measurement-page="rooms"
       data-measurement-state={measurementState}
       data-measurement-count={rooms.length}
     >
-      <h1 className="text-2xl font-bold text-gray-900">Lista sal</h1>
-
-      <p className="mt-2 text-gray-600">Wybierz sale</p>
-
+      <PageHeader title="Znajdź salę" description="Wybierz przestrzeń dopasowaną do spotkania. Termin sprawdzisz podczas rezerwacji." />
       {isLoading ? (
-        <div className="mt-6 rounded-xl border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600">
-          Ladowanie sal...
-        </div>
+        <LoadingCards count={6} />
       ) : errorMessage ? (
-        <div
-          className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-          role="alert"
-        >
-          {errorMessage}
-        </div>
+        <ErrorNotice message={errorMessage} />
       ) : rooms.length === 0 ? (
-        <div className="mt-6 rounded-xl border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600">
-          Brak sal do wyswietlenia
-        </div>
+        <EmptyState title="Brak sal do wyświetlenia" description="Obecnie nie ma dostępnych sal" />
       ) : (
-        <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {rooms.map((room) => (
-            <article
-              key={room.id}
-              className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
-            >
-              <h2 className="text-lg font-semibold text-gray-900">
-                {room.name}
-              </h2>
-
-              <p className="mt-1 text-sm text-gray-600">{room.location}</p>
-
-              <p className="mt-3 text-sm text-gray-700">
-                Liczba miejsc: {room.capacity}
-              </p>
-
-              <p className="mt-3 text-sm text-gray-500">
-                {room.isActive ? "Aktywna" : "Nieaktywna"}
-              </p>
-
-              <Link prefetch={false}
-                href={`/rooms/${room.id}`}
-                className="mt-4 inline-block rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-              >
-                Zobacz szczegoly
-              </Link>
-            </article>
-          ))}
-        </div>
+        <Suspense fallback={<LoadingCards count={6} />}>
+          <RoomList rooms={rooms} />
+        </Suspense>
       )}
     </main>
   );

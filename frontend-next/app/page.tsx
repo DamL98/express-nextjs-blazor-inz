@@ -6,6 +6,12 @@ import { useEffect, useState } from "react";
 import { apiRequest, type Dashboard } from "@/lib/api";
 import { formatDateTime } from "@/lib/formatters";
 
+import { PageHeader } from "@/components/ui/PageHeader";
+import { LoadingCards } from "@/components/ui/LoadingCards";
+import { ErrorNotice } from "@/components/ui/ErrorNotice";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ReservationCalendar } from "@/components/reservations/ReservationCalendar";
+
 export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,82 +52,76 @@ export default function DashboardPage() {
   const activeRoomsCount = dashboard?.activeRoomsCount ?? 0;
   const nextReservations = dashboard?.nextReservations ?? [];
 
+  const nextReservation = nextReservations[0];
+
   return (
-    <div
-      className="mx-auto max-w-6xl px-4 py-8 md:px-8"
+    <main
+      className="mx-auto max-w-7xl px-4 py-8 md:px-8 md:py-10"
       data-measurement-page="dashboard"
       data-measurement-state={loading ? "loading" : error ? "error" : "ready"}
     >
-      <div>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
-          Dashboard
-        </h1>
-        <p className="mt-3 max-w-2xl text-gray-600">
-          Aktywne sale: {activeRoomsCount}
-        </p>
-      </div>
+      <PageHeader title="Twój plan spotkań" description="Najbliższe rezerwacje i dostęp do sal — wszystko, czego potrzebujesz na początek dnia.">
+        <Link prefetch={false} href="/rooms" className="inline-block rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800">Zarezerwuj salę</Link>
+      </PageHeader>
 
-      {error ? (
-        <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {error}
-        </div>
-      ) : null}
+      {loading ? <LoadingCards /> : error ? <ErrorNotice message={error} /> : (
+        <>
+          <section aria-label="Podsumowanie" className="grid gap-5 lg:grid-cols-3">
+            <div className="relative overflow-hidden rounded-2xl bg-blue-950 p-6 text-white sm:p-8 lg:col-span-2">
+              <p className="text-xs font-semibold uppercase tracking-widest text-blue-200">Najbliższe spotkanie</p>
+              <h2 className="mt-5 break-words text-2xl font-bold">{nextReservation?.title || "Przestrzeń na nowe plany"}</h2>
+              {nextReservation ? (
+                <>
+                  <p className="mt-3 text-sm leading-6 text-blue-100">{formatDateTime(nextReservation.startTime)} — {formatDateTime(nextReservation.endTime)}</p>
+                  <p className="mt-2 break-words text-sm text-blue-200">{nextReservation.room?.name ?? "Sala spotkania"}{nextReservation.room?.location ? ` · ${nextReservation.room.location}` : ""}</p>
+                  <Link prefetch={false} href={`/rooms/${nextReservation.roomId}`} className="mt-6 inline-block rounded-xl bg-white px-4 py-3 text-sm font-semibold text-blue-950 hover:bg-blue-50">Szczegóły sali <span aria-hidden="true" >→</span></Link>
+                </>
+              ) : (
+                <p className="mt-3 max-w-md text-sm leading-6 text-blue-100">Nie masz nadchodzących rezerwacji. Wybierz salę i zaplanuj kolejne spotkanie.</p>
+              )}
+            </div>
+            <div className="flex flex-col rounded-2xl border border-app-line bg-white p-6 sm:p-8">
+              <p className="text-sm font-medium text-app-muted">Aktywne sale</p>
+              <p className="mt-4 text-5xl font-bold tracking-tight text-app-ink">{activeRoomsCount}</p>
+              <p className="mt-3 text-sm leading-6 text-app-muted">Sale dostępne do rezerwacji. Wolny termin zależy od harmonogramu sali.</p>
+              <Link prefetch={false} href="/rooms" className="mt-auto pt-5 text-sm font-semibold text-blue-700">Przeglądaj sale <span aria-hidden="true" >→</span></Link>
+            </div>
+          </section>
 
-      <section className="mt-8">
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Najbliższe rezerwacje
-            </h2>
-
-            <Link prefetch={false}
-              href="/reservations"
-              className="text-sm font-medium text-blue-700 hover:text-blue-800"
-            >
-              Zobacz wszystkie
-            </Link>
-          </div>
-
-          <div className="mt-5 space-y-3">
-            {loading ? (
-              <div className="rounded-lg border border-dashed border-gray-300 p-5 text-sm text-gray-600">
-                Ładowanie rezerwacji...
+          <section className="mt-8 overflow-hidden rounded-2xl border border-app-line bg-white">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-app-line p-6">
+              <div>
+                <h2 className="text-lg font-bold">Najbliższe rezerwacje</h2>
+                <p className="mt-1 text-sm text-app-muted">Szybki podgląd Twoich kolejnych spotkań.</p>
               </div>
-            ) : nextReservations.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-gray-300 p-5 text-sm text-gray-600">
-                Brak aktywnych rezerwacji
-              </div>
+              <Link prefetch={false} href="/reservations" className="rounded-lg px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">Zobacz wszystkie</Link>
+            </div>
+            {nextReservations.length === 0 ? (
+              <div className="p-5"><EmptyState title="Twój kalendarz jest jeszcze pusty" description="Pierwsza rezerwacja pojawi się tutaj po zapisaniu spotkania.">
+                <Link prefetch={false} href="/rooms" className="text-sm font-semibold text-blue-700">Znajdź salę</Link>
+              </EmptyState></div>
             ) : (
-              nextReservations.map((reservation) => (
-                <div
-                  key={reservation.id}
-                  className="rounded-lg border border-gray-200 p-4"
-                >
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {reservation.title}
-                      </p>
-                      <p className="mt-1 text-sm text-gray-600">
-                        {reservation.room?.name ?? `Sala: ${reservation.roomId}`}
-                      </p>
+              <div className="divide-y divide-slate-100">
+                {nextReservations.map((reservation) => (
+                  <article key={reservation.id} className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center">
+                    <div className="w-fit shrink-0 rounded-xl bg-blue-50 px-4 py-3 text-center text-blue-900">
+                      <p className="text-xl font-bold">{new Date(reservation.startTime).toLocaleDateString("pl-PL", { day: "2-digit" })}</p>
+                      <p className="text-xs font-medium">{new Date(reservation.startTime).toLocaleDateString("pl-PL", { month: "short" })}</p>
                     </div>
-
-                    <span className="w-fit rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
-                      Aktywna
-                    </span>
-                  </div>
-
-                  <p className="mt-3 text-sm text-gray-600">
-                    {formatDateTime(reservation.startTime)} —{" "}
-                    {formatDateTime(reservation.endTime)}
-                  </p>
-                </div>
-              ))
+                    <div className="min-w-0 flex-1">
+                      <h3 className="break-words font-semibold">{reservation.title}</h3>
+                      <p className="mt-1 break-words text-sm text-app-muted">{reservation.room?.name ?? `Sala: ${reservation.roomId}`}</p>
+                      <p className="mt-2 text-sm text-app-muted">{formatDateTime(reservation.startTime)} — {formatDateTime(reservation.endTime)}</p>
+                    </div>
+                    <Link prefetch={false} href={`/rooms/${reservation.roomId}`} className="shrink-0 rounded-xl border border-app-line px-4 py-3 text-center text-sm font-medium hover:bg-slate-50">Zobacz salę</Link>
+                  </article>
+                ))}
+              </div>
             )}
-          </div>
-        </div>
-      </section>
-    </div>
+          </section>
+        </>
+      )}
+      <ReservationCalendar />
+    </main>
   );
 }

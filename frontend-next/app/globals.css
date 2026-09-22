@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@daypicker/react/style.css";
 @import "./theme.css";
 
 @layer base {
@@ -22,4 +23,97 @@
     cursor: wait;
     opacity: 0.65;
   }
+
+  :where(a, button, input, select, textarea, summary):focus-visible {
+    outline: 3px solid var(--color-blue-600);
+    outline-offset: 3px;
+  }
+
+  input,
+  select,
+  textarea {
+    min-width: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation: none !important;
+      scroll-behavior: auto !important;
+      transition: none !important;
+    }
+  }
 }
+
+/* nadpisanie react kalendarza */
+.reservation-calendar {
+  --rdp-accent-color: #1e3a8a;
+  --rdp-accent-background-color: #eff6ff;
+  --rdp-today-color: #1e3a8a;
+  --rdp-day_button-border-radius: 12px;
+  --rdp-day-height: 58px;
+  --rdp-day_button-height: 54px;
+  width: 100%;
+}
+
+.reservation-calendar .rdp-months,
+.reservation-calendar .rdp-month,
+.reservation-calendar .rdp-month_grid {
+  width: 100%;
+  max-width: none;
+}
+
+.reservation-calendar .rdp-month_grid {
+  table-layout: fixed;
+}
+
+.reservation-calendar .rdp-day {
+  width: calc(100% / 7);
+}
+
+.reservation-calendar .rdp-day_button {
+  flex-direction: column;
+  gap: 2px;
+  width: calc(100% - 4px);
+  margin: 2px;
+  font-size: 14px;
+}
+
+.reservation-calendar .reservation-calendar-reserved .rdp-day_button {
+  background: #f0fdfa;
+}
+
+.reservation-calendar .rdp-selected .rdp-day_button {
+  background: #eff6ff;
+}
+
+.reservation-calendar-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #0f766e;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.reservation-calendar .rdp-day_button:focus-visible,
+.reservation-calendar .rdp-button_previous:focus-visible,
+.reservation-calendar .rdp-button_next:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 1px;
+}
+
+@media (max-width: 400px) {
+  .reservation-calendar .rdp-caption_label {
+    font-size: 16px;
+  }
+}
+
+/* END nadpisanie react kalendarza */

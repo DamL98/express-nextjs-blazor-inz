@@ -28,12 +28,12 @@ export function AccountSecurityCard() {
       if (action === "link") {
         const result = await apiRequest<{ authorizationUrl: string }>("/auth/google/link",
           {
-          method: "POST",
-          body: JSON.stringify({
-            password: data.get("currentPassword"),
-            redirectTo: window.location.href
-          }),
-        });
+            method: "POST",
+            body: JSON.stringify({
+              password: data.get("currentPassword"),
+              redirectTo: window.location.href
+            }),
+          });
         window.location.assign(result.authorizationUrl);
       } else {
         await apiRequest(
@@ -41,32 +41,53 @@ export function AccountSecurityCard() {
           {
             method: "POST",
             body: JSON.stringify(
-              { currentPassword: data.get("currentPassword"),
+              {
+                currentPassword: data.get("currentPassword"),
                 password: data.get("password")
               })
           }
         );
-        form.reset(); setMessage("Haslo zmienione. Pozostale sesje zostaly uniewaznione.");
+        form.reset(); setMessage("Hasło zmienione");
       }
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Operacja nie powiodla sie");
+      setError(error instanceof Error ? error.message : "Operacja nie powiodła się");
     }
     finally {
       setBusy(false);
     }
   }
 
-  return <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-    <h2 className="text-lg font-semibold">Konto i logowanie</h2>
-    <p className="my-3 text-sm">{user.googleId ? "Google jest polaczone. Mozesz logowac sie haslem lub przez Google." : "Polacz Google, aby dodac drugi sposob logowania. Dostep do kalendarza wlaczysz osobno ponizej."}</p>
-    {query.get("googleLink") && <p role="status" className="mb-3">{query.get("googleLink") === "success" ? "Konto Google polaczone." : "Nie udalo sie polaczyc Google. Konto moze juz nalezec do innego uzytkownika; sprobuj ponownie."}</p>}
-    <form onSubmit={submit} className="max-w-md space-y-3">
-      <label className="block text-sm">Aktualne haslo<input name="currentPassword" type="password" autoComplete="current-password" required maxLength={128} className="mt-1 w-full rounded border p-2" /></label>
-      {!user.googleId && <button type="submit" value="link" disabled={busy} className="rounded bg-blue-600 px-4 py-2 text-white">Polacz konto Google</button>}
-      <label className="block text-sm">Nowe haslo (co najmniej 15 znakow)<input name="password" type="password" autoComplete="new-password" minLength={15} maxLength={128} className="mt-1 w-full rounded border p-2" /></label>
-      <button type="submit" value="password" disabled={busy} className="rounded border px-4 py-2">Zmien haslo</button>
-    </form>
-    {message && <p role="status" className="mt-3 text-green-700">{message}</p>}
-    {error && <p role="alert" className="mt-3 text-red-700">{error}</p>}
-  </section>;
+  return (
+    <section className="rounded-2xl border border-app-line bg-white p-6 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-widest text-blue-700">Bezpieczeństwo</p>
+      <h2 className="mt-2 text-xl font-bold">Konto i logowanie</h2>
+
+      <p className="mt-3 max-w-xl text-sm leading-6 text-app-muted">{user.googleId ? "Google jest połączone. Możesz logować się hasłem lub przez Google." : "Połącz Google, aby dodać drugi sposób logowania. Dostęp do kalendarza włączysz osobno."}</p>
+
+      {query.get("googleLink") && <p role="status" className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">{query.get("googleLink") === "success" ? "Konto Google połączone." : "Nie udało się połączyć Google. Konto może już należeć do innego użytkownika; spróbuj ponownie."}</p>}
+
+
+      <form onSubmit={submit} className="mt-6 max-w-xl space-y-5">
+        <label className="block text-sm font-medium">Aktualne hasło
+          <input name="currentPassword" type="password" autoComplete="current-password" required maxLength={128} className="mt-2 min-h-11 w-full rounded-xl border border-app-line px-3 py-2" />
+        </label>
+
+        {!user.googleId && <button type="submit" value="link" disabled={busy} className="rounded-xl bg-blue-900 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-800">Połącz konto Google</button>}
+
+        <div className="border-t border-app-line pt-5">
+          <label className="block text-sm font-medium">Nowe hasło
+            <input name="password" type="password" autoComplete="new-password" minLength={15} maxLength={128} aria-describedby="password-hint" className="mt-2 min-h-11 w-full rounded-xl border border-app-line px-3 py-2" />
+          </label>
+          <p id="password-hint" className="mt-2 text-xs text-app-muted">Min. 15 znaków</p>
+        </div>
+
+        <button type="submit" value="password" disabled={busy} className="rounded-xl border border-app-line px-4 py-3 text-sm font-semibold hover:bg-slate-50">
+          {busy ? "Proszę czekać…" : "Zmień hasło"}
+        </button>
+      </form>
+
+      {message && <p role="status" className="mt-4 rounded-xl bg-teal-50 p-4 text-sm text-teal-800">{message}</p>}
+      {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">{error}</p>}
+    </section>
+  );
 }
