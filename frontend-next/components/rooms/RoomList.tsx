@@ -1,5 +1,6 @@
 "use client";
 
+import { AppIcon } from "@/components/ui/AppIcon";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -41,7 +42,7 @@ export function RoomList({ rooms }: RoomListProps) {
       <section aria-label="Wyszukiwanie sal" className="mb-6 rounded-2xl border border-app-line bg-white p-5 shadow-sm">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <label className="text-sm font-medium text-app-ink">
-            Nazwa lub lokalizacja
+            <AppIcon name="search" />Nazwa lub lokalizacja
             <input type="search" value={search} onChange={(event) => updateFilter("search", event.target.value)} placeholder="Np. sala A, budynek B…" className="mt-2 min-h-11 w-full rounded-xl border border-app-line px-3 py-2 font-normal" />
           </label>
 
@@ -84,21 +85,21 @@ export function RoomList({ rooms }: RoomListProps) {
             <article key={room.id} className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-app-line bg-white shadow-sm transition hover:border-blue-300 hover:shadow-md">
 
               <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-4">
-                <span aria-hidden="true" className="grid h-11 w-11 place-items-center rounded-xl border border-blue-100 bg-white text-xl text-blue-800">▦</span>
-                <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-app-ink">{room.capacity} miejsc</span>
+                <span aria-hidden="true" className="grid h-11 w-11 place-items-center rounded-xl border border-blue-100 bg-white text-xl text-blue-800"><AppIcon name="building-2" className="size-6" /></span>
+                <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-app-ink"><AppIcon name="users" />{room.capacity} miejsc</span>
               </div>
 
               <div className="flex flex-1 flex-col p-5">
                 <h2 className="break-words text-lg font-bold text-app-ink">{room.name}</h2>
 
-                <p className="mt-1 break-words text-sm text-app-muted">{room.location}</p>
+                <p className="mt-1 break-words text-sm text-app-muted"><AppIcon name="map-pin" />{room.location}</p>
                 <p className="mt-4 line-clamp-2 text-sm leading-6 text-app-muted">{room.description || "Sprawdź szczegóły sali i wybierz termin swojego spotkania."}</p>
                 <p className={`mt-5 text-xs font-medium ${room.isActive ? "text-teal-700" : "text-app-muted"}`}>
                   {room.isActive ? "Aktywna · termin sprawdzisz przy rezerwacji" : "Wyłączona z rezerwacji"}
                 </p>
 
                 <Link prefetch={false} href={`/rooms/${room.id}${searchParams.size ? `?${searchParams.toString()}` : ""}`} className={`mt-5 block rounded-xl px-4 py-3 text-center text-sm font-semibold ${room.isActive ? "bg-blue-900 text-white hover:bg-blue-800" : "border border-app-line text-app-muted hover:bg-slate-50"}`}>
-                  {room.isActive ? "Wybierz termin" : "Zobacz szczegóły"}<span className="sr-only">: {room.name}</span>
+                  <AppIcon name={room.isActive ? "calendar-plus" : "arrow-right"} />{room.isActive ? "Wybierz termin" : "Zobacz szczegóły"}<span className="sr-only">: {room.name}</span>
                 </Link>
               </div>
             </article>

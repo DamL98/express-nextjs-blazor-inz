@@ -1,5 +1,5 @@
 import { ReservationStatus } from "@prisma/client"
-import { z } from "zod"
+import { z } from "../../config/zod.js"
 
 export const getAdminReservationsQuerySchema = z.object({
   roomId: z.uuid("Błędne room id.").optional(),

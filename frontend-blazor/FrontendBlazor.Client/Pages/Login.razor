@@ -34,14 +34,14 @@
                 @if (_mode == "register")
                 {
                     <label class="block text-sm font-semibold text-app-ink">Imie i nazwisko
-                        <input @bind="_fullName" required maxlength="100" autocomplete="name" class="mt-2 min-h-control w-full rounded-control border border-app-line px-3" />
+                        <input @bind="_fullName" required minlength="3" maxlength="32" autocomplete="name" class="mt-2 min-h-control w-full rounded-control border border-app-line px-3" />
                     </label>
                 }
                 <label class="block text-sm font-semibold text-app-ink">
                     E-mail
                     <input
                         class="mt-2 min-h-control w-full rounded-control border border-app-line bg-white px-3 text-base font-normal text-app-ink outline-none focus:border-app-accent"
-                        type="email" @bind="_email" required maxlength="254"
+                        type="email" @bind="_email" required minlength="3" maxlength="254"
                         autocomplete="email"
                         placeholder="uzytkownik@example.com" />
                 </label>
@@ -52,9 +52,9 @@
                     Haslo
                     <input
                         class="mt-2 min-h-control w-full rounded-control border border-app-line bg-white px-3 text-base font-normal text-app-ink outline-none focus:border-app-accent"
-                        type="password" @bind="_password" required minlength="@(_mode == "register" ? 15 : 1)" maxlength="128"
+                        type="password" @bind="_password" required minlength="12" maxlength="128"
                         autocomplete="@(_mode == "register" ? "new-password" : "current-password")"
-                        placeholder="@(_mode == "register" ? "Co najmniej 15 znakow" : "Wprowadz haslo")" />
+                        placeholder="@(_mode == "register" ? "Co najmniej 12 znakow" : "Wprowadz haslo")" />
                 </label>
                 }
 

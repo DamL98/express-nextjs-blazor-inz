@@ -90,6 +90,9 @@ async function checkServices() {
   if (!api.production || !api.isolated) {
     throw new Error("Express API nie korzysta z izolowanej bazy pomiarowej");
   }
+  if (api.rateLimitEnabled !== false) {
+    throw new Error("Pomiary wydajności wymagają RATE_LIMIT_ENABLED=false w izolowanym API");
+  }
 
   return { next, blazor, api };
 }

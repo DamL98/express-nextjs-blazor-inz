@@ -44,8 +44,8 @@ function AuthActionForm() {
   return <main className="mx-auto max-w-lg p-8">
     <h1 className="mb-6 text-2xl font-bold">{action === "verify-email" ? "Potwierdz adres e-mail" : "Ustaw nowe haslo"}</h1>
     {token && ["verify-email", "reset-password"].includes(action) ? <form onSubmit={submit} className="space-y-4">
-      {action === "reset-password" && <label className="block">Nowe haslo (co najmniej 15 znakow)
-        <input className="mt-2 w-full rounded border p-3" type="password" name="password" autoComplete="new-password" minLength={15} maxLength={128} required />
+      {action === "reset-password" && <label className="block">Nowe haslo (co najmniej 12 znakow)
+        <input className="mt-2 w-full rounded border p-3" type="password" name="password" autoComplete="new-password" minLength={12} maxLength={128} required />
       </label>}
       <button className="rounded bg-blue-600 px-4 py-2 text-white" disabled={busy}>{busy ? "Prosze czekac..." : "Potwierdz"}</button>
     </form> : <p>{message || "Otworz pelny link z wiadomosci e-mail."}</p>

@@ -1,5 +1,5 @@
 import { ReservationStatus } from "@prisma/client"
-import { z } from "zod"
+import { z } from "../../config/zod.js"
 
 export const reservationIdParamsSchema = z.object({
   id: z.uuid("Błędne reservation id."),

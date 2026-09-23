@@ -5,6 +5,7 @@ function read(name) {
 export function getApplicationEnvironment() {
   return {
     port: Number(read("PORT") || 4000),
+    apiPublicUrl: read("API_PUBLIC_URL") || `http://localhost:${Number(read("PORT") || 4000)}`,
     isProduction: read("NODE_ENV") === "production",
     frontendNextUrl: read("FRONTEND_NEXT_URL") || "http://localhost:3000",
     frontendBlazorUrl: read("FRONTEND_BLAZOR_URL") || "http://localhost:5173",

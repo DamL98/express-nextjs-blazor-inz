@@ -14,8 +14,8 @@
         <form @onsubmit="SubmitAsync" @onsubmit:preventDefault class="space-y-4">
             @if (_action == "reset-password")
             {
-                <label class="block">Nowe haslo (co najmniej 15 znakow)
-                    <input class="mt-2 w-full rounded border p-3" type="password" @bind="_password" autocomplete="new-password" minlength="15" maxlength="128" required />
+                <label class="block">Nowe haslo (co najmniej 12 znakow)
+                    <input class="mt-2 w-full rounded border p-3" type="password" @bind="_password" autocomplete="new-password" minlength="12" maxlength="128" required />
                 </label>
             }
             <button class="rounded bg-blue-600 px-4 py-2 text-white" disabled="@_busy">@(_busy ? "Prosze czekac..." : "Potwierdz")</button>

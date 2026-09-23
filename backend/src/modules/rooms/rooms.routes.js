@@ -12,8 +12,6 @@ import {
   roomAvailabilityQuerySchema,
   roomIdParamsSchema,
 } from "./rooms.validation.js";
-///////////////////////////////////////////////////////////////////////////////////////
-
 
 const router = Router();
 

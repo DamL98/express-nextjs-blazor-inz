@@ -1,5 +1,7 @@
 "use client";
 
+
+import { AppIcon } from "@/components/ui/AppIcon";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
@@ -60,7 +62,7 @@ export function AccountSecurityCard() {
   return (
     <section className="rounded-2xl border border-app-line bg-white p-6 shadow-sm">
       <p className="text-xs font-semibold uppercase tracking-widest text-blue-700">Bezpieczeństwo</p>
-      <h2 className="mt-2 text-xl font-bold">Konto i logowanie</h2>
+      <h2 className="mt-2 text-xl font-bold"><AppIcon name="shield-check" />Konto i logowanie</h2>
 
       <p className="mt-3 max-w-xl text-sm leading-6 text-app-muted">{user.googleId ? "Google jest połączone. Możesz logować się hasłem lub przez Google." : "Połącz Google, aby dodać drugi sposób logowania. Dostęp do kalendarza włączysz osobno."}</p>
 
@@ -68,17 +70,17 @@ export function AccountSecurityCard() {
 
 
       <form onSubmit={submit} className="mt-6 max-w-xl space-y-5">
-        <label className="block text-sm font-medium">Aktualne hasło
-          <input name="currentPassword" type="password" autoComplete="current-password" required maxLength={128} className="mt-2 min-h-11 w-full rounded-xl border border-app-line px-3 py-2" />
+        <label className="block text-sm font-medium"><AppIcon name="lock-keyhole" />Aktualne hasło
+          <input name="currentPassword" type="password" autoComplete="current-password" required minLength={12} maxLength={128} className="mt-2 min-h-11 w-full rounded-xl border border-app-line px-3 py-2" />
         </label>
 
-        {!user.googleId && <button type="submit" value="link" disabled={busy} className="rounded-xl bg-blue-900 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-800">Połącz konto Google</button>}
+        {!user.googleId && <button type="submit" value="link" disabled={busy} className="rounded-xl bg-blue-900 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-800"><AppIcon name="link" />Połącz konto Google</button>}
 
         <div className="border-t border-app-line pt-5">
-          <label className="block text-sm font-medium">Nowe hasło
-            <input name="password" type="password" autoComplete="new-password" minLength={15} maxLength={128} aria-describedby="password-hint" className="mt-2 min-h-11 w-full rounded-xl border border-app-line px-3 py-2" />
+          <label className="block text-sm font-medium"><AppIcon name="lock-keyhole" />Nowe hasło
+            <input name="password" type="password" autoComplete="new-password" minLength={12} maxLength={128} aria-describedby="password-hint" className="mt-2 min-h-11 w-full rounded-xl border border-app-line px-3 py-2" />
           </label>
-          <p id="password-hint" className="mt-2 text-xs text-app-muted">Min. 15 znaków</p>
+          <p id="password-hint" className="mt-2 text-xs text-app-muted">Min. 12 znaków</p>
         </div>
 
         <button type="submit" value="password" disabled={busy} className="rounded-xl border border-app-line px-4 py-3 text-sm font-semibold hover:bg-slate-50">

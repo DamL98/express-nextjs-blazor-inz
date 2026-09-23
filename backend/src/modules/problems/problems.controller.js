@@ -1,10 +1,6 @@
-import { Router } from "express";
+import { Problems } from "../../errors/problems.js";
 
-import { Problems } from "./problems.js";
-
-const router = Router();
-
-router.get("/:slug", (req, res, next) => {
+export function getProblemDefinition(req, res, next) {
   const type = `/problems/${req.params.slug}`;
   const definition = Object.values(Problems).find(
     (problem) => problem.type === type,
@@ -31,6 +27,4 @@ router.get("/:slug", (req, res, next) => {
           </main>
         </body>
       </html>`);
-});
-
-export default router;
+}

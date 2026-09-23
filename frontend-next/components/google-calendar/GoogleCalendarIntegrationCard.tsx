@@ -1,5 +1,7 @@
 "use client";
 
+
+import { AppIcon } from "@/components/ui/AppIcon";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
@@ -88,7 +90,7 @@ export function GoogleCalendarIntegrationCard() {
     <section data-measurement-calendar={loading ? "loading" : error ? "error" : "ready"} className="overflow-hidden rounded-2xl border border-app-line bg-white shadow-sm">
       <div className="border-b border-app-line bg-slate-50/70 p-6">
         <p className="text-xs font-semibold uppercase tracking-widest text-blue-700">Integracje</p>
-        <h2 className="mt-2 text-xl font-bold">Kalendarz Google</h2>
+        <h2 className="mt-2 text-xl font-bold"><AppIcon name="calendar-days" />Kalendarz Google</h2>
         <p className="mt-2 max-w-xl text-sm leading-6 text-app-muted">Terminy spotkań również w twoim kalendarzu.</p>
         <p className="mt-2 max-w-xl text-sm leading-6 text-app-muted">Połączenie kalendarza jest za osobną zgodą.</p>
       </div>
@@ -100,11 +102,11 @@ export function GoogleCalendarIntegrationCard() {
           <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">
             <p className="font-semibold">Nie można sprawdzić połączenia</p>
             <p className="mt-2">{error}</p>
-            <button type="button" onClick={() => window.location.reload()} className="mt-3 rounded-lg border border-red-200 bg-white px-4 py-2 font-medium">Spróbuj ponownie</button>
+            <button type="button" onClick={() => window.location.reload()} className="mt-3 rounded-lg border border-red-200 bg-white px-4 py-2 font-medium"><AppIcon name="refresh-cw" />Spróbuj ponownie</button>
           </div>
         ) : status?.connected ? (
           <div className="rounded-xl border border-teal-200 bg-teal-50/60 p-5">
-            <span className="rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-900">Kalendarz połączony</span>
+            <span className="rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-900"><AppIcon name="circle-check" />Kalendarz połączony</span>
             <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-app-muted">Konto kalendarza</dt>
@@ -125,7 +127,7 @@ export function GoogleCalendarIntegrationCard() {
             <p className="mt-2 text-sm leading-6 text-app-muted">
               {user?.googleId ? "Konto Google jest już połączone z aplikacją. Udziel osobnej zgody, aby dodawać nowe rezerwacje do kalendarza." : "W sekcji konta i logowania podaj aktualne hasło i połącz Google. Następnie możesz włączyć integrację kalendarza."}
             </p>
-            {user?.googleId && <button type="button" onClick={handleConnect} className="mt-4 rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800">Włącz integrację kalendarza</button>}
+            {user?.googleId && <button type="button" onClick={handleConnect} className="mt-4 rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800"><AppIcon name="link" />Włącz integrację kalendarza</button>}
           </div>
         )}
         <div className="mt-6 grid gap-4 text-sm sm:grid-cols-2">

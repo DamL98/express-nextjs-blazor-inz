@@ -2,28 +2,34 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AppIcon, type IconName } from "@/components/ui/AppIcon";
 
 type NavigationItem = {
   label: string;
   href: string;
+  icon: IconName;
 };
 
 const navigationItems: NavigationItem[] = [
   {
     label: "Przegląd",
     href: "/",
+    icon: "layout-dashboard",
   },
   {
     label: "Sale",
     href: "/rooms",
+    icon: "building-2",
   },
   {
     label: "Moje rezerwacje",
     href: "/reservations",
+    icon: "calendar-days",
   },
   {
     label: "Ustawienia",
     href: "/settings",
+    icon: "settings",
   },
 ];
 
@@ -59,11 +65,12 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               aria-current={active ? "page" : undefined}
-              className={`block rounded-xl px-4 py-3 text-sm font-medium transition ${active
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${active
                   ? "bg-blue-900 text-white shadow-sm"
                   : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
                 }`}
             >
+              <AppIcon name={item.icon} className="size-5" />
               {item.label}
             </Link>
           );

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { AppIcon } from "@/components/ui/AppIcon";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
@@ -80,7 +82,7 @@ export function ReservationsList({ initialReservations }: ReservationsListProps)
   if (reservations.length === 0) {
     return (
       <EmptyState title="Nie masz jeszcze rezerwacji" description="Znajdź salę dopasowaną do spotkania i wybierz pierwszy termin.">
-        <Link prefetch={false} href="/rooms" className="inline-block rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800">Zarezerwuj salę</Link>
+        <Link prefetch={false} href="/rooms" className="inline-block rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800"><AppIcon name="calendar-plus" />Zarezerwuj salę</Link>
       </EmptyState>
     );
   }
@@ -142,7 +144,7 @@ export function ReservationsList({ initialReservations }: ReservationsListProps)
 
                   {reservation.status === "ACTIVE" && (
                     <button type="button" disabled={pendingId !== null} onClick={() => { setErrorMessage(null); setSelectedReservation(reservation); }} className="shrink-0 rounded-xl border border-red-200 px-4 py-3 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60">
-                      {pendingId === reservation.id ? "Anulowanie…" : "Anuluj rezerwację"}
+                      <AppIcon name="calendar-x" />{pendingId === reservation.id ? "Anulowanie…" : "Anuluj rezerwację"}
                     </button>
                   )}
 

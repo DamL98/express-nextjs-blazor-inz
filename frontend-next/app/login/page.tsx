@@ -1,5 +1,7 @@
 "use client";
 
+
+import { AppIcon } from "@/components/ui/AppIcon";
 import { useState } from "react";
 
 import { useSearchParams } from "next/navigation";
@@ -80,27 +82,27 @@ export default function LoginPage() {
         <form aria-label="Logowanie lokalne" onSubmit={submit}>
           <fieldset className="space-y-4" disabled={submitting}>
             {mode === "register" && <label className="block text-sm font-semibold text-app-ink">Imie i nazwisko
-              <input name="fullName" required maxLength={100} autoComplete="name" className="mt-2 min-h-control w-full rounded-control border border-app-line px-3" />
+              <input name="fullName" required minLength={3} maxLength={32} autoComplete="name" className="mt-2 min-h-control w-full rounded-control border border-app-line px-3" />
             </label>}
             <label className="block text-sm font-semibold text-app-ink">
-              E-mail
+              <AppIcon name="mail" />E-mail
               <input
                 className="mt-2 min-h-control w-full rounded-control border border-app-line bg-white px-3 text-base font-normal text-app-ink outline-none focus:border-app-accent"
                 type="email"
-                name="email" required maxLength={254}
+                name="email" required minLength={3} maxLength={254}
                 autoComplete="email"
                 placeholder="uzytkownik@example.com"
               />
             </label>
 
             {(mode === "login" || mode === "register") && <label className="block text-sm font-semibold text-app-ink">
-              Haslo
+              <AppIcon name="lock-keyhole" />Haslo
               <input
                 className="mt-2 min-h-control w-full rounded-control border border-app-line bg-white px-3 text-base font-normal text-app-ink outline-none focus:border-app-accent"
                 type="password"
-                name="password" required minLength={mode === "register" ? 15 : 1} maxLength={128}
+                name="password" required minLength={12} maxLength={128}
                 autoComplete={mode === "register" ? "new-password" : "current-password"}
-                placeholder={mode === "register" ? "Co najmniej 15 znakow" : "Wprowadz haslo"}
+                placeholder={mode === "register" ? "Co najmniej 12 znakow" : "Wprowadz haslo"}
               />
             </label>}
 

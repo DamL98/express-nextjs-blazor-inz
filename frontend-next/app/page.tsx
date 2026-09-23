@@ -1,5 +1,7 @@
 "use client";
 
+
+import { AppIcon } from "@/components/ui/AppIcon";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -61,7 +63,7 @@ export default function DashboardPage() {
       data-measurement-state={loading ? "loading" : error ? "error" : "ready"}
     >
       <PageHeader title="Twój plan spotkań" description="Najbliższe rezerwacje i dostęp do sal — wszystko, czego potrzebujesz na początek dnia.">
-        <Link prefetch={false} href="/rooms" className="inline-block rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800">Zarezerwuj salę</Link>
+        <Link prefetch={false} href="/rooms" className="inline-block rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800"><AppIcon name="calendar-plus" />Zarezerwuj salę</Link>
       </PageHeader>
 
       {loading ? <LoadingCards /> : error ? <ErrorNotice message={error} /> : (
@@ -74,7 +76,7 @@ export default function DashboardPage() {
                 <>
                   <p className="mt-3 text-sm leading-6 text-blue-100">{formatDateTime(nextReservation.startTime)} — {formatDateTime(nextReservation.endTime)}</p>
                   <p className="mt-2 break-words text-sm text-blue-200">{nextReservation.room?.name ?? "Sala spotkania"}{nextReservation.room?.location ? ` · ${nextReservation.room.location}` : ""}</p>
-                  <Link prefetch={false} href={`/rooms/${nextReservation.roomId}`} className="mt-6 inline-block rounded-xl bg-white px-4 py-3 text-sm font-semibold text-blue-950 hover:bg-blue-50">Szczegóły sali <span aria-hidden="true" >→</span></Link>
+                  <Link prefetch={false} href={`/rooms/${nextReservation.roomId}`} className="mt-6 inline-block rounded-xl bg-white px-4 py-3 text-sm font-semibold text-blue-950 hover:bg-blue-50">Szczegóły sali <AppIcon name="arrow-right" className="ml-2 inline-block size-4 align-[-0.15em]" /></Link>
                 </>
               ) : (
                 <p className="mt-3 max-w-md text-sm leading-6 text-blue-100">Nie masz nadchodzących rezerwacji. Wybierz salę i zaplanuj kolejne spotkanie.</p>
@@ -84,14 +86,14 @@ export default function DashboardPage() {
               <p className="text-sm font-medium text-app-muted">Aktywne sale</p>
               <p className="mt-4 text-5xl font-bold tracking-tight text-app-ink">{activeRoomsCount}</p>
               <p className="mt-3 text-sm leading-6 text-app-muted">Sale dostępne do rezerwacji. Wolny termin zależy od harmonogramu sali.</p>
-              <Link prefetch={false} href="/rooms" className="mt-auto pt-5 text-sm font-semibold text-blue-700">Przeglądaj sale <span aria-hidden="true" >→</span></Link>
+              <Link prefetch={false} href="/rooms" className="mt-auto pt-5 text-sm font-semibold text-blue-700">Przeglądaj sale <AppIcon name="arrow-right" className="ml-2 inline-block size-4 align-[-0.15em]" /></Link>
             </div>
           </section>
 
           <section className="mt-8 overflow-hidden rounded-2xl border border-app-line bg-white">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-app-line p-6">
               <div>
-                <h2 className="text-lg font-bold">Najbliższe rezerwacje</h2>
+                <h2 className="text-lg font-bold"><AppIcon name="calendar-days" />Najbliższe rezerwacje</h2>
                 <p className="mt-1 text-sm text-app-muted">Szybki podgląd Twoich kolejnych spotkań.</p>
               </div>
               <Link prefetch={false} href="/reservations" className="rounded-lg px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">Zobacz wszystkie</Link>

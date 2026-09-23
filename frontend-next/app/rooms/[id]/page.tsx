@@ -1,5 +1,7 @@
 "use client";
 
+
+import { AppIcon } from "@/components/ui/AppIcon";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -65,7 +67,7 @@ function RoomDetails({ id }: { id: string }) {
       data-measurement-page="room-details"
       data-measurement-state={measurementState}
     >
-      <Link prefetch={false} href={roomsUrl} className="mb-6 inline-block rounded-lg py-2 text-sm font-semibold text-blue-700 hover:underline">← Wróć do listy sal</Link>
+      <Link prefetch={false} href={roomsUrl} className="mb-6 inline-block rounded-lg py-2 text-sm font-semibold text-blue-700 hover:underline"><AppIcon name="arrow-left" />Wróć do listy sal</Link>
 
       {isLoading ? <LoadingCards count={2} /> : errorMessage || !room ? (
         <ErrorNotice message={errorMessage ?? "Nie znaleziono sali"} />
@@ -79,7 +81,7 @@ function RoomDetails({ id }: { id: string }) {
                 <h1 className="mt-4 break-words text-3xl font-bold tracking-tight">{room.name}</h1>
                 <p className="mt-3 break-words text-sm text-blue-100">{room.location}</p>
               </div>
-              <span aria-hidden="true" className="text-4xl text-blue-300">▦</span>
+              <span aria-hidden="true" className="text-4xl text-blue-300"><AppIcon name="building-2" className="size-10" /></span>
             </div>
 
             <div className="p-7">

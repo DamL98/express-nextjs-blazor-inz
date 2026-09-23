@@ -1,11 +1,15 @@
-import { getGoogleOAuthEnvironment } from "../config/environment.js";
+import { getApplicationEnvironment, getGoogleOAuthEnvironment } from "../config/environment.js";
 import { ApiError } from "../errors/apiError.js";
 import { Problems } from "../errors/problems.js";
 
 export function csrfProtection(req, _res, next) {
   if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
   const origin = req.get("origin");
-  const allowed = getGoogleOAuthEnvironment().allowedFrontendOrigins.map((value) => new URL(value).origin);
+  // Swagger UI korzysta z jawnie skonfigurowanego originu API, nie z nagłówka Host.
+  const allowed = [
+    ...getGoogleOAuthEnvironment().allowedFrontendOrigins,
+    getApplicationEnvironment().apiPublicUrl,
+  ].map((value) => new URL(value).origin);
   if (origin) return allowed.includes(origin) ? next() : next(new ApiError(Problems.FORBIDDEN));
   if (req.get("sec-fetch-site") === "cross-site") {
     return next(new ApiError(Problems.FORBIDDEN));

@@ -12,12 +12,12 @@
         <p class="my-3 text-sm">@(Auth.User.GoogleId is not null ? "Google jest polaczone. Mozesz logowac sie haslem lub przez Google." : "Polacz Google, aby dodac drugi sposob logowania. Dostep do kalendarza wlaczysz osobno ponizej.")</p>
         @if (_callbackMessage is not null) { <p role="status" class="mb-3">@_callbackMessage</p> }
         <form @onsubmit="ChangePasswordAsync" @onsubmit:preventDefault class="max-w-md space-y-3">
-            <label class="block text-sm">Aktualne haslo<input @bind="_currentPassword" type="password" autocomplete="current-password" required maxlength="128" class="mt-1 w-full rounded border p-2" /></label>
+            <label class="block text-sm">Aktualne haslo<input @bind="_currentPassword" type="password" autocomplete="current-password" required minlength="12" maxlength="128" class="mt-1 w-full rounded border p-2" /></label>
             @if (Auth.User.GoogleId is null)
             {
                 <button type="button" @onclick="LinkAsync" disabled="@_busy" class="rounded bg-blue-600 px-4 py-2 text-white">Polacz konto Google</button>
             }
-            <label class="block text-sm">Nowe haslo (co najmniej 15 znakow)<input @bind="_password" type="password" autocomplete="new-password" minlength="15" maxlength="128" required class="mt-1 w-full rounded border p-2" /></label>
+            <label class="block text-sm">Nowe haslo (co najmniej 12 znakow)<input @bind="_password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required class="mt-1 w-full rounded border p-2" /></label>
             <button type="submit" disabled="@_busy" class="rounded border px-4 py-2">Zmien haslo</button>
         </form>
         @if (_message is not null) { <p role="status" class="mt-3 text-green-700">@_message</p> }

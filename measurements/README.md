@@ -51,6 +51,7 @@ DIRECT_URL=postgresql://measurement:local-measurement-only@localhost:5434/inz_me
 FRONTEND_NEXT_URL=http://localhost:3100
 FRONTEND_BLAZOR_URL=http://localhost:5177
 MEASUREMENT_DATABASE_ONLY=true
+RATE_LIMIT_ENABLED=false
 ```
 
 Next.js musi zostać zbudowany z:

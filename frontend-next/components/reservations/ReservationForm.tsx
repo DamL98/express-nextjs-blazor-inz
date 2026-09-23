@@ -1,5 +1,7 @@
 "use client";
 
+
+import { AppIcon } from "@/components/ui/AppIcon";
 import { type SubmitEvent, useState } from "react";
 import Link from "next/link";
 
@@ -151,7 +153,7 @@ export function ReservationForm({ roomId, roomName }: ReservationFormProps) {
   return (
     <section className="rounded-2xl border border-app-line bg-white p-5 shadow-sm sm:p-7">
       <p className="text-xs font-semibold uppercase tracking-widest text-blue-700">Zaplanuj spotkanie</p>
-      <h2 className="mt-2 text-xl font-bold">Zarezerwuj salę</h2>
+      <h2 className="mt-2 text-xl font-bold"><AppIcon name="calendar-plus" />Zarezerwuj salę</h2>
       <p className="mt-2 text-sm leading-6 text-app-muted">Wybierz termin i nadaj spotkaniu nazwę. Dostępność sprawdzimy przy zapisie.</p>
 
       {successMessage && submittedForm && (
@@ -188,7 +190,7 @@ export function ReservationForm({ roomId, roomName }: ReservationFormProps) {
           {invalidRange && <p id="reservation-range-error" role="alert" className="text-sm text-red-700">Koniec musi przypadać po początku rezerwacji.</p>}
 
           <div>
-            <p className="text-xs font-medium text-app-muted">Szybki wybór czasu trwania</p>
+            <p className="text-xs font-medium text-app-muted"><AppIcon name="clock" />Szybki wybór czasu trwania</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {[{ minutes: 30, label: "30 min" }, { minutes: 60, label: "1 godz." }, { minutes: 120, label: "2 godz." }].map((option) => (
                 <button key={option.minutes} type="button" disabled={!start} aria-pressed={duration === option.minutes} onClick={() => setDuration(option.minutes)} className={`rounded-lg border px-3 py-2 text-sm font-medium ${duration === option.minutes ? "border-blue-300 bg-blue-50 text-blue-800" : "border-app-line hover:bg-slate-50"}`}>{option.label}</button>
@@ -223,7 +225,7 @@ export function ReservationForm({ roomId, roomName }: ReservationFormProps) {
           {errorMessage && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{errorMessage}</div>}
 
           <button type="submit" disabled={isSubmitting || invalidRange} className="min-h-12 w-full rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60">
-            {isSubmitting ? "Tworzenie…" : "Utwórz rezerwację"}
+            <AppIcon name="calendar-plus" />{isSubmitting ? "Tworzenie…" : "Utwórz rezerwację"}
           </button>
 
         </fieldset>

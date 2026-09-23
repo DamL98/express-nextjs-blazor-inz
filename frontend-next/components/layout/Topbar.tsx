@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
+import { AppIcon, type IconName } from "@/components/ui/AppIcon";
 
 export function Topbar() {
   const router = useRouter();
@@ -36,6 +37,7 @@ export function Topbar() {
             onClick={() => void handleLogout()}
             className="min-h-11 rounded-xl border border-app-line px-4 py-2 text-sm font-medium hover:bg-slate-50"
           >
+            <AppIcon name="log-out" />
             Wyloguj
           </button>
 
@@ -44,10 +46,10 @@ export function Topbar() {
 
       <nav aria-label="Nawigacja mobilna" className="mt-4 grid grid-cols-2 gap-2 border-t border-app-line pt-4 sm:grid-cols-4 md:hidden">
         {[
-          { href: "/", label: "Przegląd" },
-          { href: "/rooms", label: "Sale" },
-          { href: "/reservations", label: "Moje rezerwacje" },
-          { href: "/settings", label: "Ustawienia" },
+          { href: "/", label: "Przegląd", icon: "layout-dashboard" },
+          { href: "/rooms", label: "Sale", icon: "building-2" },
+          { href: "/reservations", label: "Moje rezerwacje", icon: "calendar-days" },
+          { href: "/settings", label: "Ustawienia", icon: "settings" },
         ].map((item) => {
           const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
 
@@ -55,6 +57,7 @@ export function Topbar() {
             <Link prefetch={false} key={item.href} href={item.href} aria-current={active ? "page" : undefined}
               className={`rounded-lg px-3 py-3 text-center text-xs font-semibold ${active ? "bg-blue-900 text-white" : "bg-slate-50 text-app-muted"}`}
             >
+              <AppIcon name={item.icon as IconName} />
               {item.label}
             </Link>
           );

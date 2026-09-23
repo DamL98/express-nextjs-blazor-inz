@@ -1,5 +1,7 @@
 "use client";
 
+
+import { AppIcon } from "@/components/ui/AppIcon";
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 
@@ -47,7 +49,7 @@ export default function ReservationsPage() {
       data-measurement-count={reservations.length}
     >
       <PageHeader title="Moje rezerwacje" description="Sprawdź nadchodzące spotkania, przejrzyj historię i zarządzaj swoimi terminami.">
-        <Link prefetch={false} href="/rooms" className="inline-block rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800">Zarezerwuj salę</Link>
+        <Link prefetch={false} href="/rooms" className="inline-block rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800"><AppIcon name="calendar-plus" />Zarezerwuj salę</Link>
       </PageHeader>
 
       {loading ? <LoadingCards /> : error ? <ErrorNotice message={error} /> : <ReservationsList initialReservations={reservations} />}

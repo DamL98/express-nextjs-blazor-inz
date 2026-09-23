@@ -1,5 +1,7 @@
 "use client";
 
+
+import { AppIcon } from "@/components/ui/AppIcon";
 import Link from "next/link";
 import { createContext, useContext, useEffect, useState } from "react";
 import { DayButton, DayPicker, type DayButtonProps } from "@daypicker/react";
@@ -104,7 +106,7 @@ export function ReservationCalendar() {
 
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-blue-700">Twój miesiąc</p>
-          <h2 id="reservation-calendar-title" className="mt-2 text-xl font-bold">Kalendarz rezerwacji</h2>
+          <h2 id="reservation-calendar-title" className="mt-2 text-xl font-bold"><AppIcon name="calendar-days" />Kalendarz rezerwacji</h2>
           <p className="mt-2 text-sm leading-6 text-app-muted">Wybierz dzień, aby zobaczyć godziny spotkań i zarezerwowane sale</p>
         </div>
 
@@ -114,7 +116,7 @@ export function ReservationCalendar() {
             onClick={showToday}
             className="rounded-xl border border-app-line px-4 py-3 text-sm font-semibold hover:bg-slate-50"
           >
-            Dzisiaj
+            <AppIcon name="calendar-days" />Dzisiaj
           </button>
 
           <button
@@ -123,7 +125,7 @@ export function ReservationCalendar() {
             disabled={loading}
             className="rounded-xl border border-app-line px-4 py-3 text-sm font-semibold hover:bg-slate-50"
           >
-            {loading ? "Odświeżanie…" : "Odśwież rezerwacje"}
+            <AppIcon name="refresh-cw" />{loading ? "Odświeżanie…" : "Odśwież rezerwacje"}
           </button>
 
         </div>
@@ -138,7 +140,7 @@ export function ReservationCalendar() {
           <p className="mt-2 break-words">{error}</p>
 
           <button type="button" onClick={refreshCalendar} className="mt-3 rounded-lg border border-red-200 bg-white px-4 py-2 font-semibold">
-            Spróbuj ponownie
+            <AppIcon name="refresh-cw" />Spróbuj ponownie
           </button>
         </div>
       ) : (
