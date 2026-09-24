@@ -2,6 +2,7 @@ import { google } from "googleapis";
 import {
   GoogleOAuthConfigurationError,
   GoogleOAuthValidationError,
+  GoogleRedirectValidationError,
 } from "./config.errors.js";
 import { getGoogleOAuthEnvironment } from "./environment.js";
 
@@ -44,7 +45,7 @@ function parseRedirectUrl(value) {
   try {
     return new URL(value);
   } catch (error) {
-    throw new GoogleOAuthValidationError("Nieprawidlowy redirect URL", {
+    throw new GoogleRedirectValidationError("Nieprawidlowy redirect URL", {
       cause: error,
     });
   }
@@ -67,13 +68,16 @@ function buildAllowedFrontendOrigins() {
 
 // Redirect może wskazywać dowolną ścieżkę, ale tylko na dozwolonym frontendzie.
 export function validateFrontendRedirectUrl(value) {
+  if (value !== undefined && typeof value !== "string") {
+    throw new GoogleRedirectValidationError("Redirect musi byc tekstem");
+  }
   const redirectUrl = value?.trim() ||
     getGoogleOAuthEnvironment().defaultSuccessUrl;
   const url = parseRedirectUrl(redirectUrl);
   const allowedOrigins = buildAllowedFrontendOrigins();
 
-  if (!allowedOrigins.has(url.origin)) {
-    throw new GoogleOAuthValidationError(
+  if (!allowedOrigins.has(url.origin) || url.username || url.password) {
+    throw new GoogleRedirectValidationError(
       `Niedozwolony redirect z frontendu ${url.origin}`,
     );
   }

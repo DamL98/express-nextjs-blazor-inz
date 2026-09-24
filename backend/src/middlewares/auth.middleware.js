@@ -1,40 +1,16 @@
-import {
-  extractBearerToken,
-} from "../config/auth.js";
-import { getAuthEnvironment } from "../config/environment.js";
+import { verifySession } from "../modules/auth/session.service.js";
+import { readSessionToken } from "../modules/auth/session.request.js";
 import { ApiError } from "../errors/apiError.js";
 import { Problems } from "../errors/problems.js";
-import { getCurrentUser } from "../modules/auth/auth.service.js";
-import { verifySessionToken } from "../security/jwt.js";
 
 export async function authenticate(req, res, next) {
-  const token =
-    extractBearerToken(req.get("authorization")) ||
-    req.cookies?.[getAuthEnvironment().cookieName] || null;
-
-  if (!token) {
-    return next(
-      new ApiError(Problems.AUTH_TOKEN_REQUIRED),
-    );
-  }
-
-  let session;
   try {
-    session = verifySessionToken(token);
-  } catch (error) {
-    return next(
-      new ApiError(Problems.AUTH_TOKEN_INVALID),
-    );
-  }
+    const sessionToken = readSessionToken(req);
+    const { sessionClaims, sessionUser } = await verifySession(sessionToken);
+    res.locals.auth = sessionClaims;
+    res.locals.user = sessionUser;
 
-  try {
-    const user = await getCurrentUser(session.sub);
-    if ((session.sessionVersion ?? 0) !== user.sessionVersion) {
-      throw new ApiError(Problems.AUTH_SESSION_INVALID);
-    }
-    res.locals.auth = session;
-    res.locals.user = user;
-      return next();
+    return next();
   } catch (error) {
     return next(error);
   }

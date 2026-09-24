@@ -42,8 +42,6 @@ export async function checkRoomAvailability(roomId, start, end) {
     start: startTime.toISOString(),
     end: endTime.toISOString(),
     conflicts: conflicts.map((reservation) => ({
-      id: reservation.id,
-      title: reservation.title,
       startTime: reservation.startTime,
       endTime: reservation.endTime,
     })),

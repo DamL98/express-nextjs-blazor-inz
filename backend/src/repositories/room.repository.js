@@ -31,6 +31,10 @@ export async function findRoomById(id) {
 
 export async function findConflictingRoomReservations(roomId, startTime, endTime) {
   return prisma.reservation.findMany({
+    select: {
+      startTime: true,
+      endTime: true,
+    },
     where: {
       roomId,
       status: "ACTIVE",

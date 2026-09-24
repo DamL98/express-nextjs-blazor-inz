@@ -2,7 +2,7 @@ import { Router } from "express";
 import { createAuthRateLimiter } from "../../middlewares/rate-limit.middleware.js";
 import { validateMiddleware } from "../../middlewares/validate.middleware.js";
 import * as local from "./local-auth.controller.js";
-import { registerSchema, loginSchema, emailSchema, tokenSchema, resetPasswordSchema, changePasswordSchema, linkGoogleSchema } from "./auth.validation.js";
+import { registerSchema, loginSchema, emailSchema, tokenSchema, resetPasswordSchema, changePasswordSchema, linkGoogleSchema, googleSessionSchema } from "./auth.validation.js";
 
 import { authenticate } from "../../middlewares/auth.middleware.js";
 import {
@@ -35,7 +35,7 @@ router.post("/password/forgot", authRateLimiter, body(emailSchema), local.reques
 router.post("/password/reset", authRateLimiter, body(resetPasswordSchema), local.resetPassword);
 router.post("/password/change", authRateLimiter, authenticate, body(changePasswordSchema), local.changePassword);
 
-router.post("/session", createSession);
+router.post("/session", authRateLimiter, body(googleSessionSchema), createSession);
 router.post("/logout", logout);
 router.post("/google/link", authRateLimiter, authenticate, body(linkGoogleSchema), startGoogleLink);
 

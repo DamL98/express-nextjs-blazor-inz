@@ -10,8 +10,6 @@ export type Room = {
 };
 
 export type RoomAvailabilityConflict = {
-  id: string;
-  title: string;
   startTime: string;
   endTime: string;
 };

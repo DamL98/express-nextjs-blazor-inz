@@ -10,6 +10,8 @@ function createProblem(code, status, title, detail = title) {
 }
 
 export const Problems = {
+  INVALID_JSON: createProblem("INVALID_JSON", 400, "Nieprawidlowy JSON"),
+  PAYLOAD_TOO_LARGE: createProblem("PAYLOAD_TOO_LARGE", 413, "Przekroczono rozmiar zadania"),
   AUTH_CREDENTIALS_INVALID: createProblem("AUTH_CREDENTIALS_INVALID", 401, "Nieprawidlowy e-mail lub haslo"),
   AUTH_EMAIL_UNVERIFIED: createProblem("AUTH_EMAIL_UNVERIFIED", 403, "Potwierdz adres e-mail przed zalogowaniem"),
   AUTH_ACTION_INVALID: createProblem("AUTH_ACTION_INVALID", 400, "Link wygasl lub zostal juz wykorzystany"),

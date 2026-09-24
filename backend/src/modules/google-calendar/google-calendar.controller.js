@@ -1,4 +1,4 @@
-import { beginOAuthFlow, consumeOAuthFlow } from "../auth/oauth-flow.service.js";
+import { beginOAuthFlow, consumeOAuthFlow } from "../auth/oauth-flow.http.js";
 import { validateFrontendRedirectUrl } from "../../config/google-oauth.js";
 import { getGoogleCalendarOAuthRedirectUri } from "../../config/google-oauth.js";
 import { ApiError } from "../../errors/apiError.js";
@@ -103,7 +103,6 @@ export async function handleGoogleCalendarCallback(req, res, next) {
       );
     }
 
-    console.error("Google Calendar callback failed:", error);
     return res.redirect(
       302,
       buildRedirectUrl(redirectTo, "error", "integration_failed"),

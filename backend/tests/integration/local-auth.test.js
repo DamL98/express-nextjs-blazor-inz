@@ -19,6 +19,7 @@ import { authTokenRepository } from "../../src/repositories/auth-token.repositor
 const API = "/api/v1/auth";
 const email = "local-auth-test@example.com";
 const password = "Dlugie haslo testowe 123!";
+const incorrectPassword = "Nieprawidlowe haslo 123!";
 const redirectTo = "http://localhost:3000/auth/action";
 const cookies = (response) => response.headers["set-cookie"].map((value) => value.split(";")[0]);
 const lastToken = () => new URL(mail.mock.lastCall[2].match(/https?:\/\/\S+/)[0]).hash.split("token=")[1];
@@ -57,7 +58,7 @@ describe("Konta lokalne i laczenie Google", () => {
     expect((await request(app).post(`${API}/register`).send({ email, fullName: "Test", password: "short", redirectTo })).status).toBe(400);
     expect((await request(app).post(`${API}/login`).set("Origin", "https://obca.example").send({ email, password })).status).toBe(403);
     for (const loginEmail of [email, "local-auth-test-missing@example.com"]) {
-      const result = await request(app).post(`${API}/login`).send({ email: loginEmail, password: "zle haslo" });
+      const result = await request(app).post(`${API}/login`).send({ email: loginEmail, password: incorrectPassword });
       expect(result.status).toBe(401);
       expect(result.body.code).toBe("AUTH_CREDENTIALS_INVALID");
     }
@@ -72,7 +73,7 @@ describe("Konta lokalne i laczenie Google", () => {
 
   it("laczenie wymaga sesji, hasla i przegladarki inicjujacej OAuth; zachowuje User.id i e-mail", async () => {
     expect((await request(app).post(`${API}/google/link`).send({ password, redirectTo })).status).toBe(401);
-    expect((await request(app).post(`${API}/google/link`).set("Authorization", `Bearer ${session}`).send({ password: "zle", redirectTo })).status).toBe(401);
+    expect((await request(app).post(`${API}/google/link`).set("Authorization", `Bearer ${session}`).send({ password: incorrectPassword, redirectTo })).status).toBe(401);
     const start = await request(app).post(`${API}/google/link`).set("Authorization", `Bearer ${session}`).send({ password, redirectTo });
     expect(start.status).toBe(200);
     const state = new URL(start.body.data.authorizationUrl).searchParams.get("state");
@@ -93,16 +94,26 @@ describe("Konta lokalne i laczenie Google", () => {
   });
 
   it("odrzuca polaczenie Google nalezacego do innego konta", async () => {
+    // Konflikt przygotowujemy niezależnie od wyniku wcześniejszego łączenia kont.
+    const occupiedGoogleId = "local-auth-test-occupied-google";
+    await prisma.role.upsert({ where: { name: "user" }, update: {}, create: { name: "user" } });
+    const googleAccountOwner = await prisma.user.create({ data: {
+      email: "local-auth-test-google-owner@example.com", fullName: "Wlasciciel Google", emailVerified: true,
+      googleId: occupiedGoogleId, role: { connect: { name: "user" } },
+    } });
+    profile.mockResolvedValue({ googleId: occupiedGoogleId, email: googleAccountOwner.email, emailVerified: true });
     const other = await prisma.user.create({ data: {
       email: "local-auth-test-other@example.com", fullName: "Inny", emailVerified: true,
       passwordHash: await hashPassword(password), role: { connect: { name: "user" } },
     }, include: { role: true } });
     const otherSession = createSessionToken(other);
     const start = await request(app).post(`${API}/google/link`).set("Authorization", `Bearer ${otherSession}`).send({ password, redirectTo });
+    expect(start.status).toBe(200);
     const state = new URL(start.body.data.authorizationUrl).searchParams.get("state");
     const result = await request(app).get(`${API}/google/callback`).set("Cookie", cookies(start)).set("Authorization", `Bearer ${otherSession}`).query({ state, code: "mock" });
     expect(result.headers.location).toContain("account_link_conflict");
     expect((await prisma.user.findUnique({ where: { id: other.id } })).googleId).toBeNull();
+    expect((await prisma.user.findUnique({ where: { id: googleAccountOwner.id } })).googleId).toBe(occupiedGoogleId);
   });
 
   it("zmiana hasla uniewaznia poprzednie sesje", async () => {

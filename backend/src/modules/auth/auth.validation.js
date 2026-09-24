@@ -16,3 +16,9 @@ export const tokenSchema = z.object({ token: z.string().regex(/^[a-f0-9]{64}$/) 
 export const resetPasswordSchema = tokenSchema.extend({ password });
 export const changePasswordSchema = z.object({ currentPassword: password, password });
 export const linkGoogleSchema = z.object({ password, redirectTo: z.url() });
+
+export const googleSessionSchema = z.object({
+  idToken: z.string().trim().min(1).max(16384).optional(),
+  authorizationCode: z.string().trim().min(1).max(4096).optional(),
+  redirectUri: z.url().max(2048).optional(),
+}).default({});

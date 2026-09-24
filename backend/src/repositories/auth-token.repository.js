@@ -1,9 +1,8 @@
-import { createHash } from "node:crypto";
+import { hashAuthToken } from "../security/authToken.js";
 import { prisma } from "../config/prisma.js";
 import { ApiError } from "../errors/apiError.js";
 import { Problems } from "../errors/problems.js";
 
-const digest = (token) => createHash("sha256").update(token).digest("hex");
 
 export const authTokenRepository = {
   async create(token, purpose, userId, expiresAt) {
@@ -13,7 +12,7 @@ export const authTokenRepository = {
 
     return prisma.authToken.create({
       data: {
-        tokenHash: digest(token),
+        tokenHash: hashAuthToken(token),
         purpose,
         userId,
         expiresAt
@@ -23,7 +22,7 @@ export const authTokenRepository = {
 
   async consume(token, purpose, action = async () => {}) {
     return prisma.$transaction(async (tx) => {
-      const tokenHash = digest(token);
+      const tokenHash = hashAuthToken(token);
       const record = await tx.authToken.findUnique({ where: { tokenHash } });
 
       if (!record || record.purpose !== purpose || record.expiresAt <= new Date()) {

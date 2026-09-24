@@ -195,15 +195,15 @@ export async function disconnectCalendar(userId) {
 }
 
 export async function syncReservation(reservation, room) {
-  const integration = await calendarIntegrationRepository.findByUserId(
-    reservation.userId,
-  );
-
-  if (!integration) {
-    return reservation;
-  }
-
   try {
+    const integration = await calendarIntegrationRepository.findByUserId(
+      reservation.userId,
+    );
+
+    if (!integration) {
+      return { ...reservation, googleCalendarSync: { status: "skipped" } };
+    }
+
     const refreshToken = decryptGoogleRefreshToken(
       integration.refreshTokenEncrypted,
     );
@@ -215,16 +215,16 @@ export async function syncReservation(reservation, room) {
     });
 
     if (!data.id) {
-      return reservation;
+      throw new Error("Google nie zwrocil identyfikatora wydarzenia");
     }
 
-    return reservationRepository.setGoogleCalendarEventId(
+    const synchronizedReservation = await reservationRepository.setGoogleCalendarEventId(
       reservation.id,
       data.id,
     );
+    return { ...synchronizedReservation, googleCalendarSync: { status: "synced" } };
   } catch (error) {
-    console.error("Google Calendar sync err", error);
-    return reservation;
+    return { ...reservation, googleCalendarSync: { status: "failed" } };
   }
 }
 
@@ -254,7 +254,6 @@ export async function removeReservationFromCalendar(reservation) {
 
     return true;
   } catch (error) {
-    console.error("Google Calendar sync delete error", error);
     return false;
   }
 }

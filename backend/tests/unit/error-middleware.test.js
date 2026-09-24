@@ -1,12 +1,18 @@
 import { z, ZodError } from "zod";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "../../src/errors/apiError.js";
 import { Problems } from "../../src/errors/problems.js";
 import { errorMiddleware } from "../../src/middlewares/error.middleware.js";
+import { GoogleRedirectValidationError } from "../../src/config/config.errors.js";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 function createResponse() {
   const response = {
+    locals: {},
     json: vi.fn(),
     status: vi.fn(),
     type: vi.fn(),
@@ -38,6 +44,7 @@ describe("errorMiddleware", () => {
 
   it("wysyla kontrolowany ApiError", () => {
     const response = createResponse();
+    response.locals.requestId = "f6425783-d152-4d99-bd91-59c8b61c8041";
 
     errorMiddleware(
       new ApiError(Problems.ROOM_NOT_FOUND),
@@ -51,12 +58,13 @@ describe("errorMiddleware", () => {
     expect(response.json.mock.calls[0][0]).toMatchObject({
       type: "/problems/room-not-found",
       code: "ROOM_NOT_FOUND",
+      instance: `urn:uuid:${response.locals.requestId}`,
     });
   });
 
   it("nie ujawnia szczegolow unexpected error", () => {
     const response = createResponse();
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleLog = vi.spyOn(console, "log").mockImplementation(() => {});
 
     errorMiddleware(new Error("sekret"), null, response, null);
 
@@ -67,6 +75,26 @@ describe("errorMiddleware", () => {
     });
     expect(response.json.mock.calls[0][0]).not.toHaveProperty("debug");
 
-    consoleError.mockRestore();
+    expect(JSON.stringify(response.json.mock.calls)).not.toContain("sekret");
+    expect(consoleLog).toHaveBeenCalledOnce();
+    expect(JSON.parse(consoleLog.mock.calls[0][0])).toMatchObject({
+      event: "http.request.failed",
+      level: "error",
+      errorName: "Error",
+    });
+    expect(JSON.stringify(consoleLog.mock.calls)).not.toContain("sekret");
+  });
+
+  it.each([
+    [Object.assign(new Error("JSON"), { type: "entity.parse.failed", status: 400 }), 400, "INVALID_JSON"],
+    [Object.assign(new Error("Body"), { type: "entity.too.large", status: 413 }), 413, "PAYLOAD_TOO_LARGE"],
+    [new GoogleRedirectValidationError("Redirect"), 400, "INVALID_GOOGLE_REDIRECT"],
+  ])("mapuje błąd wejścia %s na HTTP %i i %s", (error, status, code) => {
+    const response = createResponse();
+
+    errorMiddleware(error, null, response, null);
+
+    expect(response.status).toHaveBeenCalledWith(status);
+    expect(response.json.mock.calls[0][0]).toMatchObject({ status, code });
   });
 });

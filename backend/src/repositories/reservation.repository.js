@@ -40,6 +40,7 @@ export const reservationRepository = {
       where: {
         userId,
         status: ReservationStatus.ACTIVE,
+        endTime: { gt: new Date() },
       },
       orderBy: {
         startTime: "asc",
@@ -106,21 +107,4 @@ export const reservationRepository = {
     })
   },
 
-  async findConflicting(roomId, startTime, endTime) {
-    return prisma.reservation.findFirst({
-      where: {
-        roomId,
-        status: ReservationStatus.ACTIVE,
-        startTime: {
-          lt: endTime,
-        },
-        endTime: {
-          gt: startTime,
-        },
-      },
-      orderBy: {
-        startTime: "asc",
-      },
-    })
-  },
 }

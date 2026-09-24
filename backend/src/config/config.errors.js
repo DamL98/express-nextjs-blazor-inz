@@ -13,6 +13,8 @@ export class GoogleCalendarConfigurationError extends ConfigurationError {}
 
 export class GoogleOAuthValidationError extends NamedError {}
 
+export class GoogleRedirectValidationError extends GoogleOAuthValidationError {}
+
 export class GoogleCalendarTokenError extends NamedError {}
 
 export class SessionTokenVerificationError extends NamedError {

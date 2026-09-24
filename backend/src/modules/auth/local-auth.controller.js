@@ -1,21 +1,22 @@
 import { ApiResponse } from "../../utils/apiResponse.js";
-import { applySessionCookie } from "./auth.controller.js";
+import { sendSessionResponse } from "./session.response.js";
 import * as service from "./local-auth.service.js";
 
-const emailResponse = () => ApiResponse.ok({ message: "Jesli konto wymaga tej operacji, wyslalismy wiadomosc z linkiem." });
+const emailResponse = () => ApiResponse.ok({ message: "Wysłana wiadomosc z linkiem" });
 
 export async function register(_req, res) {
   const data = res.locals.validated.body;
+
   if (await service.registerLocal(data)) {
     await service.requestEmailAction(data, "verify-email");
   }
+
   return emailResponse().send(res);
 }
 
 export async function login(_req, res) {
   const session = await service.loginLocal(res.locals.validated.body);
-  applySessionCookie(res, session.token);
-  return ApiResponse.ok(session).send(res);
+  return sendSessionResponse(res, session);
 }
 
 export function requestEmailAction(purpose) {
@@ -37,6 +38,5 @@ export async function resetPassword(_req, res) {
 
 export async function changePassword(_req, res) {
   const session = await service.changePassword(res.locals.user, res.locals.validated.body);
-  applySessionCookie(res, session.token);
-  return ApiResponse.ok(session).send(res);
+  return sendSessionResponse(res, session);
 }
