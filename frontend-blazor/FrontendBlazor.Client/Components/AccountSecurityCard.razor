@@ -1,67 +1,50 @@
-@using FrontendBlazor.Client.Infrastructure.Api
-@using FrontendBlazor.Client.Infrastructure.Auth
-@using FrontendBlazor.Client.Models.DTOs
+﻿@using FrontendBlazor.Client.Infrastructure.Api
 @inject ApiClient Api
 @inject AuthContext Auth
 @inject NavigationManager Navigation
-
 @if (Auth.User?.HasLocalPassword == true)
 {
-    <section class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 class="text-lg font-semibold">Konto i logowanie</h2>
-        <p class="my-3 text-sm">@(Auth.User.GoogleId is not null ? "Google jest polaczone. Mozesz logowac sie haslem lub przez Google." : "Polacz Google, aby dodac drugi sposob logowania. Dostep do kalendarza wlaczysz osobno ponizej.")</p>
-        @if (_callbackMessage is not null) { <p role="status" class="mb-3">@_callbackMessage</p> }
-        <form @onsubmit="ChangePasswordAsync" @onsubmit:preventDefault class="max-w-md space-y-3">
-            <label class="block text-sm">Aktualne haslo<input @bind="_currentPassword" type="password" autocomplete="current-password" required minlength="12" maxlength="128" class="mt-1 w-full rounded border p-2" /></label>
-            @if (Auth.User.GoogleId is null)
-            {
-                <button type="button" @onclick="LinkAsync" disabled="@_busy" class="rounded bg-blue-600 px-4 py-2 text-white">Polacz konto Google</button>
-            }
-            <label class="block text-sm">Nowe haslo (co najmniej 12 znakow)<input @bind="_password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required class="mt-1 w-full rounded border p-2" /></label>
-            <button type="submit" disabled="@_busy" class="rounded border px-4 py-2">Zmien haslo</button>
+    <section class="rounded-2xl border border-app-line bg-white p-6 shadow-sm">
+        <p class="text-xs font-semibold uppercase tracking-widest text-blue-700">Bezpieczeństwo</p><h2 class="mt-2 text-xl font-bold"><AppIcon Name="shield-check" />Konto i logowanie</h2><p class="mt-3 max-w-xl text-sm leading-6 text-app-muted">@(Auth.User.GoogleId is not null ? "Google jest połączone. Możesz logować się hasłem lub przez Google." : "Połącz Google, aby dodać drugi sposób logowania. Dostęp do kalendarza włączysz osobno.")</p>
+        @if (_callbackMessage is not null) { <p role="status" class="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">@_callbackMessage</p> }
+        <form @onsubmit="ChangePasswordAsync" @onsubmit:preventDefault class="mt-6 max-w-xl space-y-5">
+            <fieldset disabled="@_busy" class="space-y-5"><legend class="sr-only">Bezpieczeństwo konta</legend>
+                <label class="block text-sm font-medium"><AppIcon Name="lock-keyhole" />Aktualne hasło<input @bind="_currentPassword" type="password" autocomplete="current-password" required minlength="12" maxlength="128" class="mt-2 min-h-11 w-full rounded-xl border border-app-line px-3 py-2" /></label>
+                @if (Auth.User.GoogleId is null) { <button type="button" @onclick="LinkAsync" class="rounded-xl bg-blue-900 px-4 py-3 text-sm font-semibold text-white"><AppIcon Name="link" />Połącz konto Google</button> }
+                <div class="border-t border-app-line pt-5"><label class="block text-sm font-medium"><AppIcon Name="lock-keyhole" />Nowe hasło<input @bind="_password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required aria-describedby="password-hint" class="mt-2 min-h-11 w-full rounded-xl border border-app-line px-3 py-2" /></label><p id="password-hint" class="mt-2 text-xs text-app-muted">Min. 12 znaków</p></div>
+                <button type="submit" class="rounded-xl border border-app-line px-4 py-3 text-sm font-semibold">@(_busy ? "Proszę czekać…" : "Zmień hasło")</button>
+            </fieldset>
         </form>
-        @if (_message is not null) { <p role="status" class="mt-3 text-green-700">@_message</p> }
-        @if (_error is not null) { <p role="alert" class="mt-3 text-red-700">@_error</p> }
+        @if (_message is not null) { <p role="status" class="mt-4 rounded-xl bg-teal-50 p-4 text-sm text-teal-800">@_message</p> }
+        @if (_error is not null) { <p role="alert" class="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">@_error</p> }
     </section>
 }
-
 @code {
     private string _currentPassword = "", _password = "";
     private string? _error, _message, _callbackMessage;
     private bool _busy;
-
-    protected override void OnInitialized()
-    {
+    protected override void OnParametersSet() {
         var query = System.Web.HttpUtility.ParseQueryString(new Uri(Navigation.Uri).Query);
-        if (query["googleLink"] is string status)
-            _callbackMessage = status == "success" ? "Konto Google polaczone." : "Nie udalo sie polaczyc Google. Konto moze juz nalezec do innego uzytkownika; sprobuj ponownie.";
+        _callbackMessage = query["googleLink"] is string status ? status == "success" ? "Konto Google połączone." : "Nie udało się połączyć Google. Konto może już należeć do innego użytkownika; spróbuj ponownie." : null;
     }
-
     private Task LinkAsync() => SubmitAsync(true);
     private Task ChangePasswordAsync() => SubmitAsync(false);
-
-    private async Task SubmitAsync(bool link)
-    {
-        _busy = true; _error = null; _message = null;
-        try
-        {
-            if (link)
-            {
-                var result = await Api.ApiRequestAsync<AuthResultDto>("/auth/google/link", new ApiRequestOptions {
-                    Method = HttpMethod.Post, IsBrowserCredentialRequired = true, Body = new { password = _currentPassword, redirectTo = Navigation.Uri }
-                });
+    private async Task SubmitAsync(bool link) {
+        if (_busy) return;
+        _error = _message = null;
+        if (_currentPassword.Length is < 12 or > 128) { _error = "Podaj aktualne hasło (od 12 do 128 znaków)."; return; }
+        if (!link && _password.Length is < 12 or > 128) { _error = "Nowe hasło musi mieć od 12 do 128 znaków."; return; }
+        _busy = true;
+        try {
+            if (link) {
+                var result = await Api.ApiRequestAsync<AuthResultDto>("/auth/google/link", new ApiRequestOptions { Method = HttpMethod.Post, Body = new { password = _currentPassword, redirectTo = Navigation.Uri } });
                 Navigation.NavigateTo(result.AuthorizationUrl, forceLoad: true);
-            }
-            else
-            {
-                await Api.ApiRequestAsync<AuthSessionDto>("/auth/password/change", new ApiRequestOptions {
-                    Method = HttpMethod.Post, IsBrowserCredentialRequired = true, Body = new { currentPassword = _currentPassword, password = _password }
-                });
-                _currentPassword = ""; _password = "";
-                _message = "Haslo zmienione. Pozostale sesje zostaly uniewaznione.";
+            } else {
+                await Api.ApiRequestAsync<AuthSessionDto>("/auth/password/change", new ApiRequestOptions { Method = HttpMethod.Post, Body = new { currentPassword = _currentPassword, password = _password } });
+                _currentPassword = _password = ""; _message = "Hasło zmienione";
             }
         }
-        catch (Exception exception) { _error = ApiErrorMessage.FromException(exception, "Operacja nie powiodla sie"); }
+        catch (Exception ex) { _error = ApiErrorMessage.FromException(ex, "Operacja nie powiodła się"); }
         finally { _busy = false; }
     }
 }

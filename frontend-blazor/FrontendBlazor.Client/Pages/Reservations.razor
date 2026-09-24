@@ -1,213 +1,133 @@
-@page "/reservations"
+﻿@page "/reservations"
 @implements IDisposable
-@using FrontendBlazor.Client.Components
-@using FrontendBlazor.Client.Formatting
 @using FrontendBlazor.Client.Infrastructure.Api
-@using FrontendBlazor.Client.Models
 @inject ApiClient Api
-@inject IJSRuntime JS
 
 <PageTitle>Moje rezerwacje</PageTitle>
 
 <section
-    class="mx-auto max-w-5xl px-6 py-8"
+    class="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-10"
     data-measurement-page="reservations"
-    data-measurement-state="@(_isLoading ? "loading" : _loadError is null ? "ready" : "error")"
-    data-measurement-count="@_reservations.Count">
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900">Moje rezerwacje</h1>
-            <p class="mt-2 text-gray-600">Lista Twoich rezerwacji.</p>
-        </div>
+    data-measurement-state="@(_loading ? "loading" : _loadError is null ? "ready" : "error")"
+    data-measurement-count="@_reservations.Count"
+    >
 
-        <a class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700" href="/rooms">Zarezerwuj sale</a>
-    </div>
+    <PageHeader
+        Title="Moje rezerwacje"
+        Description="Sprawdź nadchodzące spotkania, historię i anulowane rezerwacje."
+    >
+        <a href="/rooms" class="rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white">
+            <AppIcon Name="calendar-plus" />
+            Zarezerwuj salę
+        </a>
+    </PageHeader>
 
-    <div class="mt-6">
-        <AccountSecurityCard />
-        <GoogleCalendarIntegrationCard
-            CallbackStatus="GoogleCalendarCallbackStatus"
-            CallbackReason="GoogleCalendarCallbackReason" />
-    </div>
+    @if (_loading)
+    {
+        <LoadingCards />
+    }
+    else if (_loadError is not null)
+    {
+        <ErrorNotice Message="@_loadError" />
+    }
+    else if (_reservations.Count == 0)
+    {
+        <EmptyState Title="Nie masz jeszcze rezerwacji" Description="Znajdź salę dopasowaną do spotkania i wybierz pierwszy termin.">
+            <a href="/rooms" class="text-blue-700">Zarezerwuj salę</a>
+        </EmptyState>
+    }
+    else
+    {
+        var filtered = Filtered.ToList();
 
-    <div class="mt-6">
-        @if (_isLoading)
-        {
-            <div class="rounded-xl border border-gray-200 bg-white p-6 text-gray-600 shadow-sm">Ladowanie rezerwacji...</div>
-        }
-        else if (_loadError is not null)
-        {
-            <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">@_loadError</div>
-        }
-        else if (_reservations.Count == 0)
-        {
-            <div class="rounded-xl border border-gray-200 bg-white p-6 text-gray-600 shadow-sm">
-                <a class="text-sm font-medium text-blue-600 hover:text-blue-700" href="/rooms">← back /rooms</a>
-                Nie masz jeszcze zadnych rezerwacji
+        <section class="space-y-5" aria-label="Lista rezerwacji">
+            <div class="rounded-2xl border border-app-line bg-white p-4 sm:p-5">
+                <div role="group" aria-label="Okres rezerwacji" class="flex flex-wrap gap-2">
+
+                @foreach (var tab in Tabs)
+                { <button type="button" aria-pressed="@(_tab == tab.Key)" @onclick="() => _tab = tab.Key" class="@($"rounded-xl px-4 py-3 text-sm font-semibold {(_tab == tab.Key ? "bg-blue-900 text-white" : "bg-slate-50 text-app-muted")}")">@tab.Label <span class="ml-1 opacity-75">@_reservations.Count(r => tab.Key == "all" || ViewFilters.Group(r, _now) == tab.Key)</span></button> }
+                </div>
+                <label class="mt-5 block text-sm font-medium">Znajdź rezerwację<input id="reservation-search" type="search" @bind="_search" @bind:event="oninput" placeholder="Tytuł spotkania lub nazwa sali…" class="mt-2 min-h-11 w-full rounded-xl border border-app-line px-4 py-2" /></label><p role="status" class="mt-3 text-xs text-app-muted">Widoczne rezerwacje: @filtered.Count</p>
             </div>
-        }
-        else
-        {
-            <section class="space-y-4">
-                @if (_actionError is not null)
-                {
-                    <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">@_actionError</div>
-                }
 
-                @foreach (var reservation in _reservations)
-                {
-                    <article class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                                <h2 class="text-lg font-semibold text-gray-900">@reservation.Title</h2>
-                                <p class="mt-1 text-sm text-gray-600">@(reservation.Room?.Name ?? $"Sala: {reservation.RoomId}")</p>
-                            </div>
+            @if (_message is not null)
+            {
+                <p role="status" class="rounded-xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-800">
+                    @_message
+                </p>
+            }
 
-                            <span class="@($"inline-flex w-fit rounded-full border px-3 py-1 text-xs font-medium {reservation.Status switch
-                                {
-                                    ReservationStatus.ACTIVE => "border-green-200 bg-green-50 text-green-700",
-                                    _ => "border-gray-200 bg-gray-50 text-gray-600",
-                                }}")">
-                                @(reservation.Status switch
-                                {
-                                    ReservationStatus.ACTIVE => "Aktywna",
-                                    ReservationStatus.CANCELLED => "Anulowana",
-                                    _ => reservation.Status.ToString(),
-                                })
-                            </span>
-                        </div>
+            @if (filtered.Count == 0)
+            {
+                <EmptyState Title="Brak rezerwacji w tym widoku" Description="Wybierz inny okres lub usuń wpisaną frazę.">
+                    <button type="button" @onclick="ShowAll" class="text-blue-700">Pokaż wszystkie</button>
+                </EmptyState>
+            }
 
-                        @if (!string.IsNullOrWhiteSpace(reservation.Description))
-                        {
-                            <p class="mt-4 text-sm text-gray-700">@reservation.Description</p>
-                        }
-
-                        <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                            <div>
-                                <dt class="text-gray-500">Poczatek</dt>
-                                <dd class="font-medium text-gray-900">@DateTimeFormatter.Format(reservation.StartTime)</dd>
-                            </div>
-
-                            <div>
-                                <dt class="text-gray-500">Koniec</dt>
-                                <dd class="font-medium text-gray-900">@DateTimeFormatter.Format(reservation.EndTime)</dd>
-                            </div>
-                        </dl>
-
-                        @if (reservation.Status == ReservationStatus.ACTIVE)
-                        {
-                            <button
-                                type="button"
-                                class="mt-5 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                                disabled="@(_pendingReservationId == reservation.Id)"
-                                @onclick="() => CancelReservationAsync(reservation.Id)">
-                                @(_pendingReservationId == reservation.Id
-                                    ? "Anulowanie..."
-                                    : "Anuluj rezerwacje")
-                            </button>
-                        }
-                    </article>
-                }
-            </section>
-        }
-    </div>
+            @foreach (var reservation in filtered)
+            {
+                var group = ViewFilters.Group(reservation, _now);
+                var label = group == "cancelled" ? "Anulowana" : group == "history" ? "Zakończona" : reservation.StartTime <= _now ? "W trakcie" : "Nadchodząca";
+                <article @key="reservation.Id" class="rounded-2xl border border-app-line bg-white p-5 shadow-sm sm:p-6"><div class="flex flex-col gap-4 xl:flex-row xl:items-center"><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-3"><h2 class="break-words text-base font-bold">@reservation.Title</h2><span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">@label</span></div><a href="@($"/rooms/{Uri.EscapeDataString(reservation.RoomId)}")" class="mt-2 inline-block text-sm font-medium text-blue-700">@(reservation.Room?.Name ?? $"Sala: {reservation.RoomId}")</a><p class="mt-2 text-sm leading-6 text-app-muted">@DateTimeFormatter.Format(reservation.StartTime) — @DateTimeFormatter.Format(reservation.EndTime)</p></div>
+                @if (reservation.Status == ReservationStatus.ACTIVE)
+                    { <button
+                        type="button" disabled="@_busy" @onclick="() => Select(reservation)" class="shrink-0 rounded-xl border border-red-200 px-4 py-3 text-sm font-medium text-red-700"><AppIcon Name="calendar-x" />Anuluj rezerwację</button> }
+                </div>
+                @if (!string.IsNullOrWhiteSpace(reservation.Description)) { <details class="mt-4 border-t border-slate-100 pt-4"><summary class="cursor-pointer text-sm font-medium text-app-muted">Opis spotkania</summary><p class="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-app-muted">@reservation.Description</p></details> }
+                </article>
+            }
+        </section>
+    }
+    <details open="@(GoogleLink is not null || CalendarStatus is not null)" class="mt-8 rounded-2xl border border-app-line bg-white p-5"><summary class="cursor-pointer text-sm font-semibold">Konto i integracja kalendarza</summary><p class="mt-3 text-sm text-app-muted">Ustawienia na osobnej stronie. <a href="/settings" class="text-blue-700 underline">Przejdź do ustawień</a></p><div class="mt-5 space-y-5"><AccountSecurityCard /><GoogleCalendarIntegrationCard CallbackStatus="@CalendarStatus" CallbackReason="@Reason" /></div></details>
+    @if (_selected is not null) { <CancelReservationDialog Reservation="_selected" Busy="_busy" Error="@_actionError" OnClose="Close" OnConfirm="CancelAsync" /> }
 </section>
-
 @code {
-    private readonly CancellationTokenSource _requestCancellation = new();
+    private static readonly (string Key, string Label)[] Tabs = [("upcoming", "Nadchodzące"), ("history", "Historia"), ("cancelled", "Anulowane"), ("all", "Wszystkie")];
+    private readonly CancellationTokenSource _cancellation = new();
     private IReadOnlyList<ReservationDto> _reservations = [];
-    private bool _isLoading = true;
-    private string? _loadError;
-    private string? _actionError;
-    private string? _pendingReservationId;
-
-    [SupplyParameterFromQuery(Name = "googleCalendar")]
-    private string? GoogleCalendarCallbackStatus { get; set; }
-
-    [SupplyParameterFromQuery(Name = "reason")]
-    private string? GoogleCalendarCallbackReason { get; set; }
-
-    protected override async Task OnAfterRenderAsync(bool isFirstRender)
-    {
-        if (!isFirstRender || !RendererInfo.IsInteractive)
-        {
-            return;
-        }
-
-        try
-        {
-            _reservations = await Api.ApiRequestAsync<IReadOnlyList<ReservationDto>>(
-                "/reservations/my",
-                new ApiRequestOptions
-                {
-                    IsBrowserCredentialRequired = true,
-                },
-                _requestCancellation.Token);
-        }
-        catch (OperationCanceledException) when (_requestCancellation.IsCancellationRequested)
-        {
-        }
-        catch (Exception exception)
-        {
-            _loadError = ApiErrorMessage.FromException(
-                exception,
-                "Blad pobierania rezerwacji");
-        }
-        finally
-        {
-            _isLoading = false;
-        }
-
-        if (!_requestCancellation.IsCancellationRequested)
-        {
-            StateHasChanged();
+    private ReservationDto? _selected;
+    private bool _loading = true, _busy;
+    private string? _loadError, _actionError, _message;
+    private string _tab = "upcoming", _search = "";
+    private DateTimeOffset _now = DateTimeOffset.Now;
+    private PeriodicTimer? _timer;
+    [SupplyParameterFromQuery(Name = "googleCalendar")] public string? CalendarStatus { get; set; }
+    [SupplyParameterFromQuery(Name = "googleLink")] public string? GoogleLink { get; set; }
+    [SupplyParameterFromQuery(Name = "reason")] public string? Reason { get; set; }
+    private IEnumerable<ReservationDto> Filtered {
+        get {
+            var rows = _reservations.Where(r => (_tab == "all" || ViewFilters.Group(r, _now) == _tab) && System.Globalization.CultureInfo.GetCultureInfo("pl-PL").CompareInfo.IndexOf($"{r.Title} {r.Room?.Name}", _search.Trim(), System.Globalization.CompareOptions.IgnoreCase) >= 0);
+            return _tab == "upcoming" ? rows.OrderBy(r => r.StartTime) : rows.OrderByDescending(r => r.StartTime);
         }
     }
-
-    private async Task CancelReservationAsync(string reservationId)
+    protected override async Task OnInitializedAsync()
     {
-        var isConfirmed = await JS.InvokeAsync<bool>(
-            "confirm",
-            "Czy na pewno chcesz anulowac te rezerwacje?");
-
-        if (!isConfirmed)
-        {
-            return;
-        }
-
-        _pendingReservationId = reservationId;
-        _actionError = null;
-
-        try
-        {
-            var cancelledReservation = await Api.ApiRequestAsync<ReservationDto>(
-                $"/reservations/{Uri.EscapeDataString(reservationId)}/cancel",
-                new ApiRequestOptions
-                {
-                    Method = HttpMethod.Patch,
-                    IsBrowserCredentialRequired = true,
-                });
-            _reservations = _reservations
-                .Select(reservation => reservation.Id == reservationId
-                    ? cancelledReservation
-                    : reservation)
-                .ToList();
-        }
-        catch (Exception exception)
-        {
-            _actionError = ApiErrorMessage.FromException(
-                exception,
-                "Blad anulowania rezerwacji");
-        }
-        finally
-        {
-            _pendingReservationId = null;
-        }
+        _timer = new PeriodicTimer(TimeSpan.FromMinutes(1));
+        _ = TickAsync();
+        try { _reservations = await Api.ApiRequestAsync<IReadOnlyList<ReservationDto>>("/reservations/my", cancellationToken: _cancellation.Token); }
+        catch (OperationCanceledException) when (_cancellation.IsCancellationRequested) { }
+        catch (Exception ex) { _loadError = ApiErrorMessage.FromException(ex, "Błąd pobierania rezerwacji"); }
+        finally { _loading = false; }
     }
-
-    public void Dispose()
+    private async Task TickAsync() {
+        try { while (await _timer!.WaitForNextTickAsync(_cancellation.Token)) await InvokeAsync(() => { _now = DateTimeOffset.Now; StateHasChanged(); }); }
+        catch (OperationCanceledException) when (_cancellation.IsCancellationRequested) { }
+    }
+    private void ShowAll() { _search = ""; _tab = "all"; }
+    private void Select(ReservationDto item) { _selected = item; _actionError = null; }
+    private void Close() { if (!_busy) _selected = null; }
+    private async Task CancelAsync()
     {
-        _requestCancellation.Cancel();
-        _requestCancellation.Dispose();
+        if (_busy || _selected is null) return;
+        _busy = true; _actionError = _message = null;
+        try {
+            var result = await Api.ApiRequestAsync<ReservationDto>($"/reservations/{Uri.EscapeDataString(_selected.Id)}/cancel", new ApiRequestOptions { Method = HttpMethod.Patch }, _cancellation.Token);
+            _reservations = _reservations.Select(r => r.Id == result.Id ? result : r).ToList();
+            _selected = null; _message = "Rezerwacja anulowana. Znajdziesz ją w zakładce Anulowane.";
+        }
+        catch (OperationCanceledException) when (_cancellation.IsCancellationRequested) { }
+        catch (Exception ex) { _actionError = ApiErrorMessage.FromException(ex, "Błąd anulowania rezerwacji"); }
+        finally { _busy = false; }
     }
+    public void Dispose() { _cancellation.Cancel(); _timer?.Dispose(); _cancellation.Dispose(); }
 }

@@ -8,7 +8,7 @@ export const measurementDatabaseUrl =
   "postgresql://measurement:local-measurement-only@localhost:5434/inz_measurements";
 export const authStateFile = "playwright/.auth/user.json";
 
-export const protocolVersion = 2;
+export const protocolVersion = 3;
 
 export const frameworkRuntime = {
   next: "react-client",

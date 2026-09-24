@@ -48,7 +48,7 @@ test("create and cancel reservation", async ({ page }, testInfo) => {
     }),
   });
 
-  await roomCard.getByRole("link", { name: /zobacz szczeg/i }).click();
+  await roomCard.getByRole("link", { name: /wybierz termin|zobacz szczeg/i }).click();
   await waitForMeasurementPage(page, "room-details");
 
   await page.getByLabel("Nazwa rezerwacji", { exact: true }).fill(title);
@@ -86,17 +86,20 @@ test("create and cancel reservation", async ({ page }, testInfo) => {
     "ready",
   );
 
-  page.once("dialog", async (dialog) => {
-    await dialog.accept();
-  });
-
+  // Pomiar całego przepływu: otwarcie dialogu, potwierdzenie, zapis w API,
+  // zamknięcie dialogu i przejście do zakładki z anulowaną rezerwacją.
   await measureStep(testInfo, page, "cancel-reservation", async () => {
     const reservationContainer = page
       .locator("article")
       .filter({ has: page.getByRole("heading", { name: title, exact: true }) });
 
     await reservationContainer.getByRole("button", { name: /anuluj/i }).click();
-
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Anuluj rezerwację", exact: true })
+      .click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page.getByRole("button", { name: /^Anulowane/ }).click();
     await expect(reservationContainer.getByText(/cancelled|anulowana/i)).toBeVisible();
   });
 });

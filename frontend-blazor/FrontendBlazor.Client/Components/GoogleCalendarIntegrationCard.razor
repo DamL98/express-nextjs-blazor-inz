@@ -1,139 +1,46 @@
-@implements IDisposable
-@using FrontendBlazor.Client.Formatting
+﻿@implements IDisposable
 @using FrontendBlazor.Client.Infrastructure.Api
-@using FrontendBlazor.Client.Models
 @inject ApiClient Api
 @inject NavigationManager Navigation
-@inject FrontendBlazor.Client.Infrastructure.Auth.AuthContext Auth
-
-<section data-measurement-calendar="@(_isLoading ? "loading" : _errorMessage is null ? "ready" : "error")" class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-    <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div>
-            <h2 class="text-lg font-semibold text-gray-900">Integracja Google Calendar</h2>
-            <p class="mt-2 max-w-2xl text-sm text-gray-600">Zapis rezerwacji w kalendarzu google</p>
-        </div>
-
-        @if (_status?.IsConnected != true && Auth.User?.GoogleId is not null)
-        {
-            <button
-                type="button"
-                class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                @onclick="Connect">
-                Wlacz synchronizacje kalendarza
-            </button>
+@inject AuthContext Auth
+<section data-measurement-calendar="@(_loading ? "loading" : _error is null ? "ready" : "error")" class="overflow-hidden rounded-2xl border border-app-line bg-white shadow-sm">
+    <div class="border-b border-app-line bg-slate-50/70 p-6"><p class="text-xs font-semibold uppercase tracking-widest text-blue-700">Integracje</p><h2 class="mt-2 text-xl font-bold"><AppIcon Name="calendar-days" />Kalendarz Google</h2><p class="mt-2 text-sm leading-6 text-app-muted">Terminy spotkań również w Twoim kalendarzu.</p><p class="mt-2 text-sm leading-6 text-app-muted">Połączenie kalendarza wymaga osobnej zgody.</p></div>
+    <div class="p-6">
+        @if (CallbackStatus is "connected" or "error") { <p role="status" class="mb-5 rounded-xl border border-app-line p-4 text-sm">@CallbackMessage</p> }
+        @if (_loading) { <p role="status" class="rounded-xl bg-slate-50 p-5 text-sm text-app-muted">Sprawdzanie połączenia z kalendarzem…</p> }
+        else if (_error is not null) { <ErrorNotice Message="@_error" OnRetry="LoadAsync" /> }
+        else if (_status?.IsConnected == true) {
+            <div class="rounded-xl border border-teal-200 bg-teal-50/60 p-5"><span class="rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-900"><AppIcon Name="circle-check" />Kalendarz połączony</span><dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2"><div><dt class="text-app-muted">Konto kalendarza</dt><dd class="mt-1 break-words font-semibold">@(_status.CalendarEmail ?? "Brak adresu w danych połączenia")</dd></div><div><dt class="text-app-muted">Data połączenia</dt><dd class="mt-1 font-semibold">@(DateTimeFormatter.Format(_status.ConnectedAt) ?? "Brak danych")</dd></div></dl><p class="mt-4 text-sm leading-6 text-teal-900">@(_status.IsSyncEnabled ? "Integracja nowych rezerwacji jest włączona." : "Połączenie jest zapisane, ale synchronizacja nie jest włączona.") Status połączenia nie potwierdza dodania każdego wydarzenia.</p></div>
         }
-    </div>
-
-    @if (CallbackStatus == "connected")
-    {
-        <div class="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-            Konto Google Calendar zostalo polaczone
-        </div>
-    }
-    else if (CallbackStatus == "error")
-    {
-        var callbackText = CallbackReason switch
-        {
-            "access_denied" => "Polaczenie Google Calendar zostalo anulowane przez uzytkownika",
-            "google_account_mismatch" => "Wybrane konto Google nie zgadza sie z kontem uzytym do logowania",
-            "google_refresh_token_missing" => "Google nie zwrocil refresh tokena. Ponownie polacz konto",
-            "missing_code" => "Google nie zwrocil kodu autoryzacyjnego",
-            _ => "Blad laczenia z Google Calendar",
-        };
-
-        <div class="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            @callbackText
-        </div>
-    }
-
-    @if (_errorMessage is not null)
-    {
-        <div class="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">@_errorMessage</div>
-    }
-
-    <div class="mt-5 rounded-lg border border-gray-200 bg-gray-50 p-4">
-        @if (_isLoading)
-        {
-            <p class="text-sm text-gray-600">Ladowanie statusu...</p>
-        }
-        else if (_status?.IsConnected == true)
-        {
-            <div class="space-y-2 text-sm text-gray-700">
-                <p><span class="font-medium text-gray-900">Status:</span> polaczono</p>
-                <p><span class="font-medium text-gray-900">Konto:</span> @(_status.CalendarEmail ?? "brak danych")</p>
-                <p><span class="font-medium text-gray-900">Polaczono:</span> @(DateTimeFormatter.Format(_status.ConnectedAt) ?? "brak danych")</p>
+        else {
+            <div class="rounded-xl border border-app-line bg-slate-50 p-5"><p class="font-semibold">@(Auth.User?.GoogleId is not null ? "Włącz kalendarz dla swoich spotkań" : "Zacznij od połączenia konta Google")</p><p class="mt-2 text-sm leading-6 text-app-muted">@(Auth.User?.GoogleId is not null ? "Konto Google jest już połączone z aplikacją. Udziel osobnej zgody, aby dodawać nowe rezerwacje do kalendarza." : "W sekcji konta i logowania podaj aktualne hasło i połącz Google. Następnie możesz włączyć integrację kalendarza.")</p>
+                @if (Auth.User?.GoogleId is not null) { <button type="button" @onclick="Connect" class="mt-4 rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white"><AppIcon Name="link" />Włącz integrację kalendarza</button> }
             </div>
         }
-        else
-        {
-            <p class="text-sm text-gray-600">@(Auth.User?.GoogleId is not null ? "Synchronizacja nowych rezerwacji z kalendarzem jest wylaczona." : "Najpierw polacz konto Google w sekcji konta powyzej.")</p>
-        }
+        <div class="mt-6 grid gap-4 text-sm sm:grid-cols-2"><div><h3 class="font-semibold">Nowe spotkania</h3><p class="mt-2 leading-6 text-app-muted">Po włączeniu integracji aplikacja próbuje dodawać nowe rezerwacje do Kalendarza Google.</p></div><div><h3 class="font-semibold">Dotychczasowe rezerwacje</h3><p class="mt-2 leading-6 text-app-muted">Wcześniejsze spotkania nie są automatycznie eksportowane. Rezerwacje nadal znajdziesz w aplikacji.</p></div></div>
     </div>
 </section>
-
 @code {
-    private readonly CancellationTokenSource _requestCancellation = new();
+    [Parameter] public string? CallbackStatus { get; set; }
+    [Parameter] public string? CallbackReason { get; set; }
+    private readonly CancellationTokenSource _cancellation = new();
     private GoogleCalendarConnectionStatusDto? _status;
-    private bool _isLoading = true;
-    private string? _errorMessage;
-
-    [Parameter]
-    public string? CallbackStatus { get; set; }
-
-    [Parameter]
-    public string? CallbackReason { get; set; }
-
-    protected override async Task OnAfterRenderAsync(bool isFirstRender)
-    {
-        if (!isFirstRender || !RendererInfo.IsInteractive)
-        {
-            return;
-        }
-
-        try
-        {
-            _status = await Api.ApiRequestAsync<GoogleCalendarConnectionStatusDto>(
-                "/google-calendar/status",
-                new ApiRequestOptions
-                {
-                    IsBrowserCredentialRequired = true,
-                },
-                _requestCancellation.Token);
-        }
-        catch (OperationCanceledException) when (_requestCancellation.IsCancellationRequested)
-        {
-        }
-        catch (Exception exception)
-        {
-            _errorMessage = ApiErrorMessage.FromException(
-                exception,
-                "Blad pobrania statusu Google Calendar");
-        }
-        finally
-        {
-            _isLoading = false;
-        }
-
-        if (!_requestCancellation.IsCancellationRequested)
-        {
-            StateHasChanged();
-        }
+    private bool _loading = true;
+    private string? _error;
+    private string CallbackMessage => CallbackStatus == "connected" ? "Kalendarz Google został połączony." : CallbackReason switch {
+        "access_denied" => "Łączenie kalendarza zostało anulowane. Możesz spróbować ponownie.",
+        "google_account_mismatch" => "Wybierz konto Google połączone z Twoim kontem aplikacji.",
+        "google_refresh_token_missing" => "Nie udało się uzyskać dostępu do kalendarza. Połącz ponownie.",
+        _ => "Nie udało się dokończyć połączenia. Spróbuj ponownie."
+    };
+    protected override Task OnInitializedAsync() => LoadAsync();
+    private async Task LoadAsync() {
+        _loading = true; _error = null;
+        try { _status = await Api.ApiRequestAsync<GoogleCalendarConnectionStatusDto>("/google-calendar/status", cancellationToken: _cancellation.Token); }
+        catch (OperationCanceledException) when (_cancellation.IsCancellationRequested) { }
+        catch (Exception ex) { _error = ApiErrorMessage.FromException(ex, "Nie można sprawdzić połączenia"); }
+        finally { _loading = false; }
     }
-
-    private void Connect()
-    {
-        var url = new Uri(Api.BaseAddress, "google-calendar/connect/start");
-        var builder = new UriBuilder(url)
-        {
-            Query = $"redirectTo={Uri.EscapeDataString(Navigation.Uri)}",
-        };
-
-        Navigation.NavigateTo(builder.Uri.ToString(), forceLoad: true);
-    }
-
-    public void Dispose()
-    {
-        _requestCancellation.Cancel();
-        _requestCancellation.Dispose();
-    }
+    private void Connect() { var url = new UriBuilder(new Uri(Api.BaseAddress, "google-calendar/connect/start")) { Query = $"redirectTo={Uri.EscapeDataString(Navigation.Uri)}" }; Navigation.NavigateTo(url.Uri.ToString(), forceLoad: true); }
+    public void Dispose() { _cancellation.Cancel(); _cancellation.Dispose(); }
 }

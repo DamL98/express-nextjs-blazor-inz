@@ -1,18 +1,18 @@
-<div class="min-h-screen bg-gray-50 text-gray-900">
+﻿<div class="min-h-screen bg-slate-50 text-app-ink">
+    <a href="#page-content" class="sr-only z-50 rounded-lg bg-white p-4 focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Przejdź do treści</a>
+
     <div class="flex min-h-screen">
         <Sidebar />
-
         <div class="flex min-w-0 flex-1 flex-col">
             <Topbar />
-
-            <main class="flex-1">
+            <main id="page-content" tabindex="-1" class="flex-1">
                 @ChildContent
             </main>
         </div>
     </div>
 </div>
 
-@code {
-    [Parameter]
-    public RenderFragment? ChildContent { get; set; }
+@code
+{
+[Parameter] public RenderFragment? ChildContent { get; set; }
 }

@@ -5,6 +5,6 @@ test("aplikacja ma aktywną sesję i właściwy renderer", async ({ page }, info
   await waitForMeasurementPage(page, "dashboard");
 
   await expect(page).not.toHaveURL(/\/login/);
-  await expect(page.getByRole("heading", { name: /dashboard/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Twój plan spotkań" })).toBeVisible();
   await assertRuntime(page, info);
 });

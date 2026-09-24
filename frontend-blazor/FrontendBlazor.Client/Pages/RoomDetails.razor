@@ -1,267 +1,37 @@
-@page "/rooms/{Id}"
+﻿@page "/rooms/{Id}"
 @implements IDisposable
 @using FrontendBlazor.Client.Infrastructure.Api
-@using FrontendBlazor.Client.Models
 @inject ApiClient Api
-
-<PageTitle>@(_room?.Name ?? "Szczegoly sali")</PageTitle>
-
-<section
-    class="mx-auto max-w-4xl px-6 py-8"
-    data-measurement-page="room-details"
-    data-measurement-state="@(_isLoading ? "loading" : _errorMessage is null && _room is not null ? "ready" : "error")">
-    <a class="text-sm font-medium text-blue-600 hover:text-blue-700" href="/rooms">← Wroc do listy sal</a>
-
-    @if (_isLoading)
-    {
-        <div class="mt-6 rounded-xl border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600">Ladowanie...</div>
-    }
-    else if (_errorMessage is not null)
-    {
-        <div class="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">@_errorMessage</div>
-    }
-    else if (_room is not null)
-    {
-        <article class="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h1 class="text-2xl font-bold text-gray-900">@_room.Name</h1>
-            <p class="mt-2 text-gray-600">@_room.Location</p>
-
-            <div class="mt-6 grid gap-4 sm:grid-cols-2">
-                <div>
-                    <p class="text-sm text-gray-500">Liczba miejsc</p>
-                    <p class="font-medium text-gray-900">@_room.Capacity</p>
-                </div>
-                <div>
-                    <p class="text-sm text-gray-500">Status</p>
-                    <p class="font-medium text-gray-900">@(_room.IsActive ? "Aktywna" : "Nieaktywna")</p>
-                </div>
-            </div>
-
-            @if (!string.IsNullOrWhiteSpace(_room.Description))
-            {
-                <p class="mt-6 text-gray-700">@_room.Description</p>
-            }
-        </article>
-
-        @if (_room.IsActive)
-        {
-            <section class="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                <h2 class="text-lg font-semibold text-gray-900">Zarezerwuj sale</h2>
-
-                <EditForm FormName="reservation-form" Model="_form" OnSubmit="SubmitReservationAsync" class="mt-5 space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700" for="title">Nazwa rezerwacji</label>
-                        <InputText
-                            id="title"
-                            @bind-Value="_form.Title"
-                            required
-                            class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100" />
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700" for="description">Opis</label>
-                        <InputTextArea
-                            id="description"
-                            @bind-Value="_form.Description"
-                            class="mt-1 min-h-24 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
-                            placeholder="Opis opcjonalny" />
-                    </div>
-
-                    <div class="grid gap-4 sm:grid-cols-2">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700" for="startTime">Poczatek</label>
-                            <InputText
-                                id="startTime"
-                                type="datetime-local"
-                                @bind-Value="_form.StartTime"
-                                required
-                                class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100" />
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700" for="endTime">Koniec</label>
-                            <InputText
-                                id="endTime"
-                                type="datetime-local"
-                                @bind-Value="_form.EndTime"
-                                required
-                                class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100" />
-                        </div>
-                    </div>
-
-                    @if (_formError is not null)
-                    {
-                        <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">@_formError</div>
-                    }
-
-                    @if (_successMessage is not null)
-                    {
-                        <div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-                            <p>@_successMessage</p>
-                            <a class="mt-2 inline-block font-medium text-green-800 underline" href="/reservations">Przejdz do moich rezerwacji</a>
-                        </div>
-                    }
-
-                    <button
-                        type="submit"
-                        class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                        disabled="@_isSubmitting">
-                        @(_isSubmitting ? "Tworzenie..." : "Utworz rezerwacje")
-                    </button>
-                </EditForm>
-            </section>
-        }
-        else
-        {
-            <section class="mt-6 rounded-xl border border-yellow-200 bg-yellow-50 p-6 text-sm text-yellow-800">
-                Ta sala jest nieaktywna i nie mozna jej zarezerwowac.
-            </section>
-        }
+@inject NavigationManager Navigation
+<PageTitle>@(_room?.Name ?? "Szczegóły sali")</PageTitle>
+<section class="mx-auto max-w-7xl px-4 py-8 md:px-8 md:py-10" data-measurement-page="room-details" data-measurement-state="@(_loading ? "loading" : _error is null && _room is not null ? "ready" : "error")">
+    <a href="@($"/rooms{new Uri(Navigation.Uri).Query}")" class="mb-6 inline-block rounded-lg py-2 text-sm font-semibold text-blue-700"><AppIcon Name="arrow-left" />Wróć do listy sal</a>
+    @if (_loading) { <LoadingCards Count="2" /> }
+    else if (_error is not null || _room is null) { <ErrorNotice Message="@(_error ?? "Nie znaleziono sali")" /> }
+    else {
+        <div class="grid items-start gap-6 xl:grid-cols-2">
+            <section class="overflow-hidden rounded-2xl border border-app-line bg-white shadow-sm"><div class="bg-blue-950 p-7 text-white"><p class="text-xs font-semibold uppercase tracking-widest text-blue-200">Przestrzeń do spotkań</p><h1 class="mt-4 break-words text-3xl font-bold">@_room.Name</h1><p class="mt-3 break-words text-sm text-blue-100">@_room.Location</p></div><div class="p-7"><dl class="grid gap-4 sm:grid-cols-2"><div class="rounded-xl bg-slate-50 p-4"><dt class="text-xs text-app-muted">Liczba miejsc</dt><dd class="mt-2 text-2xl font-bold">@_room.Capacity</dd></div><div class="rounded-xl bg-slate-50 p-4"><dt class="text-xs text-app-muted">Status sali</dt><dd class="mt-2 text-sm font-semibold">@(_room.IsActive ? "Aktywna" : "Wyłączona z rezerwacji")</dd></div></dl><h2 class="mt-7 text-base font-bold">O sali</h2><p class="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-app-muted">@(_room.Description ?? "Brak dodatkowego opisu. Lokalizację i liczbę miejsc znajdziesz powyżej.")</p><div class="mt-7 border-t border-app-line pt-5 text-sm leading-6 text-app-muted"><p class="font-semibold">Jak zarezerwować?</p><ol class="mt-3 list-inside list-decimal space-y-2"><li>Wybierz datę i godziny spotkania</li><li>Wpisz nazwę i sprawdź podsumowanie</li><li>Zapisz rezerwację — sprawdzimy termin</li></ol></div></div></section>
+            @if (_room.IsActive) { <ReservationForm @key="_room.Id" Room="_room" /> }
+            else { <section class="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900"><h2 class="font-bold">Ta sala jest wyłączona z rezerwacji</h2><p class="mt-2">Wybierz inne miejsce, aby zaplanować spotkanie</p><a href="/rooms" class="mt-4 inline-block font-semibold underline">Przeglądaj pozostałe sale</a></section> }
+        </div>
     }
 </section>
-
 @code {
-    private readonly CancellationTokenSource _requestCancellation = new();
+    [Parameter] public string Id { get; set; } = "";
+    private CancellationTokenSource? _request;
     private RoomDto? _room;
-    private bool _isLoading = true;
-    private bool _isSubmitting;
-    private string? _errorMessage;
-    private string? _formError;
-    private string? _successMessage;
-    private ReservationFormState _form = new();
-
-    [Parameter]
-    public string Id { get; set; } = string.Empty;
-
-    protected override async Task OnParametersSetAsync()
-    {
-        _isLoading = true;
-        _errorMessage = null;
-        _room = null;
-
-        if (string.IsNullOrWhiteSpace(Id))
-        {
-            _errorMessage = "Nie podano identyfikatora sali.";
-            _isLoading = false;
-            return;
-        }
-
-        try
-        {
-            _room = await Api.ApiRequestAsync<RoomDto>(
-                $"/rooms/{Uri.EscapeDataString(Id)}",
-                cancellationToken: _requestCancellation.Token);
-        }
-        catch (OperationCanceledException) when (_requestCancellation.IsCancellationRequested)
-        {
-        }
-        catch (Exception exception)
-        {
-            _errorMessage = ApiErrorMessage.FromException(
-                exception,
-                "Blad pobierania danych sal");
-        }
-        finally
-        {
-            _isLoading = false;
-        }
+    private string? _loadedId, _error;
+    private bool _loading = true;
+    protected override async Task OnParametersSetAsync() {
+        if (_loadedId == Id) return;
+        _loadedId = Id;
+        _request?.Cancel(); _request?.Dispose();
+        var request = _request = new CancellationTokenSource();
+        _loading = true; _error = null; _room = null;
+        try { var room = await Api.ApiRequestAsync<RoomDto>($"/rooms/{Uri.EscapeDataString(Id)}", cancellationToken: request.Token); if (!request.IsCancellationRequested) _room = room; }
+        catch (OperationCanceledException) when (request.IsCancellationRequested) { }
+        catch (Exception ex) { if (!request.IsCancellationRequested) _error = ApiErrorMessage.FromException(ex, "Błąd pobierania danych sali"); }
+        finally { if (!request.IsCancellationRequested) _loading = false; }
     }
-
-    private async Task SubmitReservationAsync()
-    {
-        _formError = null;
-        _successMessage = null;
-
-        if (string.IsNullOrWhiteSpace(_form.Title))
-        {
-            _formError = "Tytul jest wymagany";
-        }
-        else if (string.IsNullOrWhiteSpace(_form.StartTime))
-        {
-            _formError = "Poczatek rezerwacji jest wymagany";
-        }
-        else if (string.IsNullOrWhiteSpace(_form.EndTime))
-        {
-            _formError = "Koniec rezerwacji jest wymagany";
-        }
-        else if (!DateTime.TryParse(_form.StartTime, out var formStart) ||
-            !DateTime.TryParse(_form.EndTime, out var formEnd))
-        {
-            _formError = "Podaj poprawny zakres czasu";
-        }
-        else if (formStart >= formEnd)
-        {
-            _formError = "Poczatek musi byc wczesniej niz koniec";
-        }
-
-        if (_formError is not null || _room is null)
-        {
-            return;
-        }
-
-        _isSubmitting = true;
-
-        try
-        {
-            var start = DateTime.Parse(_form.StartTime).ToUniversalTime();
-            var end = DateTime.Parse(_form.EndTime).ToUniversalTime();
-            var startValue = Uri.EscapeDataString(start.ToString("O"));
-            var endValue = Uri.EscapeDataString(end.ToString("O"));
-            var availability = await Api.ApiRequestAsync<RoomAvailabilityDto>(
-                $"/rooms/{Uri.EscapeDataString(_room.Id)}/availability" +
-                $"?start={startValue}&end={endValue}");
-
-            if (!availability.IsAvailable)
-            {
-                _formError = "Sala jest niedostepna w wybranym terminie";
-                return;
-            }
-
-            await Api.ApiRequestAsync<ReservationDto>(
-                "/reservations",
-                new ApiRequestOptions
-                {
-                    Method = HttpMethod.Post,
-                    Body = new CreateReservationRequestDto(
-                        _room.Id,
-                        _form.Title.Trim(),
-                        string.IsNullOrWhiteSpace(_form.Description)
-                            ? null
-                            : _form.Description.Trim(),
-                        start.ToString("O"),
-                        end.ToString("O")),
-                    IsBrowserCredentialRequired = true,
-                });
-
-            _form = new ReservationFormState();
-            _successMessage = "Rezerwacja utworzona";
-        }
-        catch (Exception exception)
-        {
-            _formError = ApiErrorMessage.FromException(
-                exception,
-                "Nie udalo sie utworzyc rezerwacji");
-        }
-        finally
-        {
-            _isSubmitting = false;
-        }
-    }
-
-    public void Dispose()
-    {
-        _requestCancellation.Cancel();
-        _requestCancellation.Dispose();
-    }
-
-    private sealed class ReservationFormState
-    {
-        public string Title { get; set; } = string.Empty;
-
-        public string? Description { get; set; }
-
-        public string StartTime { get; set; } = string.Empty;
-
-        public string EndTime { get; set; } = string.Empty;
-    }
+    public void Dispose() { _request?.Cancel(); _request?.Dispose(); }
 }

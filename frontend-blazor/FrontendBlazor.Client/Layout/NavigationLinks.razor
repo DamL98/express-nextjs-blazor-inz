@@ -1,0 +1,18 @@
+﻿<nav aria-label="@Label" class="@Class">
+    @foreach (var item in Items)
+    {
+        <NavLink
+            href="@item.Path"
+            Match="@(item.Path == "/" ? NavLinkMatch.All : NavLinkMatch.Prefix)"
+            class="flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-medium text-app-muted hover:bg-slate-50 [&.active]:bg-blue-900 [&.active]:text-white"
+        >
+            <AppIcon Name="@item.Icon" />
+            @item.Label
+        </NavLink>
+    }
+</nav>
+@code {
+    [Parameter] public string Label { get; set; } = "Nawigacja główna";
+    [Parameter] public string Class { get; set; } = "mt-10 space-y-2";
+    private static readonly (string Path, string Label, string Icon)[] Items = [("/", "Przegląd", "layout-dashboard"), ("/rooms", "Sale", "building-2"), ("/reservations", "Moje rezerwacje", "calendar-days"), ("/settings", "Ustawienia", "settings")];
+}

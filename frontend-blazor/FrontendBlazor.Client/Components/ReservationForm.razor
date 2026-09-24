@@ -1,0 +1,60 @@
+﻿@implements IAsyncDisposable
+@using System.Globalization
+@using FrontendBlazor.Client.Infrastructure.Api
+@inject ApiClient Api
+@inject IJSRuntime JS
+<section class="rounded-2xl border border-app-line bg-white p-5 shadow-sm sm:p-7">
+    <p class="text-xs font-semibold uppercase tracking-widest text-blue-700">Zaplanuj spotkanie</p><h2 class="mt-2 text-xl font-bold"><AppIcon Name="calendar-plus" />Zarezerwuj salę</h2><p class="mt-2 text-sm leading-6 text-app-muted">Wybierz termin i nadaj spotkaniu nazwę. Dostępność sprawdzimy przy zapisie.</p>
+    @if (_submitted is not null) {
+        <div role="status" class="mt-5 rounded-xl border border-teal-200 bg-teal-50 p-5 text-sm text-teal-900"><p class="font-bold">Rezerwacja utworzona</p><p class="mt-2 break-words">@_submitted.Title — @Room.Name</p><p class="mt-1">@DateTimeFormatter.Format(_submitted.StartTime) — @DateTimeFormatter.Format(_submitted.EndTime)</p><div class="mt-3 flex flex-wrap gap-4"><a href="/reservations" class="font-semibold underline">Przejdź do moich rezerwacji</a><button type="button" @onclick="NewReservation" class="font-semibold underline">Nowa rezerwacja</button></div></div>
+    }
+    <form @onsubmit="SubmitAsync" @onsubmit:preventDefault class="mt-6 space-y-5" aria-describedby="reservation-timezone">
+        <fieldset disabled="@_busy" class="space-y-5 disabled:opacity-70"><legend class="sr-only">Dane nowej rezerwacji</legend>
+            <div class="grid gap-4 sm:grid-cols-2"><label class="block text-sm font-medium" for="startTime">Początek<input id="startTime" type="datetime-local" required value="@_start" @oninput='e => _start = e.Value?.ToString() ?? ""' class="mt-2 min-h-11 w-full rounded-xl border border-app-line px-3 py-2 text-sm" /></label><label class="block text-sm font-medium" for="endTime">Koniec<input id="endTime" type="datetime-local" required value="@_end" @oninput='e => _end = e.Value?.ToString() ?? ""' aria-invalid="@InvalidRange" aria-describedby="@(InvalidRange ? "reservation-range-error" : null)" class="mt-2 min-h-11 w-full rounded-xl border border-app-line px-3 py-2 text-sm" /></label></div>
+            @if (InvalidRange) { <p id="reservation-range-error" role="alert" class="text-sm text-red-700">Koniec musi przypadać po początku rezerwacji.</p> }
+            <div><p class="text-xs font-medium text-app-muted">Ustaw czas spotkania</p><div class="mt-2 flex flex-wrap gap-2">@foreach (var minutes in new[] { 30, 60, 120 }) { <button type="button" disabled="@(!TryDate(_start, out _))" aria-pressed="@(Duration == minutes)" @onclick="() => SetDuration(minutes)" class="rounded-lg border border-app-line px-3 py-2 text-sm">@(minutes == 30 ? "30 min" : minutes == 60 ? "1 godz." : "2 godz.")</button> }</div></div>
+            <label class="block text-sm font-medium" for="title">Nazwa rezerwacji<input id="title" required @bind="_title" @bind:event="oninput" class="mt-2 min-h-11 w-full rounded-xl border border-app-line px-3 py-2 text-sm" /></label>
+            <label class="block text-sm font-medium" for="description">Opis (opcjonalnie)<textarea id="description" @bind="_description" class="mt-2 min-h-24 w-full rounded-xl border border-app-line px-3 py-2 text-sm" placeholder="Cel spotkania lub dodatkowe informacje"></textarea></label>
+            <div class="rounded-xl border border-blue-100 bg-blue-50/60 p-4"><p class="break-words text-sm font-semibold text-blue-950">@Room.Name</p><p class="mt-2 text-sm text-app-muted">@(Duration > 0 ? $"Czas trwania: {Duration:0} min" : "Wybierz początek i koniec spotkania.")</p><p id="reservation-timezone" class="mt-2 text-xs text-app-muted">Strefa czasu: @_zone. Termin zostanie potwierdzony po zapisaniu.</p></div>
+            @if (_error is not null) { <div role="alert" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">@_error</div> }
+            <button type="submit" disabled="@(_busy || InvalidRange)" class="min-h-12 w-full rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white"><AppIcon Name="calendar-plus" />@(_busy ? "Tworzenie…" : "Utwórz rezerwację")</button>
+        </fieldset>
+    </form>
+</section>
+@code {
+    [Parameter, EditorRequired] public RoomDto Room { get; set; } = default!;
+    private readonly CancellationTokenSource _cancellation = new();
+    private string _title = "", _description = "", _start = "", _end = "", _zone = "lokalna";
+    private string? _error;
+    private bool _busy;
+    private ReservationDto? _submitted;
+    private IJSObjectReference? _module;
+    private static bool TryDate(string input, out DateTime date) => DateTime.TryParse(input, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out date);
+    private double Duration => TryDate(_start, out var start) && TryDate(_end, out var end) ? Math.Round((end.ToUniversalTime() - start.ToUniversalTime()).TotalMinutes) : 0;
+    private bool InvalidRange => TryDate(_start, out _) && TryDate(_end, out _) && Duration <= 0;
+    protected override async Task OnAfterRenderAsync(bool firstRender) { if (firstRender) { _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/ui.js"); _zone = await _module.InvokeAsync<string>("timeZone"); StateHasChanged(); } }
+    private void SetDuration(int minutes) { if (TryDate(_start, out var start)) _end = start.ToUniversalTime().AddMinutes(minutes).ToLocalTime().ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture); }
+    private async Task NewReservation() { _submitted = null; if (_module is not null) await _module.InvokeVoidAsync("focusField", "startTime"); }
+    private async Task SubmitAsync() {
+        if (_busy) return;
+        _error = null; _submitted = null;
+        string? field = null;
+        if (string.IsNullOrWhiteSpace(_title)) { _error = "Tytuł jest wymagany"; field = "title"; }
+        else if (!TryDate(_start, out _)) { _error = "Podaj poprawny początek rezerwacji"; field = "startTime"; }
+        else if (!TryDate(_end, out _) || InvalidRange) { _error = "Koniec musi przypadać po początku rezerwacji"; field = "endTime"; }
+        if (field is not null) { if (_module is not null) await _module.InvokeVoidAsync("focusField", field); return; }
+        _busy = true;
+        try {
+            TryDate(_start, out var start); TryDate(_end, out var end);
+            var startIso = start.ToUniversalTime().ToString("O"); var endIso = end.ToUniversalTime().ToString("O");
+            var availability = await Api.ApiRequestAsync<RoomAvailabilityDto>($"/rooms/{Uri.EscapeDataString(Room.Id)}/availability?start={Uri.EscapeDataString(startIso)}&end={Uri.EscapeDataString(endIso)}", cancellationToken: _cancellation.Token);
+            if (!availability.IsAvailable) { _error = "Sala jest niedostępna w wybranym terminie. Wybierz inne godziny i spróbuj ponownie."; return; }
+            _submitted = await Api.ApiRequestAsync<ReservationDto>("/reservations", new ApiRequestOptions { Method = HttpMethod.Post, Body = new CreateReservationRequestDto(Room.Id, _title.Trim(), string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(), startIso, endIso) }, _cancellation.Token);
+            _title = _description = _start = _end = "";
+        }
+        catch (OperationCanceledException) when (_cancellation.IsCancellationRequested) { }
+        catch (Exception ex) { _error = ApiErrorMessage.FromException(ex, "Nie udało się utworzyć rezerwacji"); }
+        finally { _busy = false; }
+    }
+    public async ValueTask DisposeAsync() { _cancellation.Cancel(); _cancellation.Dispose(); if (_module is not null) await _module.DisposeAsync(); }
+}

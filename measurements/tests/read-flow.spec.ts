@@ -39,7 +39,7 @@ test("room-details-navigation", async ({ page }, info) => {
     .locator("article")
     .filter({ has: page.getByRole("heading", { name: "Sala A-101", exact: true }) });
   await measureStep(info, page, "room-details-navigation", async () => {
-    await card.getByRole("link", { name: /zobacz szczeg/i }).click();
+    await card.getByRole("link", { name: /wybierz termin|zobacz szczeg/i }).click();
     await waitForMeasurementPage(page, "room-details");
   });
   await expect(

@@ -1,0 +1,105 @@
+﻿@implements IDisposable
+@using System.Globalization
+@using FrontendBlazor.Client.Infrastructure.Api
+@inject ApiClient Api
+<section aria-labelledby="reservation-calendar-title" aria-busy="@_loading" data-measurement-reservation-calendar="@(_loading ? "loading" : _error is null ? "ready" : "error")" class="mt-8 overflow-hidden rounded-2xl border border-app-line bg-white">
+    <div class="flex flex-wrap items-start justify-between gap-4 border-b border-app-line p-5 sm:p-6">
+        <div><p class="text-xs font-semibold uppercase tracking-widest text-blue-700">Twój miesiąc</p><h2 id="reservation-calendar-title" class="mt-2 text-xl font-bold"><AppIcon Name="calendar-days" />Kalendarz rezerwacji</h2><p class="mt-2 text-sm leading-6 text-app-muted">Wybierz dzień, aby zobaczyć godziny spotkań i zarezerwowane sale</p></div>
+        <div class="flex flex-wrap gap-2"><button type="button" @onclick="Today" class="rounded-xl border border-app-line px-4 py-3 text-sm font-semibold">Dzisiaj</button><button type="button" @onclick="LoadAsync" disabled="@_loading" class="rounded-xl border border-app-line px-4 py-3 text-sm font-semibold"><AppIcon Name="refresh-cw" />@(_loading ? "Odświeżanie…" : "Odśwież rezerwacje")</button></div>
+    </div>
+    @if (_loading) { <div class="p-6"><LoadingCards Count="2" /></div> }
+    else if (_error is not null) { <div class="p-5"><ErrorNotice Message="@_error" OnRetry="LoadAsync" /></div> }
+    else
+    {
+        var days = ViewFilters.DayReservations(_reservations, _selected).ToList();
+        var first = new DateTime(_month.Year, _month.Month, 1);
+        var gridStart = first.AddDays(-(((int)first.DayOfWeek + 6) % 7));
+        <div class="grid min-w-0 lg:grid-cols-2">
+            <div class="min-w-0 border-b border-app-line p-3 sm:p-6 lg:border-r lg:border-b-0">
+                <div class="mb-4 flex items-center justify-between gap-2"><h3 aria-live="polite" class="font-bold">@_month.ToString("MMMM yyyy", Polish)</h3><div><button type="button" aria-label="Poprzedni miesiąc" @onclick="() => MoveMonth(-1)" class="rounded-lg p-3"><AppIcon Name="arrow-left" /></button><button type="button" aria-label="Następny miesiąc" @onclick="() => MoveMonth(1)" class="rounded-lg p-3"><AppIcon Name="arrow-right" /></button></div></div>
+                <table class="w-full table-fixed text-center" aria-label="Kalendarz rezerwacji">
+                    <thead><tr>@foreach (var label in Weekdays) { <th scope="col" class="py-2 text-xs font-medium text-app-muted">@label</th> }</tr></thead>
+                    <tbody>
+                    @for (var week = 0; week < 6; week++)
+                    {
+                        <tr>
+                        @for (var index = 0; index < 7; index++)
+                        {
+                            var day = gridStart.AddDays(week * 7 + index);
+                            var count = ViewFilters.DayReservations(_reservations, day).Count();
+                            <td class="p-0.5"><button @key="day" @ref="_dayButtons[day]" type="button" aria-label="@(day.ToString("D", Polish) + $". Liczba aktywnych rezerwacji: {count}")" aria-pressed="@(day == _selected)" aria-current="@(day == DateTime.Today ? "date" : null)" @onclick="() => _selected = day" @onkeydown="e => DayKey(e, day)" class="@($"flex min-h-14 w-full flex-col items-center justify-center rounded-xl border-2 text-sm {(day == _selected ? "border-blue-900 bg-blue-50" : count > 0 ? "border-transparent bg-teal-50" : "border-transparent")} {(day.Month != _month.Month ? "text-slate-400" : "text-app-ink")}")">@day.Day
+                                @if (count > 0) { <span aria-hidden="true" class="rounded-full bg-teal-700 px-1.5 text-xs text-white">@count</span> }
+                            </button></td>
+                        }
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+                <p class="mt-5 text-xs text-app-muted">Liczba w dniu: aktywne rezerwacje. Obramowanie: wybrany dzień.</p>
+            </div>
+            <div class="min-w-0 bg-slate-50/50 p-5 sm:p-6">
+                <div role="status" aria-live="polite"><h3 class="text-base font-bold">@_selected.ToString("dddd, d MMMM yyyy", Polish)</h3><p class="mt-2 text-sm text-app-muted">Aktywne rezerwacje: @days.Count</p></div>
+                @if (_roomsUnavailable) { <p class="mt-3 text-xs text-amber-800">Nazwy sal chwilowo niedostępne. Terminy zostają widoczne.</p> }
+                @if (days.Count == 0)
+                { <div class="mt-5"><EmptyState Title="Brak spotkań w tym dniu" Description="Nie masz aktywnych rezerwacji na wybrany dzień. Anulowane spotkania nie są zaznaczane."><a href="/rooms" class="text-sm font-semibold text-blue-700">Znajdź salę</a></EmptyState></div> }
+                else
+                {
+                    <div class="mt-5 max-h-96 space-y-3 overflow-y-auto pr-1">
+                    @foreach (var reservation in days)
+                    {
+                        var room = _rooms.FirstOrDefault(room => room.Id == reservation.RoomId);
+                        <article @key="reservation.Id" class="rounded-xl border border-app-line bg-white p-4"><h4 class="break-words font-semibold">@reservation.Title</h4><p class="mt-2 text-sm leading-6 text-app-muted">@DateTimeFormatter.Format(reservation.StartTime) — @DateTimeFormatter.Format(reservation.EndTime)</p><a href="@($"/rooms/{Uri.EscapeDataString(reservation.RoomId)}")" class="mt-3 inline-block break-words text-sm font-semibold text-blue-700">@(reservation.Room?.Name ?? room?.Name ?? $"Sala: {reservation.RoomId}")</a><p class="mt-1 text-xs text-app-muted">@(reservation.Room?.Location ?? room?.Location)</p></article>
+                    }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    <div class="border-t border-app-line px-5 py-4 text-xs leading-5 text-app-muted"><p>Kalendarz pokazuje rezerwacje aplikacji. Przy włączonej integracji nowe rezerwacje są wysyłane do Google. Zmiany wykonane w Google nie są pobierane.</p><div class="mt-2 flex flex-wrap justify-between gap-2"><a href="/settings" class="font-semibold text-blue-700">Ustawienia Google Calendar</a>@if (_updatedAt is not null && !_loading && _error is null) { <span>Odczyt z aplikacji: @_updatedAt.Value.ToString("HH:mm")</span> }</div></div>
+</section>
+@code {
+    private static readonly CultureInfo Polish = CultureInfo.GetCultureInfo("pl-PL");
+    private static readonly string[] Weekdays = ["pon.", "wt.", "śr.", "czw.", "pt.", "sob.", "niedz."];
+    private readonly CancellationTokenSource _cancellation = new();
+    private readonly Dictionary<DateTime, ElementReference> _dayButtons = new();
+    private IReadOnlyList<ReservationDto> _reservations = [];
+    private IReadOnlyList<RoomDto> _rooms = [];
+    private DateTime _selected = DateTime.Today, _month = DateTime.Today;
+    private DateTime? _updatedAt, _focusDay;
+    private bool _loading = true, _roomsUnavailable;
+    private string? _error;
+    protected override Task OnInitializedAsync() => LoadAsync();
+    private async Task LoadAsync()
+    {
+        _loading = true; _error = null;
+        var roomsTask = LoadRoomsAsync();
+        try
+        {
+            _reservations = await Api.ApiRequestAsync<IReadOnlyList<ReservationDto>>("/reservations/my", cancellationToken: _cancellation.Token);
+            _updatedAt = DateTime.Now;
+        }
+        catch (OperationCanceledException) when (_cancellation.IsCancellationRequested) { }
+        catch (Exception ex) { _error = ApiErrorMessage.FromException(ex, "Nie udało się pobrać kalendarza rezerwacji."); }
+        await roomsTask;
+        _loading = false;
+    }
+    private async Task LoadRoomsAsync()
+    {
+        try { _rooms = await Api.ApiRequestAsync<IReadOnlyList<RoomDto>>("/rooms", cancellationToken: _cancellation.Token); _roomsUnavailable = false; }
+        catch (OperationCanceledException) when (_cancellation.IsCancellationRequested) { }
+        catch { _rooms = []; _roomsUnavailable = true; }
+    }
+    private void Today() { _selected = _month = DateTime.Today; _dayButtons.Clear(); }
+    private void MoveMonth(int offset) { _month = _month.AddMonths(offset); _dayButtons.Clear(); }
+    private void DayKey(KeyboardEventArgs e, DateTime day)
+    {
+        DateTime? next = e.Key switch { "ArrowLeft" => day.AddDays(-1), "ArrowRight" => day.AddDays(1), "ArrowUp" => day.AddDays(-7), "ArrowDown" => day.AddDays(7), "Home" => day.AddDays(-(((int)day.DayOfWeek + 6) % 7)), "End" => day.AddDays(6 - (((int)day.DayOfWeek + 6) % 7)), "PageUp" => day.AddMonths(-1), "PageDown" => day.AddMonths(1), _ => null };
+        if (next is null) return;
+        _selected = _month = next.Value; _focusDay = next; _dayButtons.Clear();
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusDay is DateTime day && _dayButtons.TryGetValue(day, out var button)) { _focusDay = null; await button.FocusAsync(preventScroll: true); }
+    }
+    public void Dispose() { _cancellation.Cancel(); _cancellation.Dispose(); }
+}

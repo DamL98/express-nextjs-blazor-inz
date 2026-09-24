@@ -89,10 +89,20 @@ export async function measureStep(
 
 // Czeka, aż wskazana strona będzie widoczna i zgłosi stan gotowości ustawiany
 // przez frontend po zakończeniu pobierania oraz renderowania danych.
+// Dashboard jest gotowy dopiero po załadowaniu także kalendarza rezerwacji.
 export async function waitForMeasurementPage(page: Page, name: string) {
   const root = page.locator('[data-measurement-page="' + name + '"]');
   await expect(root).toBeVisible();
   await expect(root).toHaveAttribute("data-measurement-state", "ready");
+
+  if (name === "dashboard") {
+    const calendar = root.locator("[data-measurement-reservation-calendar]");
+    await expect(calendar).toBeVisible();
+    await expect(calendar).toHaveAttribute(
+      "data-measurement-reservation-calendar",
+      "ready",
+    );
+  }
 
   return root;
 }

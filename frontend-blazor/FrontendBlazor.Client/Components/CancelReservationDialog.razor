@@ -1,0 +1,21 @@
+﻿@implements IAsyncDisposable
+@inject IJSRuntime JS
+<dialog @ref="_dialog" @oncancel="Close" @oncancel:preventDefault aria-labelledby="cancel-title" aria-describedby="cancel-description" aria-busy="@Busy" class="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-2xl border border-app-line bg-white p-6 text-app-ink shadow-xl backdrop:bg-slate-950/50 sm:p-8">
+    <p class="text-xs font-semibold uppercase tracking-widest text-red-700">Anulowanie spotkania</p><h2 id="cancel-title" class="mt-3 text-2xl font-bold"><AppIcon Name="calendar-x" />Anulować tę rezerwację?</h2><p id="cancel-description" class="mt-3 text-sm leading-6 text-app-muted">Zwolnisz termin dla innych osób. Konieczne będzie utworzenie nowej rezerwacji.</p>
+    <div class="my-6 rounded-xl bg-slate-50 p-4"><p class="break-words font-semibold">@Reservation.Title</p><p class="mt-1 text-sm text-app-muted">@(Reservation.Room?.Name ?? "Wybrana sala")</p><p class="mt-2 text-sm text-app-muted">@DateTimeFormatter.Format(Reservation.StartTime) — @DateTimeFormatter.Format(Reservation.EndTime)</p></div>
+    @if (Error is not null) { <p role="alert" class="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">@Error</p> }
+    <div class="flex flex-col gap-3 sm:flex-row sm:justify-end"><button type="button" disabled="@Busy" @onclick="Close" class="rounded-xl border border-app-line px-4 py-3 text-sm font-semibold">Zachowaj rezerwację</button><button type="button" disabled="@Busy" @onclick="OnConfirm" class="rounded-xl bg-red-700 px-4 py-3 text-sm font-semibold text-white"><AppIcon Name="calendar-x" />@(Busy ? "Anulowanie…" : "Anuluj rezerwację")</button></div>
+</dialog>
+@code {
+    [Parameter, EditorRequired] public ReservationDto Reservation { get; set; } = default!;
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    private ElementReference _dialog;
+    private IJSObjectReference? _module;
+    protected override async Task OnAfterRenderAsync(bool firstRender) { if (firstRender) { _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/ui.js"); await _module.InvokeVoidAsync("showDialog", _dialog); } }
+    private async Task Close() { if (!Busy) await OnClose.InvokeAsync(); }
+    public async ValueTask DisposeAsync() { if (_module is not null) await _module.DisposeAsync(); }
+}
+

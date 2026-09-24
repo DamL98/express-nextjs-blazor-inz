@@ -47,3 +47,18 @@ h1:focus {
 .blazor-error-boundary::after {
   content: "Wystąpił nieoczekiwany błąd";
 }
+
+@layer base {
+  :where(a, button, input, select, textarea, summary):focus-visible {
+    outline: 3px solid var(--color-blue-600);
+    outline-offset: 3px;
+  }
+  input, select, textarea { min-width: 0; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation: none !important;
+      scroll-behavior: auto !important;
+      transition: none !important;
+    }
+  }
+}

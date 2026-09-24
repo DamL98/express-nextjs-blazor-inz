@@ -1,0 +1,31 @@
+﻿@page "/settings"
+@inject AuthContext Auth
+
+<PageTitle>Ustawienia konta</PageTitle>
+
+<section class="mx-auto max-w-5xl px-4 py-8 md:px-8 md:py-10">
+    <PageHeader Title="Ustawienia konta" Description="Zarządzaj sposobem logowania i połączeniem z Kalendarzem Google." />
+
+    <section class="mb-6 flex flex-col gap-4 rounded-2xl border border-app-line bg-white p-6 sm:flex-row sm:items-center">
+        <div class="min-w-0 flex-1">
+            <h2 class="break-words text-lg font-bold">@Auth.User?.FullName</h2>
+            <p class="mt-1 break-words text-sm text-app-muted">
+                @Auth.User?.Email
+            </p>
+        </div>
+        <span
+            class="w-fit rounded-full bg-slate-100 px-3 py-2 text-xs font-medium text-app-muted">
+            @(Auth.User?.HasLocalPassword == true ? "Logowanie hasłem" : "Logowanie Google")
+        </span>
+    </section>
+
+    <div class="space-y-6">
+        <AccountSecurityCard />
+        <GoogleCalendarIntegrationCard CallbackStatus="@CalendarStatus" CallbackReason="@Reason" />
+    </div>
+</section>
+
+@code {
+    [SupplyParameterFromQuery(Name = "googleCalendar")] public string? CalendarStatus { get; set; }
+    [SupplyParameterFromQuery(Name = "reason")] public string? Reason { get; set; }
+}

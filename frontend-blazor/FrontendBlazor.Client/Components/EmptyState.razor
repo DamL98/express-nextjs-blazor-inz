@@ -1,0 +1,6 @@
+<div class="rounded-2xl border border-dashed border-app-line bg-white p-8 text-center"><h2 class="text-lg font-bold">@Title</h2><p class="mx-auto mt-3 max-w-lg text-sm leading-6 text-app-muted">@Description</p><div class="mt-5">@ChildContent</div></div>
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Description { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
