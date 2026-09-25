@@ -12,6 +12,10 @@ import { formatDateTime } from "@/lib/formatters";
 import { getDayReservations } from "@/lib/reservation-calendar";
 import { LoadingCards } from "@/components/ui/LoadingCards";
 
+function localDateKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 const CalendarReservationsContext = createContext<Reservation[]>([]);
 
 function ReservationDayButton(props: DayButtonProps) {
@@ -21,6 +25,7 @@ function ReservationDayButton(props: DayButtonProps) {
   return (
     <DayButton
       {...props}
+      data-measurement-day={localDateKey(props.day.date)}
       aria-label={`${props["aria-label"]}. Liczba aktywnych rezerwacji: ${count}`}
     >
       {props.children}
@@ -99,6 +104,8 @@ export function ReservationCalendar() {
     <section
       aria-labelledby="reservation-calendar-title"
       aria-busy={loading}
+      data-measurement-month={localDateKey(month).slice(0, 7)}
+      data-measurement-selected-day={localDateKey(selectedDay)}
       data-measurement-reservation-calendar={loading ? "loading" : error ? "error" : "ready"}
       className="mt-8 overflow-hidden rounded-2xl border border-app-line bg-white"
     >
@@ -149,6 +156,7 @@ export function ReservationCalendar() {
 
             <CalendarReservationsContext.Provider value={reservations}>
               <DayPicker
+                labels={{ labelNext: () => "Następny miesiąc", labelPrevious: () => "Poprzedni miesiąc" }}
                 mode="single"
                 required
                 locale={pl}
@@ -195,7 +203,7 @@ export function ReservationCalendar() {
                   const room = reservation.room || rooms.find((item) => item.id === reservation.roomId);
 
                   return (
-                    <article key={reservation.id} className="rounded-xl border border-app-line bg-white p-4">
+                    <article data-measurement-calendar-reservation-id={reservation.id} key={reservation.id} className="rounded-xl border border-app-line bg-white p-4">
                       <h4 className="break-words font-semibold">{reservation.title}</h4>
                       <p className="mt-2 text-sm leading-6 text-app-muted">{formatDateTime(reservation.startTime)} — {formatDateTime(reservation.endTime)}</p>
 

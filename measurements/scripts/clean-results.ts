@@ -2,32 +2,16 @@ import fs from "node:fs";
 import path from "node:path";
 import { measurementsDirectory } from "../measurement-config";
 
-const resultDirectories = [
-  path.join(measurementsDirectory, "results", "raw"),
-  path.join(measurementsDirectory, "results", "playwright"),
-  path.join(measurementsDirectory, "test-results"),
-];
+// usuwa tylko foldery wyników
+for (const name of ["results/raw", "results/playwright", "test-results"]) {
+  const directory = path.resolve(measurementsDirectory, name);
+  const relative = path.relative(measurementsDirectory, directory);
 
-/** sprawdza czy usuwany katalog należy do measurements */
-function validateResultDirectory(directory: string): void {
-  const relativePath = path.relative(measurementsDirectory, directory);
-
-  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
-    throw new Error(`Odmowa usunięcia ścieżki spoza measurements: ${directory}`);
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error(`Odmowa usunięcia ścieżki spoza katalogów wyników: ${directory}`);
   }
-}
 
-/** usuwa jeden wygenerowany katalog wyników - jest wywoływana dla każdej pozycji z listy */
-function removeResultDirectory(directory: string): void {
-  validateResultDirectory(directory);
   fs.rmSync(directory, { recursive: true, force: true });
 
-  console.log(`Usunięto: ${path.relative(measurementsDirectory, directory)}`);
+  console.log(`Usunięto: ${relative}`);
 }
-
-/** czyści wyniki Playwright przed rozpoczęciem nowych pomiarów */
-function main(): void {
-  resultDirectories.forEach(removeResultDirectory);
-}
-
-main();

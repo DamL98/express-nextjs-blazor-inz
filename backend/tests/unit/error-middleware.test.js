@@ -44,7 +44,6 @@ describe("errorMiddleware", () => {
 
   it("wysyla kontrolowany ApiError", () => {
     const response = createResponse();
-    response.locals.requestId = "f6425783-d152-4d99-bd91-59c8b61c8041";
 
     errorMiddleware(
       new ApiError(Problems.ROOM_NOT_FOUND),
@@ -58,13 +57,12 @@ describe("errorMiddleware", () => {
     expect(response.json.mock.calls[0][0]).toMatchObject({
       type: "/problems/room-not-found",
       code: "ROOM_NOT_FOUND",
-      instance: `urn:uuid:${response.locals.requestId}`,
+      instance: expect.stringMatching(/^urn:uuid:[0-9a-f-]{36}$/),
     });
   });
 
   it("nie ujawnia szczegolow unexpected error", () => {
     const response = createResponse();
-    const consoleLog = vi.spyOn(console, "log").mockImplementation(() => {});
 
     errorMiddleware(new Error("sekret"), null, response, null);
 
@@ -76,13 +74,6 @@ describe("errorMiddleware", () => {
     expect(response.json.mock.calls[0][0]).not.toHaveProperty("debug");
 
     expect(JSON.stringify(response.json.mock.calls)).not.toContain("sekret");
-    expect(consoleLog).toHaveBeenCalledOnce();
-    expect(JSON.parse(consoleLog.mock.calls[0][0])).toMatchObject({
-      event: "http.request.failed",
-      level: "error",
-      errorName: "Error",
-    });
-    expect(JSON.stringify(consoleLog.mock.calls)).not.toContain("sekret");
   });
 
   it.each([

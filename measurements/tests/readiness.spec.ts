@@ -1,67 +1,67 @@
 import { test, expect, prepareCacheState, waitForMeasurementPage } from "./test-helpers";
-import type { TestInfo } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
-// Testy warunków pomiaru na kontrolowanym DOM, bez API i zapisanej sesji
+// Kontrolowany DOM: te testy nie wymagają API ani zapisanej sesji.
 test.use({ storageState: { cookies: [], origins: [] } });
+
+const calendarSelector = "[data-measurement-reservation-calendar]";
+const calendarPanel = '<section data-measurement-reservation-calendar="loading">Kalendarz</section>';
+
+async function finishCalendarLoading(page: Page) {
+  await page.locator(calendarSelector).evaluate((calendar) => {
+    calendar.setAttribute("data-measurement-reservation-calendar", "ready");
+  });
+}
 
 for (const state of ["loading", "error"]) {
   test(`dashboard nie jest gotowy, gdy kalendarz ma stan ${state}`, async ({ page }) => {
     await page.setContent(`
       <main data-measurement-page="dashboard" data-measurement-state="ready">
-        Podsumowanie
-        <section data-measurement-reservation-calendar="${state}">Kalendarz</section>
-      </main>
-    `);
+        ${calendarPanel.replace("loading", state)}
+      </main>`);
 
     let finished = false;
-    const waiting = waitForMeasurementPage(page, "dashboard").then(() => {
-      finished = true;
-    });
-    // Dajemy czas na wykrycie gotowego podsumowania. Samo podsumowanie
-    // nie może zakończyć oczekiwania
+    const waiting = waitForMeasurementPage(page, "dashboard").then(() => { finished = true; });
+
+    // Krótka obserwacja negatywna: gotowe podsumowanie nie wystarcza.
     await new Promise((resolve) => setTimeout(resolve, 200));
     expect(finished).toBe(false);
-
-    await page.locator("[data-measurement-reservation-calendar]").evaluate((element) => {
-      element.setAttribute("data-measurement-reservation-calendar", "ready");
-    });
+    await finishCalendarLoading(page);
     await waiting;
     expect(finished).toBe(true);
   });
 }
 
-test("warm-return nie opuszcza dashboardu przed gotowością kalendarza", async ({
-  page,
-}) => {
+test("warm-return nie opuszcza dashboardu przed gotowością kalendarza", async ({ page }) => {
   const visited: string[] = [];
+  const panels: Record<string, string> = {
+    "/": calendarPanel,
+    "/reservations": '<section data-measurement-calendar="ready">Integracja</section>',
+  };
+
   await page.route("http://localhost:3100/**", async (route) => {
-    const path = new URL(route.request().url()).pathname;
-    visited.push(path);
-    const name = path === "/" ? "dashboard" : path.slice(1);
-    const panel =
-      path === "/"
-        ? '<section data-measurement-reservation-calendar="loading">Kalendarz</section>'
-        : path === "/reservations"
-          ? '<section data-measurement-calendar="ready">Integracja</section>'
-          : "";
+    const pathname = new URL(route.request().url()).pathname;
+    visited.push(pathname);
+    const name = pathname === "/" ? "dashboard" : pathname.slice(1);
+
     await route.fulfill({
       contentType: "text/html",
-      body: `<main data-measurement-page="${name}" data-measurement-state="ready">Dane ${panel}</main>`,
+      body: `<main data-measurement-page="${name}" data-measurement-state="ready">Dane ${panels[pathname] ?? ""}</main>`,
     });
   });
 
-  const info = {
+  const warming = prepareCacheState(page, {
     project: { metadata: { cacheMode: "warm-return", framework: "next" } },
-  } as TestInfo;
-  const warming = prepareCacheState(page, info);
-  await expect(page.locator("[data-measurement-reservation-calendar]")).toBeVisible();
+  });
+
+  await expect(page.locator(calendarSelector)).toBeVisible();
   await new Promise((resolve) => setTimeout(resolve, 200));
+
   expect(visited).toEqual(["/"]);
 
-  await page.locator("[data-measurement-reservation-calendar]").evaluate((element) => {
-    element.setAttribute("data-measurement-reservation-calendar", "ready");
-  });
+  await finishCalendarLoading(page);
   await warming;
+
   expect(visited).toEqual(["/", "/rooms", "/reservations"]);
   expect(page.url()).toBe("about:blank");
 });

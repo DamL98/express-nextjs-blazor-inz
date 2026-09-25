@@ -8,7 +8,7 @@ export const measurementDatabaseUrl =
   "postgresql://measurement:local-measurement-only@localhost:5434/inz_measurements";
 export const authStateFile = "playwright/.auth/user.json";
 
-export const protocolVersion = 3;
+export const protocolVersion = 4;
 
 export const frameworkRuntime = {
   next: "react-client",
@@ -36,10 +36,15 @@ export const frameworks = [
   },
 ] as const;
 
-export const flows = ["read", "write"] as const;
+export const flows = ["read", "write", "interaction"] as const;
 export const cacheModes = ["fresh-context", "warm-return"] as const;
 
 export const steps = {
+  interaction: [
+    "rooms-search", "rooms-capacity", "rooms-sort", "rooms-clear",
+    "reservations-all", "reservations-history", "reservations-cancelled",
+    "reservations-search", "reservations-clear", "calendar-month", "calendar-day",
+  ],
   read: [
     "dashboard-direct",
     "rooms-direct",
@@ -71,7 +76,7 @@ export function projectName(
 
 export function safeId(value: string): string {
   if (!/^[a-zA-Z0-9_-]+$/.test(value)) {
-    throw new Error("Identyfikator może zawierać tylko litery, cyfry, _ oraz -.");
+    throw new Error("Identyfikator może zawierać tylko litery, cyfry, _ oraz -");
   }
 
   return value;

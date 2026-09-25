@@ -1,49 +1,36 @@
 import {
-  test,
-  expect,
-  expectedCount,
-  measureStep,
-  prepareCacheState,
-  waitForMeasurementPage,
+  test, expect, expectedCount, measureStep, prepareCacheState, openPage,
+  waitForCalendar, waitForMeasurementPage,
 } from "./test-helpers";
+import { roomDetailsLink } from "./view-helpers";
 
-for (const [url, name, countKey] of [
-  ["/", "dashboard", ""],
-  ["/rooms", "rooms", "roomCount"],
-  ["/reservations", "reservations", "reservationCount"],
-]) {
-  test(name + "-direct", async ({ page }, info) => {
-    await prepareCacheState(page, info);
-    await measureStep(info, page, name + "-direct", async () => {
-      await page.goto(url, { waitUntil: "domcontentloaded" });
-      await waitForMeasurementPage(page, name);
+test.beforeEach(async ({ page }, info) => prepareCacheState(page, info));
+
+for (const name of ["dashboard", "rooms", "reservations"] as const) {
+  test(`${name}-direct`, async ({ page }, info) => {
+    await measureStep(info, page, `${name}-direct`, async () => {
+      await openPage(page, name);
     });
-    if (countKey) {
-      await expect(
-        page.locator('[data-measurement-page="' + name + '"]'),
-      ).toHaveAttribute("data-measurement-count", String(expectedCount(info, countKey)));
+
+    if (name !== "dashboard") {
+      const countKey = name === "rooms" ? "roomCount" : "reservationCount";
+      await expect(page.locator(`[data-measurement-page="${name}"]`))
+        .toHaveAttribute("data-measurement-count", String(expectedCount(info, countKey)));
     }
-    if (name === "reservations") {
-      await expect(page.locator("[data-measurement-calendar]")).toHaveAttribute(
-        "data-measurement-calendar",
-        "ready",
-      );
-    }
+
+    if (name === "reservations") await waitForCalendar(page);
   });
 }
+
 test("room-details-navigation", async ({ page }, info) => {
-  await prepareCacheState(page, info);
-  await page.goto("/rooms", { waitUntil: "domcontentloaded" });
-  await waitForMeasurementPage(page, "rooms");
-  const card = page
-    .locator("article")
-    .filter({ has: page.getByRole("heading", { name: "Sala A-101", exact: true }) });
+  await openPage(page, "rooms");
+  const detailsLink = roomDetailsLink(page);
+
   await measureStep(info, page, "room-details-navigation", async () => {
-    await card.getByRole("link", { name: /wybierz termin|zobacz szczeg/i }).click();
+    await detailsLink.click();
     await waitForMeasurementPage(page, "room-details");
   });
-  await expect(
-    page.getByRole("heading", { name: "Sala A-101", exact: true }),
-  ).toBeVisible();
+
+  await expect(page.getByRole("heading", { name: "Sala A-101", exact: true })).toBeVisible();
   await expect(page.getByLabel("Nazwa rezerwacji", { exact: true })).toBeVisible();
 });

@@ -82,7 +82,7 @@ export function RoomList({ rooms }: RoomListProps) {
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {filteredRooms.map((room) => (
-            <article key={room.id} className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-app-line bg-white shadow-sm transition hover:border-blue-300 hover:shadow-md">
+            <article data-measurement-room-id={room.id} key={room.id} className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-app-line bg-white shadow-sm transition hover:border-blue-300 hover:shadow-md">
 
               <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-4">
                 <span aria-hidden="true" className="grid h-11 w-11 place-items-center rounded-xl border border-blue-100 bg-white text-xl text-blue-800"><AppIcon name="building-2" className="size-6" /></span>

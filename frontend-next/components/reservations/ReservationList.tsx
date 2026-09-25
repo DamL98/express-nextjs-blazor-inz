@@ -122,7 +122,7 @@ export function ReservationsList({ initialReservations }: ReservationsListProps)
             const statusLabel = group === "cancelled" ? "Anulowana" : group === "history" ? "Zakończona" : inProgress ? "W trakcie" : "Nadchodząca";
 
             return (
-              <article key={reservation.id} className="rounded-2xl border border-app-line bg-white p-5 shadow-sm sm:p-6">
+              <article data-measurement-reservation-id={reservation.id} key={reservation.id} className="rounded-2xl border border-app-line bg-white p-5 shadow-sm sm:p-6">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
 
                   <div className="min-w-0 flex-1">

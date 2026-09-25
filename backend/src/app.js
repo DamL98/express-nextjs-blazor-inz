@@ -30,7 +30,7 @@ app.use(
       environment.frontendBlazorUrl,
     ],
     credentials: true,
-    exposedHeaders: ["Retry-After", "RateLimit", "RateLimit-Policy", "X-Request-ID"],
+    exposedHeaders: ["Retry-After", "RateLimit", "RateLimit-Policy"],
   }),
 );
 

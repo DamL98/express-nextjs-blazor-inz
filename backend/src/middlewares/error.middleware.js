@@ -6,8 +6,7 @@ import { GoogleRedirectValidationError } from "../config/config.errors.js";
 
 
 export function errorMiddleware(error, _req, res, _next) {
-  const { requestId } = res.locals;
-  const instance = `urn:uuid:${requestId || randomUUID()}`;
+  const instance = `urn:uuid:${randomUUID()}`;
 
   if (error instanceof ZodError) {
     const problem = Problems.VALIDATION_ERROR;

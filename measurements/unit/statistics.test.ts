@@ -8,6 +8,7 @@ import {
   type KonfiguracjaPomiaru,
 } from "../scripts/statistics";
 import { protocolVersion, steps } from "../measurement-config";
+
 const config: KonfiguracjaPomiaru = {
   runId: "unit",
   flow: "read",
@@ -15,10 +16,11 @@ const config: KonfiguracjaPomiaru = {
   cacheMode: "fresh-context",
   repetitions: 2,
 };
-function fixture(): ProbaPomiarowa[] {
+
+function fixture(flow: "read" | "interaction" = "read"): ProbaPomiarowa[] {
   return (["next", "blazor"] as const).flatMap((framework) =>
     [0, 1].flatMap((sampleIndex) =>
-      steps.read.map((step) => ({
+      steps[flow].map((step) => ({
         protocolVersion,
         runId: "unit",
         framework,
@@ -39,8 +41,20 @@ function fixture(): ProbaPomiarowa[] {
     ),
   );
 }
+
+
 test("complete matrix passes", () =>
   assert.doesNotThrow(() => sprawdzProbyPomiarowe(fixture(), config)));
+
+
+test("macierz interakcji wymaga wszystkich kroków obu frontendów", () => {
+  const interactionConfig = { ...config, flow: "interaction" as const };
+  const trials = fixture("interaction");
+  assert.doesNotThrow(() => sprawdzProbyPomiarowe(trials, interactionConfig));
+  assert.throws(() => sprawdzProbyPomiarowe(trials.slice(1), interactionConfig), /Brak/);
+});
+
+
 test("entire missing framework fails", () =>
   assert.throws(
     () =>
@@ -50,11 +64,15 @@ test("entire missing framework fails", () =>
       ),
     /Brak/,
   ));
+
+
 test("partial and failed trials cannot enter a report", () => {
   const records = fixture();
   records[0].status = "failed";
   assert.throws(() => sprawdzProbyPomiarowe(records, config), /zakończona/);
 });
+
+
 test("duplicates and wrong renderer fail", () => {
   const records = fixture();
   assert.throws(
@@ -64,6 +82,8 @@ test("duplicates and wrong renderer fail", () => {
   records[0].steps[0].runtime = "server";
   assert.throws(() => sprawdzProbyPomiarowe(records, config), /renderer/);
 });
+
+
 test("nonfinite values and out-of-range indices fail", () => {
   let records = fixture();
   records[0].steps[0].durationMs = NaN;
@@ -72,6 +92,8 @@ test("nonfinite values and out-of-range indices fail", () => {
   records[0].sampleIndex = 2;
   assert.throws(() => sprawdzProbyPomiarowe(records, config));
 });
+
+
 test("median and paired bootstrap preserve a constant difference", () => {
   assert.equal(obliczMediane([9, 1, 5, 3]), 4);
   assert.deepEqual(obliczPrzedzialBootstrap([-5, -5, -5], 1000), {
