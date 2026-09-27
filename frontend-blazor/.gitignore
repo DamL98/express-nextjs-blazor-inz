@@ -40,6 +40,8 @@ _ReSharper*/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+.editorconfig
+/loc-docs
 
 # NuGet packages and generated packages
 packages/
@@ -94,3 +96,6 @@ Desktop.ini
 *.opendb
 *.VC.db
 *.VC.VC.opendb
+
+test-results/
+playwright-report/

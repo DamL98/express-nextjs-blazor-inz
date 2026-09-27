@@ -1,0 +1,25 @@
+<main class="mx-auto max-w-lg p-8">
+    <h1 class="mb-6 text-2xl font-bold">@(_action == "verify-email" ? "Potwierdz adres e-mail" : "Ustaw nowe haslo")</h1>
+    @if (!string.IsNullOrEmpty(_token) && _action is "verify-email" or "reset-password")
+    {
+        <form @onsubmit="SubmitAsync" @onsubmit:preventDefault class="space-y-4">
+            @if (_action == "reset-password")
+            {
+                <label class="block">
+                    Nowe haslo (co najmniej 12 znakow)
+                    <input class="mt-2 w-full rounded border p-3" type="password" @bind="_password" autocomplete="new-password" minlength="12" maxlength="128" required />
+                </label>
+            }
+            <button class="rounded bg-blue-600 px-4 py-2 text-white" disabled="@_busy">@(_busy ? "Prosze czekac..." : "Potwierdz")</button>
+        </form>
+    }
+    else
+    {
+        <p>@(_message ?? "Otworz pelny link z wiadomosci e-mail.")</p>
+    }
+    @if (_error is not null)
+    {
+        <p role="alert" class="mt-4 text-red-700">@_error</p>
+    }
+    <a href="/login" class="mt-6 block text-blue-700">Przejdz do logowania</a>
+</main>

@@ -1,0 +1,18 @@
+<div class="rounded-2xl border border-dashed border-app-line bg-white px-6 py-12 text-center">
+    <span aria-hidden="true" class="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-blue-50 text-xl text-blue-700">
+        <AppIcon Name="calendar-days" ClassName="size-6" />
+    </span>
+    <h2 class="text-lg font-semibold text-app-ink">@Title</h2>
+    <p class="mx-auto mt-2 max-w-md text-sm leading-6 text-app-muted">@Description</p>
+    <div class="mt-5">@ChildContent</div>
+</div>
+
+@code
+{
+    [Parameter]
+    public string Title { get; set; } = "";
+    [Parameter]
+    public string Description { get; set; } = "";
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

@@ -1,4 +1,6 @@
-import { test, expect, expectedCount, measureStep, prepareCacheState, openPage, waitForCalendar } from "./test-helpers";
+import {
+  test, expect, expectedCount, measureStep, prepareCacheState, openPage,
+} from "./test-helpers";
 import {
   readDataset, expectCards, busiestDay, calendarDay, moveCalendar, showCalendarMonth,
   type Room, type Reservation,
@@ -60,7 +62,6 @@ for (const operation of ["all", "history", "cancelled", "search", "clear"] as co
     // Nie dopuszczamy zmiany grupy czasowej w trakcie próby.
     expect(reservations.every((item) => Math.abs(Date.parse(item.endTime) - now) > 120_000)).toBe(true);
     await openPage(page, "reservations");
-    await waitForCalendar(page);
 
     const allReservations = reservations.sort((a, b) => Date.parse(b.startTime) - Date.parse(a.startTime));
     const searchTitle = allReservations[0].title;

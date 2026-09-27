@@ -1,0 +1,79 @@
+@page "/login"
+
+<PageTitle>Logowanie</PageTitle>
+<main class="grid min-h-screen place-items-center bg-gray-50 px-4 py-8">
+    <section class="rounded-login border border-blue-900/20 bg-white/97 p-login shadow-login max-login:px-login-mobile max-login:py-7">
+        <p class="mb-2 text-xs font-extrabold tracking-eyebrow text-app-accent uppercase">System rezerwacji</p>
+        <h1 class="text-login-title font-bold tracking-login-title text-app-ink">@Heading</h1>
+        <p class="mt-2.5 mb-6.5 leading-login text-app-muted">Zaloguj sie przez konto Google lub lokalnie</p>
+        <button
+            type="button"
+            class="flex min-h-control w-full items-center justify-center gap-2.5 rounded-control border border-app-line bg-white font-control text-app-ink hover:border-app-line-hover hover:bg-app-surface-hover disabled:cursor-wait disabled:opacity-65"
+            disabled="@_isSubmitting"
+            @onclick="GoogleLoginAsync">
+            <span class="text-lg font-extrabold text-google">G</span>
+            @(_isSubmitting ? "Przekierowanie..." : "Kontynuuj z Google")
+        </button>
+        <div class="my-5 flex items-center gap-3 text-xs font-semibold text-app-muted uppercase">
+            <span class="h-px flex-1 bg-app-line"></span>
+            <span>lub</span>
+            <span class="h-px flex-1 bg-app-line"></span>
+        </div>
+        <form aria-label="Logowanie lokalne" @onsubmit="SubmitAsync" @onsubmit:preventDefault>
+            <fieldset class="space-y-4" disabled="@_isSubmitting">
+                @if (_mode == LoginMode.Register)
+                {
+                    <label class="block text-sm font-semibold text-app-ink">
+                        Imie i nazwisko
+                        <input
+                            @bind="_fullName" required
+                            minlength="3"
+                            maxlength="32"
+                            autocomplete="name"
+                            class="mt-2 min-h-control w-full rounded-control border border-app-line px-3" />
+                    </label>
+                }
+                <label class="block text-sm font-semibold text-app-ink">
+                    <AppIcon Name="mail" />
+                    E-mail
+                    <input
+                        class="mt-2 min-h-control w-full rounded-control border border-app-line bg-white px-3 text-base font-normal text-app-ink outline-none focus:border-app-accent"
+                        type="email" @bind="_email" required minlength="3" maxlength="254"
+                        autocomplete="email"
+                        placeholder="uzytkownik@example.com" />
+                </label>
+                @if (_mode is LoginMode.Login or LoginMode.Register)
+                {
+                    <label class="block text-sm font-semibold text-app-ink">
+                        <AppIcon Name="lock-keyhole" />
+                        Haslo
+                        <input
+                            class="mt-2 min-h-control w-full rounded-control border border-app-line bg-white px-3 text-base font-normal text-app-ink outline-none focus:border-app-accent"
+                            type="password" @bind="_password" required minlength="12" maxlength="128"
+                            autocomplete="@(_mode == LoginMode.Register ? "new-password" : "current-password")"
+                            placeholder="@(_mode == LoginMode.Register ? "Co najmniej 12 znakow" : "Wprowadz haslo")" />
+                    </label>
+                }
+                <button
+                    type="submit"
+                    class="min-h-control w-full rounded-control bg-app-accent font-bold text-white">
+                    @SubmitLabel
+                </button>
+            </fieldset>
+        </form>
+        <div class="mt-4 flex flex-wrap gap-3 text-sm text-app-accent">
+            @foreach (var option in Modes.Where(option => option.Key != _mode))
+            {
+                <button type="button" disabled="@_isSubmitting" @onclick="() => SetMode(option.Key)">@option.Label</button>
+            }
+        </div>
+        @if (_message is not null)
+        {
+            <p role="status" class="mt-4 text-sm text-green-700">@_message</p>
+        }
+        @if (_errorMessage is not null)
+        {
+            <p class="mt-4 rounded-notice bg-app-error-surface px-3 py-notice text-notice leading-notice text-app-error-text" role="alert">@_errorMessage</p>
+        }
+    </section>
+</main>

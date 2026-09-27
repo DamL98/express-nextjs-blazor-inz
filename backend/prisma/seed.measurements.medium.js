@@ -134,12 +134,13 @@ function getBaseDate() {
   );
 }
 
-function getScheduledTime(baseDate, sequence, dayStart, isHistorical = false) {
+function getScheduledTime(baseDate, sequence, dayStart, isHistorical = false, monthOffset = 0) {
   const slotCycle = Math.floor(sequence / timeSlots.length);
   const slot = timeSlots[sequence % timeSlots.length];
   const dayOffset = dayStart + slotCycle;
   const startTime = new Date(baseDate);
 
+  startTime.setUTCMonth(startTime.getUTCMonth() + (isHistorical ? -monthOffset : monthOffset));
   startTime.setUTCDate(
     startTime.getUTCDate() + (isHistorical ? -dayOffset : dayOffset),
   );
@@ -169,12 +170,16 @@ function createReservations({
     let titleType;
 
     if (index < activeCount) {
+      const activeSequence = Math.floor(index / activeRooms.length);
+
       status = "ACTIVE";
       titleType = "Aktywna rezerwacja";
       schedule = getScheduledTime(
         baseDate,
-        Math.floor(index / activeRooms.length),
-        1,
+        activeSequence,
+        1 + Math.floor(activeSequence / 3),
+        false,
+        1 + (activeSequence % 3),
       );
     } else if (index < activeCount + futureCancelledCount) {
       const cancelledIndex = index - activeCount;

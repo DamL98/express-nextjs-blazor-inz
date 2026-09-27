@@ -9,6 +9,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "build:measurements": "node scripts/measurements.mjs build",
+    "start:measurements": "node scripts/measurements.mjs start",
     "lint": "eslint",
     "test:ui": "node --experimental-strip-types --test tests/*.test.mjs"
   },

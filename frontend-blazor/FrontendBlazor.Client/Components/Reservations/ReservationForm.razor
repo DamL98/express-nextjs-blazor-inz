@@ -1,0 +1,94 @@
+<section class="rounded-2xl border border-app-line bg-white p-5 shadow-sm sm:p-7">
+    <p class="text-xs font-semibold uppercase tracking-widest text-blue-700">Zaplanuj spotkanie</p>
+    <h2 class="mt-2 text-xl font-bold">
+        <AppIcon Name="calendar-plus" />
+        Zarezerwuj salę
+    </h2>
+    <p class="mt-2 text-sm leading-6 text-app-muted">Wybierz termin i nadaj spotkaniu nazwę. Dostępność sprawdzimy przy zapisie.</p>
+    @if (_submitted is not null)
+    {
+        <div role="status" class="mt-5 rounded-xl border border-teal-200 bg-teal-50 p-5 text-sm text-teal-900">
+            <p class="font-bold">Rezerwacja utworzona</p>
+            <p class="mt-2 break-words">@_submitted.Title — @RoomName</p>
+            <p class="mt-1">@Formatters.FormatDateTime(_submitted.StartTime) — @Formatters.FormatDateTime(_submitted.EndTime)</p>
+            <div class="mt-3 flex flex-wrap gap-4">
+                <a href="/reservations" class="font-semibold underline">Przejdź do moich rezerwacji</a>
+                <button type="button" @onclick="NewReservationAsync" class="font-semibold underline">Nowa rezerwacja</button>
+            </div>
+        </div>
+    }
+    <form @onsubmit="HandleSubmitAsync" @onsubmit:preventDefault class="mt-6 space-y-5" aria-describedby="reservation-timezone">
+        <fieldset disabled="@_busy" class="space-y-5 disabled:opacity-70">
+            <legend class="sr-only">Dane nowej rezerwacji</legend>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <label class="block text-sm font-medium" for="startTime">
+                    Początek
+                    <input
+                        id="startTime"
+                        type="datetime-local" required
+                        value="@_form.StartTime"
+                        @oninput='e => _form.StartTime = e.Value?.ToString() ?? ""'
+                        class="mt-2 min-h-11 w-full rounded-xl border border-app-line px-3 py-2 text-sm" />
+                </label>
+                <label class="block text-sm font-medium" for="endTime">
+                    Koniec
+                    <input
+                        id="endTime"
+                        type="datetime-local" required
+                        value="@_form.EndTime"
+                        @oninput='e => _form.EndTime = e.Value?.ToString() ?? ""'
+                        aria-invalid="@_form.HasInvalidRange"
+                        aria-describedby="@(_form.HasInvalidRange ? "reservation-range-error" : null)"
+                        class="mt-2 min-h-11 w-full rounded-xl border border-app-line px-3 py-2 text-sm" />
+                </label>
+            </div>
+            @if (_form.HasInvalidRange)
+            {
+                <p id="reservation-range-error" role="alert" class="text-sm text-red-700">Koniec musi przypadać po początku rezerwacji.</p>
+            }
+            <div>
+                <p class="text-xs font-medium text-app-muted"><AppIcon Name="clock" />Szybki wybór czasu trwania</p>
+                <div class="mt-2 flex flex-wrap gap-2">
+                    @foreach (var option in DurationOptions)
+                    {
+                        <button
+                            type="button"
+                            disabled="@(!_form.HasStart)"
+                            aria-pressed="@(_form.DurationMinutes == option.Minutes)"
+                            @onclick="() => _form.SetDuration(option.Minutes)"
+                            class="rounded-lg border border-app-line px-3 py-2 text-sm">@option.Label</button>
+                    }
+                </div>
+                @if (!_form.HasStart)
+                {
+                    <p class="mt-2 text-xs text-app-muted">Najpierw wybierz początek spotkania.</p>
+                }
+            </div>
+            <label class="block text-sm font-medium" for="title">
+                Nazwa rezerwacji
+                <input id="title" required @bind="_form.Title" @bind:event="oninput" class="mt-2 min-h-11 w-full rounded-xl border border-app-line px-3 py-2 text-sm" placeholder="Np. spotkanie zespołu projektowego" />
+            </label>
+            <label class="block text-sm font-medium" for="description">
+                Opis (opcjonalnie)
+                <textarea
+                    id="description"
+                    @bind="_form.Description"
+                    class="mt-2 min-h-24 w-full rounded-xl border border-app-line px-3 py-2 text-sm"
+                    placeholder="Cel spotkania lub dodatkowe informacje"></textarea>
+            </label>
+            <div class="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+                <p class="break-words text-sm font-semibold text-blue-950">@RoomName</p>
+                <p class="mt-2 text-sm text-app-muted">@(_form.DurationMinutes > 0 ? $"Czas trwania: {_form.DurationMinutes:0} min" : "Wybierz początek i koniec spotkania.")</p>
+                <p id="reservation-timezone" class="mt-2 text-xs text-app-muted">Strefa czasu: @_zone. Termin zostanie potwierdzony po zapisaniu.</p>
+            </div>
+            @if (_error is not null)
+            {
+                <div role="alert" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">@_error</div>
+            }
+            <button type="submit" disabled="@(_busy || _form.HasInvalidRange)" class="min-h-12 w-full rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white">
+                <AppIcon Name="calendar-plus" />
+                @(_busy ? "Tworzenie…" : "Utwórz rezerwację")
+            </button>
+        </fieldset>
+    </form>
+</section>

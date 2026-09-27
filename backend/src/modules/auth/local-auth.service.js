@@ -9,11 +9,10 @@ import { Problems } from "../../errors/problems.js";
 import { createUserSession } from "./auth.service.js";
 
 export async function registerLocal(data) {
-  validateFrontendRedirectUrl(data.redirectTo);
   const passwordHash = await hashPassword(data.password);
 
   try {
-    await userRepository.createLocal({ ...data, passwordHash });
+    await userRepository.createLocal({ ...data, passwordHash, emailVerified: true });
     return true;
   } catch (error) {
     // Odpowiedź nie ujawnia, czy adres ma już konto

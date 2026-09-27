@@ -32,9 +32,9 @@ export const userRepository = {
     return prisma.user.findUnique({ where: { email }, include: { role: true } });
   },
 
-  async createLocal({ email, fullName, passwordHash }) {
+  async createLocal({ email, fullName, passwordHash, emailVerified = false }) {
     return prisma.user.create({
-      data: { email, fullName, passwordHash, role: { connectOrCreate: { where: { name: "user" }, create: { name: "user" } } } },
+      data: { email, fullName, passwordHash, emailVerified, role: { connectOrCreate: { where: { name: "user" }, create: { name: "user" } } } },
       select: sessionUserSelect,
     }).then(toPublicUser);
   },

@@ -1,0 +1,78 @@
+<section data-measurement-calendar="@(_loading ? "loading" : _error is null ? "ready" : "error")" class="overflow-hidden rounded-2xl border border-app-line bg-white shadow-sm">
+    <div class="border-b border-app-line bg-slate-50/70 p-6">
+        <p class="text-xs font-semibold uppercase tracking-widest text-blue-700">Integracje</p>
+        <h2 class="mt-2 text-xl font-bold">
+            <AppIcon Name="calendar-days" />
+            Kalendarz Google
+        </h2>
+        <p class="mt-2 text-sm leading-6 text-app-muted">Terminy spotkań również w twoim kalendarzu.</p>
+        <p class="mt-2 text-sm leading-6 text-app-muted">Połączenie kalendarza jest za osobną zgodą.</p>
+    </div>
+    <div class="p-6">
+        @if (CallbackStatus is "connected" or "error")
+        {
+            <p role="status" class="mb-5 rounded-xl border border-app-line p-4 text-sm">@CallbackMessage</p>
+        }
+        @if (_loading)
+        {
+            <p role="status" class="rounded-xl bg-slate-50 p-5 text-sm text-app-muted">Sprawdzanie połączenia z kalendarzem…</p>
+        }
+        else if (_error is not null)
+        {
+            <div role="alert" class="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">
+                <p class="font-semibold">Nie można sprawdzić połączenia</p>
+                <p class="mt-2">@_error</p>
+                <button type="button" @onclick="LoadAsync" class="mt-3 rounded-lg border border-red-200 bg-white px-4 py-2 font-medium">
+                    <AppIcon Name="refresh-cw" />
+                    Spróbuj ponownie
+                </button>
+            </div>
+        }
+        else if (_status?.IsConnected == true)
+        {
+            <div class="rounded-xl border border-teal-200 bg-teal-50/60 p-5">
+                <span class="rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-900">
+                    <AppIcon Name="circle-check" />
+                    Kalendarz połączony
+                </span>
+                <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+                    <div>
+                        <dt class="text-app-muted">Konto kalendarza</dt>
+                        <dd class="mt-1 break-words font-semibold">@(_status.CalendarEmail ?? "Brak adresu w danych połączenia")</dd>
+                    </div>
+                    <div>
+                        <dt class="text-app-muted">Data połączenia</dt>
+                        <dd class="mt-1 font-semibold">@(Formatters.FormatDateTime(_status.ConnectedAt) ?? "Brak danych")</dd>
+                    </div>
+                </dl>
+                <p
+                    class="mt-4 text-sm leading-6 text-teal-900">@(_status.IsSyncEnabled ? "Integracja nowych rezerwacji jest włączona." : "Połączenie jest zapisane, ale synchronizacja nie jest włączona.") Status połączenia nie potwierdza dodania każdego wydarzenia.</p>
+            </div>
+        }
+        else
+        {
+            <div class="rounded-xl border border-app-line bg-slate-50 p-5">
+                <p class="font-semibold">@(Auth.User?.GoogleId is not null ? "Włącz kalendarz dla swoich spotkań" : "Zacznij od połączenia konta Google")</p>
+                <p
+                    class="mt-2 text-sm leading-6 text-app-muted">@(Auth.User?.GoogleId is not null ? "Konto Google jest już połączone z aplikacją. Udziel osobnej zgody, aby dodawać nowe rezerwacje do kalendarza." : "W sekcji konta i logowania podaj aktualne hasło i połącz Google. Następnie możesz włączyć integrację kalendarza.")</p>
+                @if (Auth.User?.GoogleId is not null)
+                {
+                    <button type="button" @onclick="HandleConnect" class="mt-4 rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white">
+                        <AppIcon Name="link" />
+                        Włącz integrację kalendarza
+                    </button>
+                }
+            </div>
+        }
+        <div class="mt-6 grid gap-4 text-sm sm:grid-cols-2">
+            <div>
+                <h3 class="font-semibold">Nowe spotkania</h3>
+                <p class="mt-2 leading-6 text-app-muted">Po włączeniu integracji aplikacja próbuje dodawać nowe rezerwacje do Kalendarza Google.</p>
+            </div>
+            <div>
+                <h3 class="font-semibold">Dotychczasowe rezerwacje</h3>
+                <p class="mt-2 leading-6 text-app-muted">Wcześniejsze spotkania nie są automatycznie eksportowane. Rezerwacje nadal znajdziesz w aplikacji.</p>
+            </div>
+        </div>
+    </div>
+</section>

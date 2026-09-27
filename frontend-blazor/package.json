@@ -6,13 +6,16 @@
     "node": ">=24.19.0 <25"
   },
   "scripts": {
-    "test:ui": "node ../measurements/node_modules/@playwright/test/cli.js test --config playwright.config.mjs",
+    "build:measurements": "npm run css:build && dotnet publish FrontendBlazor/FrontendBlazor.csproj -c Release --no-restore",
+    "start:measurements": "cd FrontendBlazor/bin/Release/net10.0/publish && dotnet FrontendBlazor.dll --environment Measurement --urls http://localhost:5177",
+    "test:ui": "playwright test --config playwright.config.mjs",
     "build": "npm run css:build && dotnet build FrontendBlazor.sln --no-restore",
     "css:build": "tailwindcss -i ./Styles/tailwind.css -o ./FrontendBlazor/wwwroot/app.css --minify",
     "css:watch": "tailwindcss -i ./Styles/tailwind.css -o ./FrontendBlazor/wwwroot/app.css --watch",
     "publish": "npm run css:build && dotnet publish FrontendBlazor/FrontendBlazor.csproj -c Release"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/cli": "4.3.1",
     "tailwindcss": "4.3.1"
   }

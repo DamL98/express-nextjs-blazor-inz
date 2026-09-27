@@ -3,7 +3,7 @@ import { getRateLimitConfiguration } from "../config/rate-limit.js";
 import { ApiError } from "../errors/apiError.js";
 import { Problems } from "../errors/problems.js";
 
-export function createAuthRateLimiter() {
+export function createAuthRateLimiter({ limit = 30, windowMs = 15 * 60 * 1000 } = {}) {
   const { isRateLimitEnabled } = getRateLimitConfiguration();
 
   // Tryb jest ustalany przy uruchomieniu, nigdy na podstawie żądania klienta.
@@ -12,8 +12,8 @@ export function createAuthRateLimiter() {
   }
 
   return rateLimit({
-    windowMs: 15 * 60 * 1000,
-    limit: 30,
+    windowMs,
+    limit,
     standardHeaders: "draft-8",
     legacyHeaders: false,
     handler: (_req, _res, next) => next(new ApiError(Problems.AUTH_RATE_LIMITED)),

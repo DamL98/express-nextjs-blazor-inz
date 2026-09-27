@@ -1,6 +1,4 @@
-using FrontendBlazor.Client.Infrastructure.Auth;
-using FrontendBlazor.Client.Infrastructure.Api;
-using FrontendBlazor.Client.Pages;
+using FrontendBlazor.Client.Services;
 using FrontendBlazor.Components;
 using Microsoft.AspNetCore.DataProtection;
 
@@ -17,14 +15,19 @@ if (builder.Configuration.GetValue<bool>(
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
-builder.Services.AddExpressApi(builder.Configuration);
-builder.Services.AddScoped<AuthContext>();
+builder.Services.AddFrontendServices(builder.Configuration);
 
 var app = builder.Build();
 
 if (app.Environment.IsEnvironment("Measurement"))
 {
-    app.MapGet("/measurement-info", () => new { production = !app.Environment.IsDevelopment(), renderer = "webassembly" });
+    app.MapGet("/measurement-info", () => new
+    {
+        production = !app.Environment.IsDevelopment(),
+        environment = app.Environment.EnvironmentName,
+        api = app.Configuration["Api:BaseUrl"]?.TrimEnd('/'),
+        renderer = "webassembly",
+    });
 }
 
 // Configure the HTTP request pipeline.

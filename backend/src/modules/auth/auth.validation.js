@@ -8,7 +8,6 @@ export const loginSchema = z.object({ email, password });
 export const registerSchema = loginSchema.extend({
   password,
   fullName: z.string().trim().min(3).max(32),
-  redirectTo: z.url(),
 });
 
 export const emailSchema = z.object({ email, redirectTo: z.url() });

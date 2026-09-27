@@ -1,0 +1,32 @@
+@page "/reservations"
+
+<PageTitle>Moje rezerwacje</PageTitle>
+<section
+    class="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-10"
+    data-measurement-page="reservations"
+    data-measurement-state="@(_loading ? "loading" : _loadError is null ? "ready" : "error")"
+    data-measurement-count="@_reservations.Count"
+>
+    <PageHeader
+        Title="Moje rezerwacje"
+        Description="Sprawdź nadchodzące spotkania, przejrzyj historię i zarządzaj swoimi terminami."
+    >
+        <a href="/rooms" class="rounded-xl bg-blue-900 px-5 py-3 text-sm font-semibold text-white">
+            <AppIcon Name="calendar-plus" />
+            Zarezerwuj salę
+        </a>
+    </PageHeader>
+    @if (_loading)
+    {
+        <LoadingCards />
+    }
+    else if (_loadError is not null)
+    {
+        <ErrorNotice Message="@_loadError" />
+    }
+    else
+    {
+        <ReservationsList InitialReservations="_reservations" />
+    }
+    <ReservationAccountPanels />
+</section>

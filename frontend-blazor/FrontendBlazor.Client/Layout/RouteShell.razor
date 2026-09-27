@@ -1,16 +1,9 @@
 @inherits LayoutComponentBase
-@implements IDisposable
-@using Microsoft.AspNetCore.Components.Routing
-@using FrontendBlazor.Client.Infrastructure.Auth
-@inject AuthContext Auth
-@inject NavigationManager Navigation
-
 <span
     hidden
     data-measurement-renderer="@RendererInfo.Name"
     data-measurement-interactive="@(RendererInfo.IsInteractive ? "true" : "false")">
 </span>
-
 @if (_isAuthAction)
 {
     @Body
@@ -22,7 +15,8 @@ else if (Auth.Error is not null)
 else if (Auth.IsLoading || Auth.Error is not null)
 {
     <main class="grid min-h-screen place-items-center bg-gray-50 px-4 py-8">
-        <div class="w-full max-w-login rounded-login border border-blue-900/20 bg-white/97 p-login text-app-ink shadow-login max-login:px-login-mobile max-login:py-7">Ładowanie sesji...</div>
+        <div
+            class="w-full max-w-login rounded-login border border-blue-900/20 bg-white/97 p-login text-app-ink shadow-login max-login:px-login-mobile max-login:py-7">Ładowanie sesji...</div>
     </main>
 }
 else if (_isLoginPage && !Auth.IsAuthenticated)
@@ -38,88 +32,7 @@ else if (!_isLoginPage && Auth.IsAuthenticated)
 else
 {
     <main class="grid min-h-screen place-items-center bg-gray-50 px-4 py-8">
-        <div class="w-full max-w-login rounded-login border border-blue-900/20 bg-white/97 p-login text-app-ink shadow-login max-login:px-login-mobile max-login:py-7">Przekierowanie...</div>
+        <div
+            class="w-full max-w-login rounded-login border border-blue-900/20 bg-white/97 p-login text-app-ink shadow-login max-login:px-login-mobile max-login:py-7">Przekierowanie...</div>
     </main>
-}
-
-@code {
-    private bool _isLoginPage;
-    private bool _isAuthAction;
-
-    protected override void OnInitialized()
-    {
-        Auth.Changed += HandleSessionChanged;
-        Navigation.LocationChanged += HandleLocationChanged;
-        UpdateCurrentPage();
-    }
-
-    protected override async Task OnAfterRenderAsync(bool isFirstRender)
-    {
-        if (!isFirstRender || !RendererInfo.IsInteractive)
-        {
-            return;
-        }
-
-        await Auth.InitializeAsync();
-        ApplyRoutingRules();
-    }
-
-    public void Dispose()
-    {
-        Auth.Changed -= HandleSessionChanged;
-        Navigation.LocationChanged -= HandleLocationChanged;
-    }
-
-    private void HandleSessionChanged()
-    {
-        _ = InvokeAsync(() =>
-        {
-            ApplyRoutingRules();
-            StateHasChanged();
-        });
-    }
-
-    private void HandleLocationChanged(
-        object? sender,
-        LocationChangedEventArgs args)
-    {
-        _ = InvokeAsync(() =>
-        {
-            UpdateCurrentPage();
-            ApplyRoutingRules();
-            StateHasChanged();
-        });
-    }
-
-    private void ApplyRoutingRules()
-    {
-        if (Auth.IsLoading)
-        {
-            return;
-        }
-
-        UpdateCurrentPage();
-
-        if (_isAuthAction) return;
-
-        if (!Auth.IsAuthenticated && !_isLoginPage)
-        {
-            Navigation.NavigateTo("/login", replace: true);
-            return;
-        }
-
-        if (Auth.IsAuthenticated && _isLoginPage)
-        {
-            Navigation.NavigateTo("/", replace: true);
-        }
-    }
-
-    private void UpdateCurrentPage()
-    {
-        var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
-        var path = relativePath.Split(['?', '#'], 2)[0];
-
-        _isLoginPage = path.Equals("login", StringComparison.OrdinalIgnoreCase);
-        _isAuthAction = path.Equals("auth/action", StringComparison.OrdinalIgnoreCase);
-    }
 }

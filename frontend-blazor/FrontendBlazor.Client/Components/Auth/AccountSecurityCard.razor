@@ -1,0 +1,64 @@
+@using FrontendBlazor.Client.Infrastructure.Api
+@if (Auth.User?.HasLocalPassword == true)
+{
+    <section class="rounded-2xl border border-app-line bg-white p-6 shadow-sm">
+        <p class="text-xs font-semibold uppercase tracking-widest text-blue-700">Bezpieczeństwo</p>
+        <h2 class="mt-2 text-xl font-bold">
+            <AppIcon Name="shield-check" />
+            Konto i logowanie
+        </h2>
+        <p
+            class="mt-3 max-w-xl text-sm leading-6 text-app-muted">@(Auth.User.GoogleId is not null ? "Google jest połączone. Możesz logować się hasłem lub przez Google." : "Połącz Google, aby dodać drugi sposób logowania. Dostęp do kalendarza włączysz osobno.")</p>
+        @if (_callbackMessage is not null)
+        {
+            <p role="status" class="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">@_callbackMessage</p>
+        }
+        <form @onsubmit="ChangePasswordAsync" @onsubmit:preventDefault class="mt-6 max-w-xl space-y-5">
+            <fieldset disabled="@_busy" class="space-y-5">
+                <legend class="sr-only">Bezpieczeństwo konta</legend>
+                <label class="block text-sm font-medium">
+                    <AppIcon Name="lock-keyhole" />
+                    Aktualne hasło
+                    <input
+                        @bind="_currentPassword"
+                        type="password"
+                        autocomplete="current-password" required
+                        minlength="12"
+                        maxlength="128"
+                        class="mt-2 min-h-11 w-full rounded-xl border border-app-line px-3 py-2" />
+                </label>
+                @if (Auth.User.GoogleId is null)
+                {
+                    <button type="button" @onclick="LinkAsync" class="rounded-xl bg-blue-900 px-4 py-3 text-sm font-semibold text-white">
+                        <AppIcon Name="link" />
+                        Połącz konto Google
+                    </button>
+                }
+                <div class="border-t border-app-line pt-5">
+                    <label class="block text-sm font-medium">
+                        <AppIcon Name="lock-keyhole" />
+                        Nowe hasło
+                        <input
+                            @bind="_password"
+                            type="password"
+                            autocomplete="new-password"
+                            minlength="12"
+                            maxlength="128" required
+                            aria-describedby="password-hint"
+                            class="mt-2 min-h-11 w-full rounded-xl border border-app-line px-3 py-2" />
+                    </label>
+                    <p id="password-hint" class="mt-2 text-xs text-app-muted">Min. 12 znaków</p>
+                </div>
+                <button type="submit" class="rounded-xl border border-app-line px-4 py-3 text-sm font-semibold">@(_busy ? "Proszę czekać…" : "Zmień hasło")</button>
+            </fieldset>
+        </form>
+        @if (_message is not null)
+        {
+            <p role="status" class="mt-4 rounded-xl bg-teal-50 p-4 text-sm text-teal-800">@_message</p>
+        }
+        @if (_error is not null)
+        {
+            <p role="alert" class="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">@_error</p>
+        }
+    </section>
+}

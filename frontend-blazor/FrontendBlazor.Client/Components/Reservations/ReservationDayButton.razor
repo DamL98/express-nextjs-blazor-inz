@@ -1,0 +1,16 @@
+<button
+    @ref="_button"
+    data-measurement-day="@LocalDateKey(Day)"
+    type="button"
+    aria-label="@(Day.ToString("D", Polish) + $". Liczba aktywnych rezerwacji: {_count}")"
+    aria-pressed="@(Day == SelectedDay)"
+    aria-current="@(Day == DateTime.Today ? "date" : null)"
+    @onclick="() => OnSelect.InvokeAsync(Day)"
+    @onkeydown="OnKeyDown"
+    class="@($"flex min-h-14 w-full flex-col items-center justify-center rounded-xl border-2 text-sm {(Day == SelectedDay ? "border-blue-900 bg-blue-50" : _count > 0 ? "border-transparent bg-teal-50" : "border-transparent")} {(Day.Month != Month.Month ? "text-slate-400" : "text-app-ink")}")">
+    @Day.Day
+    @if (_count > 0)
+    {
+        <span aria-hidden="true" class="rounded-full bg-teal-700 px-1.5 text-xs text-white">@_count</span>
+    }
+</button>

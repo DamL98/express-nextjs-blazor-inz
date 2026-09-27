@@ -1,4 +1,15 @@
 services:
+  postgres-measurements:
+    image: postgres:17
+    profiles: [measurements]
+    environment:
+      POSTGRES_USER: measurement
+      POSTGRES_PASSWORD: local-measurement-only
+      POSTGRES_DB: inz_measurements
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_measurements_data:/var/lib/postgresql/data
   postgres:
     image: postgres:17
     container_name: inzynierka_v1
@@ -24,4 +35,5 @@ services:
       - postgres
 
 volumes:
+  postgres_measurements_data:
   postgres_data:

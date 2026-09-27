@@ -28,7 +28,8 @@ describe("API Problem Details contract", () => {
   });
 
   it("dolacza szczegoly bledu walidacji", async () => {
-    const response = await request(app).get("/api/v1/rooms?capacityMin=abc");
+    const response = await request(app)
+      .get("/api/v1/rooms?capacityMin=abc");
 
     expect(response.status).toBe(400);
     expect(response.body.code).toBe("VALIDATION_ERROR");

@@ -1,0 +1,26 @@
+@page "/rooms"
+
+<PageTitle>Sale</PageTitle>
+<section
+    class="mx-auto max-w-7xl px-4 py-8 md:px-8 md:py-10"
+    data-measurement-page="rooms"
+    data-measurement-state="@(_loading ? "loading" : _error is null ? "ready" : "error")"
+    data-measurement-count="@_rooms.Count">
+    <PageHeader Title="Znajdź salę" Description="Wybierz przestrzeń dopasowaną do spotkania. Termin sprawdzisz podczas rezerwacji." />
+    @if (_loading)
+    {
+        <LoadingCards />
+    }
+    else if (_error is not null)
+    {
+        <ErrorNotice Message="@_error" />
+    }
+    else if (_rooms.Count == 0)
+    {
+        <EmptyState Title="Brak sal do wyświetlenia" Description="Obecnie nie ma dostępnych sal" />
+    }
+    else
+    {
+        <RoomList Rooms="_rooms" />
+    }
+</section>

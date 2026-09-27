@@ -91,10 +91,6 @@ export async function openPage(page: Page, name: Exclude<View, "room-details">) 
   return waitForMeasurementPage(page, name);
 }
 
-export async function waitForCalendar(page: Page) {
-  await expect(page.locator("[data-measurement-calendar]")).toHaveAttribute("data-measurement-calendar", "ready");
-}
-
 export function expectedCount(info: ProjectContext, key: "roomCount" | "reservationCount") {
   const count = Number(info.project.metadata[key]);
   if (!Number.isInteger(count)) throw new Error(`Nieprawidłowa liczebność w metadanych: ${key}`);
@@ -107,7 +103,6 @@ export async function prepareCacheState(page: Page, info: ProjectContext) {
 
   for (const name of ["dashboard", "rooms", "reservations"] as const) {
     await openPage(page, name);
-    if (name === "reservations") await waitForCalendar(page);
   }
 
   await assertRuntime(page, info);

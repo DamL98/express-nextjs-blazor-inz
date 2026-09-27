@@ -1,10 +1,8 @@
-using FrontendBlazor.Client.Infrastructure.Auth;
-using FrontendBlazor.Client.Infrastructure.Api;
+using FrontendBlazor.Client.Services;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
-builder.Services.AddExpressApi(builder.Configuration);
-builder.Services.AddScoped<AuthContext>();
+builder.Services.AddFrontendServices(builder.Configuration);
 
 await builder.Build().RunAsync();

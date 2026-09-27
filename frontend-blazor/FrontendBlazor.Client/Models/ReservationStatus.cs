@@ -5,6 +5,9 @@ namespace FrontendBlazor.Client.Models;
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ReservationStatus
 {
-    ACTIVE,
-    CANCELLED,
+    [JsonStringEnumMemberName("ACTIVE")]
+    Active,
+
+    [JsonStringEnumMemberName("CANCELLED")]
+    Cancelled,
 }

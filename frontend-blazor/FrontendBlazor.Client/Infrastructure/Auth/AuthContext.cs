@@ -1,26 +1,28 @@
 using FrontendBlazor.Client.Infrastructure.Api;
 using FrontendBlazor.Client.Models.DTOs;
+using FrontendBlazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 
 namespace FrontendBlazor.Client.Infrastructure.Auth;
 
 public sealed class AuthContext(
     ApiClient apiClient,
+    AuthService authentication,
     NavigationManager navigation) : IDisposable
 {
     private bool _isInitialized;
-
     public event Action? Changed;
-
     public LocalUserDto? User { get; private set; }
-
     public string? Error { get; private set; }
 
-    private void ExpireSession() { User = null; Changed?.Invoke(); }
+    private void ExpireSession()
+    {
+        User = null;
+        Changed?.Invoke();
+    }
+
     public void Dispose() => apiClient.SessionExpired -= ExpireSession;
-
     public bool IsLoading { get; private set; } = true;
-
     public bool IsAuthenticated => User is not null;
 
     public async Task InitializeAsync()
@@ -29,20 +31,13 @@ public sealed class AuthContext(
         {
             return;
         }
-
         _isInitialized = true;
         apiClient.SessionExpired += ExpireSession;
-
         try
         {
-            User = await apiClient.ApiRequestAsync<LocalUserDto>(
-                "/auth/me",
-                new ApiRequestOptions
-                {
-                    IsBrowserCredentialRequired = true,
-                });
+            User = await authentication.GetCurrentSessionUserAsync();
         }
-        catch (ApiException exception) when (exception.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        catch (ApiClientException exception) when (exception.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
             User = null;
         }
@@ -59,8 +54,7 @@ public sealed class AuthContext(
 
     public async Task LoginLocalAsync(string email, string password)
     {
-        var session = await apiClient.ApiRequestAsync<AuthSessionDto>("/auth/login",
-            new ApiRequestOptions { Method = HttpMethod.Post, Body = new { email, password }, IsBrowserCredentialRequired = true });
+        var session = await authentication.LoginLocalAsync(email, password);
         User = session.User;
         Error = null;
         Changed?.Invoke();
@@ -71,25 +65,13 @@ public sealed class AuthContext(
         var redirectTo = new Uri(
             new Uri(navigation.BaseUri),
             "login").ToString();
-        var loginUrl = new Uri(apiClient.BaseAddress, "auth/google/start");
-        var builder = new UriBuilder(loginUrl)
-        {
-            Query = $"redirectTo={Uri.EscapeDataString(redirectTo)}",
-        };
-
-        navigation.NavigateTo(builder.Uri.ToString(), forceLoad: true);
+        navigation.NavigateTo(authentication.GetGoogleLoginUri(redirectTo).ToString(), forceLoad: true);
         return Task.CompletedTask;
     }
 
     public async Task LogoutAsync()
     {
-        await apiClient.ApiRequestAsync<LogoutResultDto>(
-            "/auth/logout",
-            new ApiRequestOptions
-            {
-                Method = HttpMethod.Post,
-                IsBrowserCredentialRequired = true,
-            });
+        await authentication.LogoutAsync();
         User = null;
         Changed?.Invoke();
     }

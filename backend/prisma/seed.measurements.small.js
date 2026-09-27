@@ -101,15 +101,15 @@ const roomDefinitions = [
 ];
 
 const reservationDefinitions = [
-  { roomName: "Sala A-101", dayOffset: 1, hour: 9, minute: 0, status: "ACTIVE", title: "Planowanie sprintu" },
-  { roomName: "Sala A-102", dayOffset: 1, hour: 10, minute: 30, status: "ACTIVE", title: "Przeglad wymagan" },
-  { roomName: "Sala A-201", dayOffset: 1, hour: 13, minute: 15, status: "ACTIVE", title: "Spotkanie projektowe" },
-  { roomName: "Sala A-202", dayOffset: 2, hour: 8, minute: 45, status: "ACTIVE", title: "Warsztat UX" },
-  { roomName: "Sala B-101", dayOffset: 2, hour: 11, minute: 0, status: "ACTIVE", title: "Prezentacja wynikow" },
-  { roomName: "Sala B-201", dayOffset: 2, hour: 14, minute: 30, status: "ACTIVE", title: "Spotkanie dzialowe" },
-  { roomName: "Sala Konferencyjna", dayOffset: 3, hour: 9, minute: 30, status: "ACTIVE", title: "Przeglad kwartalny" },
-  { roomName: "Aula Projektowa", dayOffset: 3, hour: 12, minute: 0, status: "ACTIVE", title: "Demo produktu" },
-  { roomName: "Sala A-101", dayOffset: 3, hour: 15, minute: 15, status: "ACTIVE", title: "Retrospektywa" },
+  { roomName: "Sala A-101", monthOffset: 1, dayOffset: 1, hour: 9, minute: 0, status: "ACTIVE", title: "Planowanie sprintu" },
+  { roomName: "Sala A-102", monthOffset: 1, dayOffset: 1, hour: 10, minute: 30, status: "ACTIVE", title: "Przeglad wymagan" },
+  { roomName: "Sala A-201", monthOffset: 1, dayOffset: 1, hour: 13, minute: 15, status: "ACTIVE", title: "Spotkanie projektowe" },
+  { roomName: "Sala A-202", monthOffset: 2, dayOffset: 1, hour: 8, minute: 45, status: "ACTIVE", title: "Warsztat UX" },
+  { roomName: "Sala B-101", monthOffset: 2, dayOffset: 1, hour: 11, minute: 0, status: "ACTIVE", title: "Prezentacja wynikow" },
+  { roomName: "Sala B-201", monthOffset: 2, dayOffset: 1, hour: 14, minute: 30, status: "ACTIVE", title: "Spotkanie dzialowe" },
+  { roomName: "Sala Konferencyjna", monthOffset: 3, dayOffset: 1, hour: 9, minute: 30, status: "ACTIVE", title: "Przeglad kwartalny" },
+  { roomName: "Aula Projektowa", monthOffset: 3, dayOffset: 1, hour: 12, minute: 0, status: "ACTIVE", title: "Demo produktu" },
+  { roomName: "Sala A-101", monthOffset: 3, dayOffset: 1, hour: 15, minute: 15, status: "ACTIVE", title: "Retrospektywa" },
   { roomName: "Sala A-102", dayOffset: 4, hour: 9, minute: 0, status: "CANCELLED", title: "Anulowana konsultacja" },
   { roomName: "Sala A-201", dayOffset: 4, hour: 11, minute: 30, status: "CANCELLED", title: "Anulowany przeglad" },
   { roomName: "Sala A-202", dayOffset: 4, hour: 14, minute: 0, status: "CANCELLED", title: "Anulowany warsztat" },
@@ -128,6 +128,8 @@ function getBaseDate() {
 
 function getReservationTime(baseDate, definition) {
   const startTime = new Date(baseDate);
+
+  startTime.setUTCMonth(startTime.getUTCMonth() + (definition.monthOffset ?? 0));
   startTime.setUTCDate(startTime.getUTCDate() + definition.dayOffset);
   startTime.setUTCHours(definition.hour, definition.minute, 0, 0);
 

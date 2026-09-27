@@ -14,4 +14,4 @@ public sealed record ReservationDto(
     string? GoogleCalendarEventId,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    ReservationRoomDto? Room);
+    RoomDto? Room);

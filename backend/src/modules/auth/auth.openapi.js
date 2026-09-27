@@ -29,11 +29,13 @@ export function registerAuthDocumentation(registry) {
   ];
 
   for (const [path, summary, bodySchema, responseSchema, requiresSession] of localOperations) {
+    const displaySummary = path === "/register" ? "Rejestracja lokalna" : summary;
+
     registry.registerPath({
       method: "post",
       path: `/api/v1/auth${path}`,
       tags: ["Uwierzytelnianie"],
-      summary,
+      summary: displaySummary,
       security: requiresSession ? sessionSecurity : [],
       request: {
         body: jsonRequestBody(bodySchema)

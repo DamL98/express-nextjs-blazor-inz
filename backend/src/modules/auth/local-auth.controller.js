@@ -7,11 +7,9 @@ const emailResponse = () => ApiResponse.ok({ message: "Wysłana wiadomosc z link
 export async function register(_req, res) {
   const data = res.locals.validated.body;
 
-  if (await service.registerLocal(data)) {
-    await service.requestEmailAction(data, "verify-email");
-  }
+  await service.registerLocal(data);
 
-  return emailResponse().send(res);
+  return ApiResponse.ok({ message: "Konto utworzone. Mozesz sie zalogowac." }).send(res);
 }
 
 export async function login(_req, res) {

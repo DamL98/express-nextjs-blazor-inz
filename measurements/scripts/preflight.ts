@@ -26,8 +26,19 @@ export async function checkServices() {
     throw new Error("Next.js nie działa w wymaganym trybie pomiarowym.");
   }
 
-  if (!blazor.production || blazor.renderer !== "webassembly") {
+  if (!blazor.production || blazor.renderer !== "webassembly" ||
+      blazor.environment !== "Measurement" || blazor.api !== urls.api) {
     throw new Error("Blazor nie działa jako produkcyjny WebAssembly");
+  }
+
+  // The WASM client loads its own settings; the host's API address is not enough.
+  const [clientDefaults, clientMeasurement] = await Promise.all([
+    serviceInfo("Blazor client settings", `${urls.blazor}/appsettings.json`),
+    serviceInfo("Blazor client Measurement settings", `${urls.blazor}/appsettings.Measurement.json`),
+  ]);
+  const clientApi = clientMeasurement.Api?.BaseUrl ?? clientDefaults.Api?.BaseUrl;
+  if (typeof clientApi !== "string" || clientApi.replace(/\/+$/, "") !== urls.api) {
+    throw new Error("Klient Blazor WebAssembly nie korzysta z pomiarowego API");
   }
 
   if (!api.production || !api.isolated) {

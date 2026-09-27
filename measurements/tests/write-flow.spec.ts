@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import {
   test, expect, expectedCount, measureStep, prepareCacheState,
-  waitForMeasurementPage, waitForCalendar,
+  waitForMeasurementPage,
 } from "./test-helpers";
 import { roomDetailsLink } from "./view-helpers";
 
@@ -46,7 +46,6 @@ test("create and cancel reservation", async ({ page }, info) => {
     await waitForMeasurementPage(page, "reservations");
     await expect(page.getByText(title)).toBeVisible();
   });
-  await waitForCalendar(page);
 
   // mierzymy też dialog i przejście do zakładki z anulowaną rezerwacją
   await measureStep(info, page, "cancel-reservation", async () => {

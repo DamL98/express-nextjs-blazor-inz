@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/.next-measurements/
 /out/
 
 # production
@@ -32,6 +33,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.measurements
+/loc-docs
 
 # vercel
 .vercel

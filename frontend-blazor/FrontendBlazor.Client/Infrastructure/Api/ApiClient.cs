@@ -12,24 +12,19 @@ public sealed class ApiClient(
 {
     private static readonly JsonSerializerOptions SerializerOptions =
         new(JsonSerializerDefaults.Web);
-
     private readonly Lazy<Task<IJSObjectReference>> _browserApiModule = new(
         () => jsRuntime.InvokeAsync<IJSObjectReference>(
             "import",
             "./js/backend-api.js").AsTask());
-
     public Uri BaseAddress => httpClient.BaseAddress
         ?? throw new InvalidOperationException("Brak BaseAddress dla API");
-
     public event Action? SessionExpired;
-
     public async Task<T> ApiRequestAsync<T>(
         string path,
         ApiRequestOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         options ??= new ApiRequestOptions();
-
         var response = options.IsBrowserCredentialRequired &&
             !OperatingSystem.IsBrowser()
             ? await SendWithBrowserAsync(
@@ -40,15 +35,22 @@ public sealed class ApiClient(
                 path,
                 options,
                 cancellationToken);
-
         if (response.StatusCode is < 200 or >= 300)
         {
-            if (response.StatusCode == 401) SessionExpired?.Invoke();
+            if (response.StatusCode == 401)
+            {
+                SessionExpired?.Invoke();
+            }
             ProblemDetailsDto? problem = null;
-            try { problem = JsonSerializer.Deserialize<ProblemDetailsDto>(response.Body, SerializerOptions); }
-            catch (JsonException) { /* A proxy may return an HTML error. */ }
-
-            throw new ApiException(
+            try
+            {
+                problem = JsonSerializer.Deserialize<ProblemDetailsDto>(response.Body, SerializerOptions);
+            }
+            catch (JsonException)
+            {
+                /* A proxy may return an HTML error. */
+            }
+            throw new ApiClientException(
                 problem?.Code ?? problem?.Type ?? $"HTTP_{response.StatusCode}",
                 problem?.Detail ?? problem?.Title ?? $"Blad API status: {response.StatusCode}",
                 (HttpStatusCode)response.StatusCode,
@@ -56,12 +58,13 @@ public sealed class ApiClient(
                 problem?.Type,
                 problem?.Instance);
         }
-
-        if (response.StatusCode == 204) return default!;
-        var result = JsonSerializer.Deserialize<ApiResponse<T>>(
+        if (response.StatusCode == 204)
+        {
+            return default!;
+        }
+        var result = JsonSerializer.Deserialize<ApiSuccess<T>>(
             response.Body,
             SerializerOptions);
-
         return result is { IsSuccess: true, Data: not null }
             ? result.Data
             : throw new InvalidOperationException("Nieprawidlowa odpowiedz API");
@@ -75,14 +78,12 @@ public sealed class ApiClient(
         using var request = new HttpRequestMessage(
             options.Method,
             path.TrimStart('/'));
-
         if (OperatingSystem.IsBrowser())
         {
             request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
             request.SetBrowserRequestCache(BrowserRequestCache.NoStore);
         }
         request.Headers.Accept.ParseAdd("application/json, application/problem+json");
-
         if (options.Body is not null)
         {
             request.Content = new StringContent(
@@ -90,9 +91,7 @@ public sealed class ApiClient(
                 Encoding.UTF8,
                 "application/json");
         }
-
         using var response = await httpClient.SendAsync(request, cancellationToken);
-
         return new BrowserApiResponse
         {
             StatusCode = (int)response.StatusCode,
@@ -110,7 +109,6 @@ public sealed class ApiClient(
         var body = options.Body is null
             ? null
             : JsonSerializer.Serialize(options.Body, SerializerOptions);
-
         try
         {
             return await module.InvokeAsync<BrowserApiResponse>(
@@ -137,11 +135,9 @@ public sealed class ApiClient(
             await module.DisposeAsync();
         }
     }
-
     private sealed class BrowserApiResponse
     {
         public int StatusCode { get; init; }
-
         public string Body { get; init; } = string.Empty;
     }
 }

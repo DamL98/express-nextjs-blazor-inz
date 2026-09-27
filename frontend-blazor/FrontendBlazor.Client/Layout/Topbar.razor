@@ -1,46 +1,25 @@
-﻿@inject AuthContext Auth
-@inject NavigationManager Navigation
+@inject AuthContext Auth
 <header class="border-b border-app-line bg-white px-4 py-4 md:px-8">
     <div class="flex items-center justify-between gap-3">
         <p class="hidden text-sm text-app-muted sm:block">Wszystko gotowe na Twoje spotkanie</p>
         <p class="text-sm font-semibold sm:hidden">System rezerwacji</p>
         <div class="flex min-w-0 items-center gap-3">
-            <span aria-hidden="true" class="hidden h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-100 text-sm font-bold text-blue-900 sm:grid">@(Auth.User?.FullName.FirstOrDefault().ToString().ToUpperInvariant() ?? "U")</span>
+            <span
+                aria-hidden="true"
+                class="hidden h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-100 text-sm font-bold text-blue-900 sm:grid">@(Auth.User?.FullName.FirstOrDefault().ToString().ToUpperInvariant() ?? "U")</span>
             <div class="hidden min-w-0 lg:block">
                 <p class="max-w-52 truncate text-sm font-semibold">@Auth.User?.FullName</p>
                 <p class="max-w-52 truncate text-xs text-app-muted">@Auth.User?.Email</p>
             </div>
-            <button type="button" class="min-h-11 rounded-xl border border-app-line px-4 py-2 text-sm font-medium hover:bg-slate-50" disabled="@_busy" @onclick="LogoutAsync">
-                <AppIcon Name="log-out" />@(_busy ? "Wylogowywanie…" : "Wyloguj")
+            <button type="button" class="min-h-11 rounded-xl border border-app-line px-4 py-2 text-sm font-medium hover:bg-slate-50" disabled="@_busy" @onclick="HandleLogoutAsync">
+                <AppIcon Name="log-out" />
+                @(_busy ? "Wylogowywanie…" : "Wyloguj")
             </button>
         </div>
     </div>
-
-    @if (_error is not null) {
+    @if (_error is not null)
+    {
         <p role="alert" class="mt-3 text-sm text-red-700">@_error</p>
     }
-
     <NavigationLinks Label="Nawigacja mobilna" Class="mt-4 grid grid-cols-2 gap-2 border-t border-app-line pt-4 sm:grid-cols-4 md:hidden" />
 </header>
-
-@code {
-    private bool _busy;
-    private string? _error;
-    private async Task LogoutAsync()
-    {
-        _busy = true; _error = null;
-        try
-        {
-            await Auth.LogoutAsync();
-            Navigation.NavigateTo("/login", replace: true);
-        }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        finally
-        {
-            _busy = false;
-        }
-    }
-}

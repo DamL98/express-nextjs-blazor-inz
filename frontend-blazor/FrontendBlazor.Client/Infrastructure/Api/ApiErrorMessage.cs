@@ -6,7 +6,7 @@ public static class ApiErrorMessage
         Exception exception,
         string fallbackMessage)
     {
-        if (exception is ApiException &&
+        if (exception is ApiClientException &&
             !string.IsNullOrWhiteSpace(exception.Message))
         {
             return exception.Message;

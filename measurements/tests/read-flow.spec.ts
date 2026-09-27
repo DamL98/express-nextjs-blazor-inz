@@ -1,6 +1,6 @@
 import {
   test, expect, expectedCount, measureStep, prepareCacheState, openPage,
-  waitForCalendar, waitForMeasurementPage,
+  waitForMeasurementPage,
 } from "./test-helpers";
 import { roomDetailsLink } from "./view-helpers";
 
@@ -17,8 +17,6 @@ for (const name of ["dashboard", "rooms", "reservations"] as const) {
       await expect(page.locator(`[data-measurement-page="${name}"]`))
         .toHaveAttribute("data-measurement-count", String(expectedCount(info, countKey)));
     }
-
-    if (name === "reservations") await waitForCalendar(page);
   });
 }
 
